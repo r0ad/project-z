@@ -7,44 +7,71 @@
     }
   },
   "pages": [
-    //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
     {
-      "path": "pages/index/index",
+      "path": "pages/project/list",
       "style": {
-        "navigationBarTitleText": "uni-app"
+        "navigationBarTitleText": "项目列表",
+        "navigationStyle": "custom"
       }
     },
     {
-      "path": "pages/demo/index",
+      "path": "pages/project/detail",
       "style": {
-        "navigationBarTitleText": "示例"
+        "navigationBarTitleText": "项目详情",
+        "navigationStyle": "custom"
       }
     },
     {
-      "path": "pages/demo/gitcode-demo/gitcode-demo",
+      "path": "pages/project/create",
       "style": {
-        "navigationBarTitleText": "GitCode同步示例"
+        "navigationBarTitleText": "新建项目",
+        "navigationStyle": "custom"
       }
     },
     {
-      "path": "pages/demo/file-demo/file-demo",
+      "path": "pages/project/log",
       "style": {
-        "navigationBarTitleText": "文件管理示例"
+        "navigationBarTitleText": "记录日志",
+        "navigationStyle": "custom"
       }
     },
     {
-      "path": "pages/demo/update-demo/update-demo",
+      "path": "pages/project/chat",
       "style": {
-        "navigationBarTitleText": "应用更新示例"
+        "navigationBarTitleText": "聊项目",
+        "navigationStyle": "custom"
       }
     },
     {
-      "path": "pages/demo/plugin-example/plugin-example",
+      "path": "pages/knowledge/index",
       "style": {
-        "navigationBarTitleText": "插件使用示例"
+        "navigationBarTitleText": "知识库",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/knowledge/detail",
+      "style": {
+        "navigationBarTitleText": "知识详情",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/knowledge/create",
+      "style": {
+        "navigationBarTitleText": "新增知识",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationStyle": "custom"
       }
     }
   ],
+
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "uni-app",
