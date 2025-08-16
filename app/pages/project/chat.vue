@@ -167,17 +167,88 @@
       :style="{ height: '300rpx' }"
     >
       <view class="context-menu">
-        <view class="menu-item" @click="loadMoreContext">
-          <nut-icon name="history" size="16" color="#165DFF"></nut-icon>
-          <text>加载更多历史</text>
+        <view class="menu-item" @click="showConversationHistory">
+          <nut-icon name="message" size="16" color="#165DFF"></nut-icon>
+          <text>历史会话</text>
+        </view>
+        <view class="menu-item" @click="createNewConversation">
+          <nut-icon name="plus" size="16" color="#00B42A"></nut-icon>
+          <text>新建会话</text>
+        </view>
+        <view class="menu-item" @click="showLogCountConfig">
+          <nut-icon name="setting" size="16" color="#FF7D00"></nut-icon>
+          <text>设置日志数量</text>
         </view>
         <view class="menu-item" @click="clearContext">
           <nut-icon name="delete" size="16" color="#F53F3F"></nut-icon>
-          <text>清空对话</text>
+          <text>清空当前对话</text>
         </view>
         <view class="menu-item" @click="exportChat">
           <nut-icon name="download" size="16" color="#00B42A"></nut-icon>
           <text>导出对话</text>
+        </view>
+      </view>
+    </nut-popup>
+
+    <!-- 会话列表弹窗 -->
+    <nut-popup 
+      v-model:visible="showConversationList" 
+      position="bottom"
+      :style="{ height: '60%' }"
+    >
+      <view class="conversation-list">
+        <view class="popup-header">
+          <text class="popup-title">历史会话</text>
+          <nut-icon name="close" size="20" @click="showConversationList = false"></nut-icon>
+        </view>
+        <scroll-view class="conversation-scroll" scroll-y>
+          <view 
+            class="conversation-item" 
+            v-for="conversation in conversations" 
+            :key="conversation.id"
+            @click="selectConversation(conversation.id)"
+            :class="{ active: conversation.id === currentConversationId }"
+          >
+            <view class="conversation-info">
+              <text class="conversation-title">{{ conversation.title || '未命名会话' }}</text>
+              <text class="conversation-time">{{ formatTime(conversation.updated_at) }}</text>
+            </view>
+            <nut-icon 
+              name="delete" 
+              size="16" 
+              color="#F53F3F" 
+              @click.stop="deleteConversation(conversation.id)"
+            ></nut-icon>
+          </view>
+          <view v-if="conversations.length === 0" class="empty-state">
+            <text>暂无历史会话</text>
+          </view>
+        </scroll-view>
+      </view>
+    </nut-popup>
+
+    <!-- 日志数量配置弹窗 -->
+    <nut-popup 
+      v-model:visible="showLogConfig" 
+      position="center"
+      :style="{ width: '80%' }"
+    >
+      <view class="log-config">
+        <view class="popup-header">
+          <text class="popup-title">设置日志数量</text>
+        </view>
+        <view class="config-content">
+          <text class="config-label">每次对话携带的日志数量：</text>
+          <nut-input-number 
+            v-model="tempLogCount" 
+            :min="1" 
+            :max="20"
+            :step="1"
+          ></nut-input-number>
+        </view>
+        <view class="config-actions">
+          <nut-button type="default" @click="cancelLogConfig">取消</nut-button>
+          <nut-button type="primary" @click="saveLogCount">确定</nut-button>
         </view>
       </view>
     </nut-popup>
@@ -213,7 +284,14 @@ export default {
       currentConversationId: null,
       enableStream: true,
       streamContent: '',
-      isStreaming: false
+      isStreaming: false,
+      
+      // 会话管理
+      conversations: [],
+      showConversationList: false,
+      logCount: 5, // 可配置的日志数量
+      showLogConfig: false,
+      tempLogCount: 5
     }
   },
   
@@ -232,11 +310,15 @@ export default {
     async initChat() {
       this.loading = true
       try {
-        // 加载项目信息和最近日志
-        const [projectResult, logsResult] = await Promise.all([
+        // 加载项目信息、最近日志和会话列表
+        const [projectResult, logsResult, conversationsResult] = await Promise.all([
           projectApi.getProjectDetail(this.projectId),
-          logApi.getRecentLogs(this.projectId, 5)
+          logApi.getRecentLogs(this.projectId, this.logCount),
+          chatApi.getConversationsByProject(this.projectId)
         ])
+        
+        // 设置会话列表
+        this.conversations = conversationsResult || []
         
         if (projectResult) {
           this.projectName = projectResult.name || this.projectName
@@ -749,6 +831,133 @@ export default {
       })
     },
     
+    // 会话管理方法
+    showConversationHistory() {
+      this.showMenu = false
+      this.showConversationList = true
+    },
+    
+    async createNewConversation() {
+      this.showMenu = false
+      try {
+        // 创建新会话
+        const newConversation = await chatApi.createConversation({
+          projectId: this.projectId,
+          title: '新对话'
+        })
+        this.currentConversationId = newConversation.id
+        this.messages = []
+        
+        // 重新加载会话列表
+        this.conversations = await chatApi.getConversationsByProject(this.projectId)
+        
+        uni.showToast({
+          title: '新会话已创建',
+          icon: 'success'
+        })
+      } catch (error) {
+        console.error('创建新会话失败:', error)
+        uni.showToast({
+          title: '创建失败',
+          icon: 'none'
+        })
+      }
+    },
+    
+    async selectConversation(conversation) {
+      try {
+        this.currentConversationId = conversation.id
+        this.showConversationList = false
+        
+        // 加载选中会话的消息
+        const messages = await chatApi.getMessages(conversation.id)
+        this.messages = messages.map(msg => ({
+          type: msg.role === 'user' ? 'user' : 'ai',
+          content: msg.content,
+          timestamp: msg.timestamp || msg.created_at,
+          actions: msg.role === 'assistant' ? this.extractActions(msg.content) : undefined
+        }))
+        
+        uni.showToast({
+          title: '会话已切换',
+          icon: 'success'
+        })
+      } catch (error) {
+        console.error('切换会话失败:', error)
+        uni.showToast({
+          title: '切换失败',
+          icon: 'none'
+        })
+      }
+    },
+    
+    async deleteConversation(conversation) {
+      uni.showModal({
+        title: '确认删除',
+        content: `确定要删除会话"${conversation.title}"吗？`,
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              await chatApi.deleteConversation(conversation.id)
+              
+              // 重新加载会话列表
+              this.conversations = await chatApi.getConversationsByProject(this.projectId)
+              
+              // 如果删除的是当前会话，创建新会话
+              if (this.currentConversationId === conversation.id) {
+                await this.createNewConversation()
+              }
+              
+              uni.showToast({
+                title: '会话已删除',
+                icon: 'success'
+              })
+            } catch (error) {
+              console.error('删除会话失败:', error)
+              uni.showToast({
+                title: '删除失败',
+                icon: 'none'
+              })
+            }
+          }
+        }
+      })
+    },
+    
+    showLogCountConfig() {
+      this.showMenu = false
+      this.tempLogCount = this.logCount
+      this.showLogConfig = true
+    },
+    
+    async saveLogCount() {
+      this.logCount = this.tempLogCount
+      this.showLogConfig = false
+      
+      try {
+        // 重新加载项目日志
+        const logsResult = await logApi.getRecentLogs(this.projectId, this.logCount)
+        this.contextData.recentLogs = logsResult || []
+        this.recentLogCount = this.contextData.recentLogs.length
+        
+        uni.showToast({
+          title: '日志数量已更新',
+          icon: 'success'
+        })
+      } catch (error) {
+        console.error('更新日志数量失败:', error)
+        uni.showToast({
+          title: '更新失败',
+          icon: 'none'
+        })
+      }
+    },
+    
+    cancelLogConfig() {
+      this.showLogConfig = false
+      this.tempLogCount = this.logCount
+    },
+    
     scrollToBottom() {
       this.scrollTop = 999999
     }
@@ -767,6 +976,7 @@ export default {
 .custom-navbar {
   background-color: #ffffff;
   border-bottom: 1rpx solid #e5e6eb;
+  padding-top: var(--status-bar-height);
   
   .navbar-content {
     display: flex;
