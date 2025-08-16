@@ -70,13 +70,16 @@
 </template>
 
 <script>
+import projectApi from '@/api/projectApi.js'
+import aiApi from '@/api/aiApi.js'
+
 export default {
   data() {
     return {
       formData: {
-        name: '',
-        goal: '',
-        description: ''
+        name: '减肥',
+        goal: '高效减肥10kg',
+        description: '高效减肥10kg'
       },
       creating: false
     }
@@ -88,62 +91,139 @@ export default {
     
     async createProject() {
       // 表单验证
-      if (!this.formData.name.trim()) {
+      const validation = this.validateForm()
+      if (!validation.valid) {
         uni.showToast({
-          title: '请输入项目名称',
-          icon: 'none'
-        })
-        return
-      }
-      
-      if (!this.formData.goal.trim()) {
-        uni.showToast({
-          title: '请输入目标关键词',
+          title: validation.message,
           icon: 'none'
         })
         return
       }
 
+      if (this.creating) return
+      
       this.creating = true
       
       try {
         // 创建项目数据
         const projectData = {
-          id: Date.now().toString(),
           name: this.formData.name.trim(),
           goal: this.formData.goal.trim(),
-          description: this.formData.description.trim(),
-          progress: 0,
-          status: 'active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          description: this.formData.description.trim() || '',
+          status: 'planning'
         }
         
-        // TODO: 调用AI接口生成项目节点和详细目标
-        // TODO: 保存到本地数据库
+        // 使用AI分析项目并生成SMART目标和关键节点
+        let aiAnalysis = null
+        try {
+          const aiPrompt = `请分析以下项目信息，生成符合SMART原则的目标和关键节点：
+
+项目名称：${projectData.name}
+目标关键词：${projectData.goal}
+项目描述：${projectData.description}
+
+请返回JSON格式的分析结果，包含：
+1. smartGoal: 重新优化的SMART目标
+2. milestones: 关键节点数组，每个节点包含title、description、deadline（相对天数）
+3. suggestions: 项目建议
+
+示例格式：
+{
+  "smartGoal": "在30天内开发一款AI小工具，实现文本生成功能，用户留存率达到60%以上",
+  "milestones": [
+    {"title": "需求分析与设计", "description": "完成产品需求分析和UI设计", "deadline": 7},
+    {"title": "核心功能开发", "description": "实现AI文本生成核心功能", "deadline": 20},
+    {"title": "测试与优化", "description": "完成功能测试和性能优化", "deadline": 28},
+    {"title": "发布上线", "description": "完成项目发布和用户反馈收集", "deadline": 30}
+  ],
+  "suggestions": "建议重点关注用户体验设计和AI模型的响应速度优化"
+}`
+          
+          const aiResponse = await aiApi.sendAIRequest(aiPrompt)
+          if (aiResponse && aiResponse.content) {
+            try {
+              // 提取AI返回内容中的JSON部分（去除markdown代码块标记）
+              let content = aiResponse.content
+              // 如果包含```json标记，提取其中的JSON内容
+              const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/)
+              if (jsonMatch) {
+                content = jsonMatch[1].trim()
+              }
+              
+              aiAnalysis = JSON.parse(content)
+              console.log('AI分析结果:', aiAnalysis)
+              
+              // 如果AI返回了优化的目标，使用AI的目标
+              if (aiAnalysis.smartGoal) {
+                projectData.goal = aiAnalysis.smartGoal
+              }
+            } catch (parseError) {
+              console.log('AI返回格式解析失败，使用原始数据:', parseError)
+              console.log('原始AI返回内容:', aiResponse.content)
+            }
+          }
+        } catch (aiError) {
+          console.log('AI分析失败，继续创建项目:', aiError)
+        }
         
-        // 模拟创建过程
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        // 调用项目API创建项目
+        const result = await projectApi.createProject(projectData, aiAnalysis)
         
         uni.showToast({
           title: '项目创建成功',
           icon: 'success'
         })
         
-        // 返回项目列表页面
+        // 延迟返回，让用户看到成功提示
         setTimeout(() => {
           uni.navigateBack()
-        }, 1000)
+        }, 1500)
         
       } catch (error) {
         console.error('创建项目失败:', error)
         uni.showToast({
-          title: '创建失败，请重试',
+          title: error.message || '创建失败，请重试',
           icon: 'none'
         })
       } finally {
         this.creating = false
       }
+    },
+    
+    // 清空表单
+    clearForm() {
+      this.formData.name = ''
+      this.formData.goal = ''
+      this.formData.description = ''
+    },
+    
+    // 表单验证
+    validateForm() {
+      if (!this.formData.name.trim()) {
+        return { valid: false, message: '请输入项目名称' }
+      }
+      
+      if (this.formData.name.trim().length < 2) {
+        return { valid: false, message: '项目名称至少2个字符' }
+      }
+      
+      if (this.formData.name.trim().length > 50) {
+        return { valid: false, message: '项目名称不能超过50个字符' }
+      }
+      
+      if (!this.formData.goal.trim()) {
+        return { valid: false, message: '请输入目标关键词' }
+      }
+      
+      if (this.formData.goal.trim().length < 5) {
+        return { valid: false, message: '目标关键词至少5个字符' }
+      }
+      
+      if (this.formData.description.trim().length > 500) {
+        return { valid: false, message: '项目描述不能超过500个字符' }
+      }
+      
+      return { valid: true }
     }
   }
 }

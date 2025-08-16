@@ -145,6 +145,13 @@ export default {
 			},
 			menuItems: [
 				{
+					icon: 'robot',
+					iconColor: '#165DFF',
+					iconBg: '#165DFF20',
+					title: 'AI设置',
+					action: 'ai-settings'
+				},
+				{
 					icon: 'star',
 					iconColor: '#FFD700',
 					iconBg: '#FFD70020',
@@ -238,6 +245,11 @@ export default {
 		},
 		handleMenuClick(item) {
 			switch (item.action) {
+				case 'ai-settings':
+					uni.navigateTo({
+						url: '/pages/settings/ai-settings'
+					})
+					break
 				case 'favorites':
 					uni.showToast({ title: '我的收藏', icon: 'none' })
 					break

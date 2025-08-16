@@ -29,12 +29,21 @@
 				>
 					<view class="card-header">
 						<text class="project-title">{{ project.title }}</text>
-						<nut-tag 
-							:type="getStatusType(project.status)" 
-							size="small"
-						>
-							{{ project.statusText }}
-						</nut-tag>
+						<view class="card-actions">
+							<nut-tag 
+								:type="getStatusType(project.status)" 
+								size="small"
+							>
+								{{ project.statusText }}
+							</nut-tag>
+							<nut-icon 
+								name="del" 
+								size="16" 
+								color="#FF4D4F"
+								class="delete-icon"
+								@click.stop="deleteProject(project, index)"
+							></nut-icon>
+						</view>
 					</view>
 					
 					<text class="project-desc">{{ project.description }}</text>
@@ -64,6 +73,7 @@
 
 <script>
 import CustomTabBar from '@/custom-tab-bar/index.vue'
+import projectApi from '@/api/projectApi.js'
 
 export default {
 	components: {
@@ -71,38 +81,57 @@ export default {
 	},
 	data() {
 		return {
-			projectList: [
-				{
-					id: 1,
-					title: 'AI工具开发',
-					description: '30天开发一款支持文本生成的AI小工具',
-					status: 'progress',
-					statusText: '进行中',
-					progress: 65,
-					updateTime: '今天 14:30'
-				},
-				{
-					id: 2,
-					title: '健身计划',
-					description: '90天减重10kg，每周运动3次',
-					status: 'warning',
-					statusText: '需关注',
-					progress: 30,
-					updateTime: '昨天 08:15'
-				},
-				{
-					id: 3,
-					title: '小程序开发',
-					description: '电商小程序功能开发与上线',
-					status: 'completed',
-					statusText: '已完成',
-					progress: 100,
-					updateTime: '2023-06-10'
-				}
-			]
+			projectList: [],
+			loading: false,
+			refreshing: false
 		}
 	},
+	onLoad() {
+		this.loadProjects()
+	},
+	onShow() {
+		// 页面显示时刷新数据
+		this.loadProjects()
+	},
+	onPullDownRefresh() {
+		this.refreshProjects()
+	},
 	methods: {
+		async loadProjects() {
+			if (this.loading) return
+			
+			this.loading = true
+			try {
+				const projects = await projectApi.getProjectList()
+				this.projectList = projects || []
+			} catch (error) {
+				console.error('加载项目列表失败:', error)
+				uni.showToast({
+					title: '加载失败，请重试',
+					icon: 'none'
+				})
+			} finally {
+				this.loading = false
+			}
+		},
+		async refreshProjects() {
+			this.refreshing = true
+			try {
+				await this.loadProjects()
+				uni.showToast({
+					title: '刷新成功',
+					icon: 'success'
+				})
+			} catch (error) {
+				uni.showToast({
+					title: '刷新失败',
+					icon: 'none'
+				})
+			} finally {
+				this.refreshing = false
+				uni.stopPullDownRefresh()
+			}
+		},
 		getStatusType(status) {
 			const statusMap = {
 				progress: 'success',
@@ -128,6 +157,49 @@ export default {
 			uni.navigateTo({
 				url: `/pages/project/detail?id=${project.id}&title=${project.title}`
 			})
+		},
+		async deleteProject(project, index) {
+			try {
+				const result = await uni.showModal({
+					title: '确认删除',
+					content: `确定要删除项目"${project.title}"吗？此操作不可恢复。`,
+					confirmText: '删除',
+					cancelText: '取消'
+				})
+				
+				if (result.confirm) {
+					await projectApi.deleteProject(project.id)
+					this.projectList.splice(index, 1)
+					uni.showToast({
+						title: '删除成功',
+						icon: 'success'
+					})
+				}
+			} catch (error) {
+				console.error('删除项目失败:', error)
+				uni.showToast({
+					title: '删除失败，请重试',
+					icon: 'none'
+				})
+			}
+		},
+		formatUpdateTime(time) {
+			if (!time) return ''
+			const date = new Date(time)
+			const now = new Date()
+			const diffMs = now - date
+			const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+			
+			if (diffDays === 0) {
+				return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+			} else if (diffDays === 1) {
+				return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+			} else if (diffDays < 7) {
+				const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+				return `${weekdays[date.getDay()]} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+			} else {
+				return `${date.getMonth() + 1}-${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+			}
 		}
 	}
 }
@@ -217,6 +289,22 @@ export default {
 	font-weight: 600;
 	color: #1D2129;
 	flex: 1;
+}
+
+.card-actions {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+}
+
+.delete-icon {
+	padding: 8rpx;
+	border-radius: 8rpx;
+	transition: background-color 0.3s ease;
+}
+
+.delete-icon:active {
+	background-color: rgba(255, 77, 79, 0.1);
 }
 
 .project-desc {

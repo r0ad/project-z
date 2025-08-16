@@ -1,15 +1,61 @@
 <script>
-	export default {
-		onLaunch: function() {
-			console.log('App Launch')
-		},
-		onShow: function() {
-			console.log('App Show')
-		},
-		onHide: function() {
-			console.log('App Hide')
+import dbService from '@/utils/dbService.js'
+
+export default {
+	async onLaunch() {
+		console.log('App Launch')
+		
+		// 初始化数据库
+		try {
+			await this.initDatabase()
+			console.log('数据库初始化成功')
+		} catch (error) {
+			console.error('数据库初始化失败:', error)
+			// 只在严重错误时显示提示
+			if (error.code !== -1402) { // -1402 表示数据库已经打开
+				uni.showToast({
+					title: '数据库初始化失败',
+					icon: 'error',
+					duration: 3000
+				})
+			}
+		}
+	},
+	
+	onShow: function() {
+		console.log('App Show')
+	},
+	
+	onHide: function() {
+		console.log('App Hide')
+	},
+	
+	methods: {
+		async initDatabase() {
+			try {
+				// 初始化数据库连接（包含表创建和索引创建）
+				await dbService.initDB()
+				
+				// 创建索引（如果还没有创建）
+				await dbService.createIndexes()
+				
+				// 初始化默认用户（如果还没有用户）
+				await dbService.initDefaultUser()
+				
+				console.log('数据库初始化完成')
+				
+			} catch (error) {
+				console.error('数据库初始化过程中出错:', error)
+				// 对于已经打开的数据库错误，不抛出异常
+				if (error.code === -1402) {
+					console.log('数据库已经打开，继续运行')
+					return
+				}
+				throw error
+			}
 		}
 	}
+}
 </script>
 
 <style lang="scss">

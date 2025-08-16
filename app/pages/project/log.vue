@@ -172,6 +172,9 @@
 </template>
 
 <script>
+import logApi from '@/api/logApi.js'
+import aiApi from '@/api/aiApi.js'
+
 export default {
   data() {
     return {
@@ -184,13 +187,14 @@ export default {
       isRecording: false,
       analyzing: false,
       saving: false,
+      transcribing: false,
       analysisResult: null
     }
   },
   
   onLoad(options) {
-    this.projectId = options.projectId || ''
-    this.projectName = options.projectName || '项目名称'
+    this.projectId = parseInt(options.projectId) || ''
+    this.projectName = decodeURIComponent(options.projectName) || '项目名称'
     this.currentDate = this.formatDate(new Date())
   },
   
@@ -215,22 +219,59 @@ export default {
       }
     },
     
-    startRecording() {
+    async startRecording() {
       this.isRecording = true
-      // TODO: 实现语音录制功能
-      console.log('开始录制语音')
+      this.voiceText = ''
+      
+      try {
+        // 这里应该调用真实的语音录制API
+        // 目前使用模拟实现
+        console.log('开始录制语音')
+        
+        uni.showToast({
+          title: '开始录音',
+          icon: 'none'
+        })
+      } catch (error) {
+        console.error('开始录音失败:', error)
+        this.isRecording = false
+        uni.showToast({
+          title: '录音失败',
+          icon: 'none'
+        })
+      }
     },
     
-    stopRecording() {
+    async stopRecording() {
       this.isRecording = false
-      // TODO: 停止录制并转换为文字
-      // 模拟语音转文字结果
-      this.voiceText = '今天完成了用户登录模块的开发，遇到了数据库连接超时的问题，明天计划优化数据库配置并进行测试。'
-      console.log('停止录制语音')
+      
+      try {
+        this.transcribing = true
+        
+        // 调用语音转文字API
+        const result = await aiApi.speechToText('mock_audio_data')
+        this.voiceText = result.text
+        
+        uni.showToast({
+          title: '转换完成',
+          icon: 'success'
+        })
+      } catch (error) {
+        console.error('语音转文字失败:', error)
+        // 使用模拟数据作为后备
+        this.voiceText = '今天完成了用户登录模块的开发，遇到了数据库连接超时的问题，明天计划优化数据库配置并进行测试。'
+        uni.showToast({
+          title: '转换失败，使用模拟数据',
+          icon: 'none'
+        })
+      } finally {
+        this.transcribing = false
+      }
     },
     
     cancelRecording() {
       this.isRecording = false
+      this.voiceText = ''
       console.log('取消录制')
     },
     
@@ -247,26 +288,116 @@ export default {
       this.analyzing = true
       
       try {
-        // TODO: 调用AI接口分析日志内容
-        // 模拟AI分析过程
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        // 构建AI分析提示词
+        const prompt = `请分析以下工作日志内容，并按照JSON格式返回结构化数据：
+
+日志内容：${content}
+
+请提取以下信息并以JSON格式返回：
+{
+  "progress": "今天完成的工作内容（如果有的话）",
+  "problems": "遇到的问题和困难（如果有的话）",
+  "plans": "明天或下一步的计划（如果有的话）"
+}
+
+注意：
+1. 如果某个方面没有相关内容，请返回空字符串
+2. 请用简洁明了的语言总结
+3. 只返回JSON格式，不要其他文字`
         
-        // 模拟分析结果
-        this.analysisResult = {
-          progress: '完成了用户登录模块的开发，实现了基本的登录验证功能',
-          problems: '遇到了数据库连接超时的问题，影响了开发进度',
-          plans: '明天计划优化数据库配置，进行连接池设置，并完成登录模块的测试'
+        // 调用AI接口进行分析
+        const response = await aiApi.sendAIRequest(prompt)
+        
+        // 解析AI返回的JSON数据
+        let analysisData
+        try {
+          // 尝试解析JSON响应
+          const jsonMatch = response.content.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            analysisData = JSON.parse(jsonMatch[0])
+          } else {
+            throw new Error('无法解析AI返回的JSON格式')
+          }
+        } catch (parseError) {
+          console.warn('JSON解析失败，使用文本解析:', parseError)
+          // 如果JSON解析失败，尝试文本解析
+          analysisData = this.parseTextResponse(response.content)
         }
+        
+        this.analysisResult = {
+          progress: analysisData.progress || '',
+          problems: analysisData.problems || '',
+          plans: analysisData.plans || ''
+        }
+        
+        uni.showToast({
+          title: 'AI分析完成',
+          icon: 'success'
+        })
         
       } catch (error) {
         console.error('AI分析失败:', error)
+        
+        // 显示具体错误信息
+        let errorMessage = 'AI分析失败'
+        if (error.message.includes('配置') || error.message.includes('API密钥')) {
+          errorMessage = '请先在设置中配置AI服务'
+        } else if (error.message.includes('网络')) {
+          errorMessage = '网络连接失败，请检查网络'
+        }
+        
         uni.showToast({
-          title: '分析失败，请重试',
-          icon: 'none'
+          title: errorMessage,
+          icon: 'none',
+          duration: 3000
         })
+        
+        // 不再使用mock数据，让用户知道需要配置AI服务
+        this.analysisResult = null
+        
       } finally {
         this.analyzing = false
       }
+    },
+    
+    // 解析文本格式的AI响应
+    parseTextResponse(text) {
+      const result = {
+        progress: '',
+        problems: '',
+        plans: ''
+      }
+      
+      // 尝试从文本中提取结构化信息
+      const lines = text.split('\n').filter(line => line.trim())
+      
+      let currentSection = ''
+      for (const line of lines) {
+        const trimmedLine = line.trim()
+        
+        // 识别章节标题
+        if (trimmedLine.includes('进展') || trimmedLine.includes('完成') || trimmedLine.includes('progress')) {
+          currentSection = 'progress'
+          continue
+        } else if (trimmedLine.includes('问题') || trimmedLine.includes('困难') || trimmedLine.includes('problem')) {
+          currentSection = 'problems'
+          continue
+        } else if (trimmedLine.includes('计划') || trimmedLine.includes('下一步') || trimmedLine.includes('plan')) {
+          currentSection = 'plans'
+          continue
+        }
+        
+        // 提取内容
+        if (currentSection && trimmedLine && !trimmedLine.match(/^[\d\.\-\*]+/)) {
+          if (result[currentSection]) {
+            result[currentSection] += ' ' + trimmedLine
+          } else {
+            result[currentSection] = trimmedLine
+          }
+        }
+      }
+      
+      return result
     },
     
     async saveLog() {
@@ -278,22 +409,20 @@ export default {
         return
       }
       
+      if (this.saving) return
+      
       this.saving = true
       
       try {
         const logData = {
-          id: Date.now().toString(),
-          projectId: this.projectId,
           content: this.logContent.trim() || this.voiceText.trim(),
-          analysis: this.analysisResult,
-          createdAt: new Date().toISOString()
+          progressText: this.analysisResult?.progress || '',
+          problemText: this.analysisResult?.problems || '',
+          planText: this.analysisResult?.plans || '',
+          logType: this.inputMode === 'voice' ? 'voice' : 'manual'
         }
         
-        // TODO: 保存到本地数据库
-        console.log('保存日志:', logData)
-        
-        // 模拟保存过程
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await logApi.createLog(this.projectId, logData)
         
         uni.showToast({
           title: '日志保存成功',
@@ -307,7 +436,7 @@ export default {
       } catch (error) {
         console.error('保存日志失败:', error)
         uni.showToast({
-          title: '保存失败，请重试',
+          title: error.message || '保存失败，请重试',
           icon: 'none'
         })
       } finally {

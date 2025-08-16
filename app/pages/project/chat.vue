@@ -168,6 +168,10 @@
 </template>
 
 <script>
+import aiApi from '@/api/aiApi.js'
+import logApi from '@/api/logApi.js'
+import projectApi from '@/api/projectApi.js'
+
 export default {
   data() {
     return {
@@ -185,7 +189,8 @@ export default {
         recentLogs: [],
         currentGoals: [],
         problems: []
-      }
+      },
+      loading: false
     }
   },
   
@@ -193,7 +198,7 @@ export default {
     this.projectId = options.projectId || ''
     this.projectName = options.projectName || '项目名称'
     this.projectProgress = parseInt(options.progress) || 0
-    this.loadProjectContext()
+    this.initChat()
   },
   
   methods: {
@@ -201,10 +206,30 @@ export default {
       uni.navigateBack()
     },
     
-    async loadProjectContext() {
+    async initChat() {
+      this.loading = true
       try {
-        // TODO: 从数据库加载项目上下文
-        // 模拟加载项目上下文数据
+        // 加载项目信息和最近日志
+        const [projectResult, logsResult] = await Promise.all([
+          projectApi.getProjectDetail(this.projectId),
+          logApi.getRecentLogs(this.projectId, 5)
+        ])
+        
+        if (projectResult) {
+          this.projectName = projectResult.name || this.projectName
+          this.projectProgress = projectResult.progress || this.projectProgress
+        }
+        
+        this.contextData = {
+          recentLogs: logsResult || [],
+          currentGoals: projectResult?.goals || [],
+          problems: projectResult?.problems || []
+        }
+        this.recentLogCount = this.contextData.recentLogs.length
+        
+      } catch (error) {
+        console.error('初始化聊天失败:', error)
+        // 使用默认数据
         this.contextData = {
           recentLogs: [
             { content: '完成了用户登录模块', type: 'progress' },
@@ -215,9 +240,13 @@ export default {
           problems: ['数据库连接不稳定', 'UI响应速度慢']
         }
         this.recentLogCount = this.contextData.recentLogs.length
-      } catch (error) {
-        console.error('加载项目上下文失败:', error)
+      } finally {
+        this.loading = false
       }
+    },
+    
+    async loadProjectContext() {
+      await this.initChat()
     },
     
     toggleContext() {
@@ -285,87 +314,160 @@ export default {
     },
     
     async callAI(userInput) {
-      // 模拟AI调用
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // 根据用户输入生成不同的回复
-      const responses = {
-        '进度': {
-          content: `根据你的项目数据，当前进度是${this.projectProgress}%。最近的进展包括：${this.contextData.recentLogs.filter(log => log.type === 'progress').map(log => log.content).join('、')}。建议继续保持这个节奏。`,
-          actions: [{ type: 'update_progress', text: '更新进度' }]
-        },
-        '问题': {
-          content: `我注意到你遇到了一些问题：${this.contextData.problems.join('、')}。建议优先解决数据库连接问题，这可能会影响整体开发进度。`,
-          actions: [{ type: 'save_solution', text: '保存解决方案' }]
-        },
-        '计划': {
-          content: '基于当前进度和遇到的问题，我建议下一步：1. 优化数据库连接配置 2. 完成用户模块测试 3. 开始下一个功能模块的设计。',
-          actions: [{ type: 'update_plan', text: '更新计划' }]
+      try {
+        // 构建聊天历史
+        const chatHistory = this.messages.slice(-10).map(msg => ({
+          role: msg.type === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        }))
+        
+        // 调用真实的AI API
+        const response = await aiApi.chatWithProject(this.projectId, userInput, {
+          history: chatHistory,
+          context: this.contextData
+        })
+        
+        return {
+          content: response.content,
+          actions: response.actions || []
         }
-      }
-      
-      // 简单的关键词匹配
-      for (const [keyword, response] of Object.entries(responses)) {
-        if (userInput.includes(keyword)) {
-          return response
+        
+      } catch (error) {
+        console.error('AI API调用失败:', error)
+        
+        // 降级到本地回复逻辑
+        const responses = {
+          '进度': {
+            content: `根据你的项目数据，当前进度是${this.projectProgress}%。最近的进展包括：${this.contextData.recentLogs.filter(log => log.type === 'progress').map(log => log.content).join('、')}。建议继续保持这个节奏。`,
+            actions: [{ type: 'update_progress', text: '更新进度' }]
+          },
+          '问题': {
+            content: `我注意到你遇到了一些问题：${this.contextData.problems.join('、')}。建议优先解决数据库连接问题，这可能会影响整体开发进度。`,
+            actions: [{ type: 'save_solution', text: '保存解决方案' }]
+          },
+          '计划': {
+            content: '基于当前进度和遇到的问题，我建议下一步：1. 优化数据库连接配置 2. 完成用户模块测试 3. 开始下一个功能模块的设计。',
+            actions: [{ type: 'update_plan', text: '更新计划' }]
+          }
         }
-      }
-      
-      // 默认回复
-      return {
-        content: '我理解你的问题。基于你的项目情况，我建议你可以从以下几个方面考虑：1. 检查当前的开发进度 2. 分析遇到的主要问题 3. 制定下一步的行动计划。有什么具体问题可以继续问我。',
-        actions: [{ type: 'get_suggestions', text: '获取更多建议' }]
+        
+        // 简单的关键词匹配
+        for (const [keyword, response] of Object.entries(responses)) {
+          if (userInput.includes(keyword)) {
+            return response
+          }
+        }
+        
+        // 默认回复
+        return {
+          content: '抱歉，我暂时无法连接到AI服务。请稍后再试，或者尝试重新描述你的问题。',
+          actions: [{ type: 'retry', text: '重试' }]
+        }
       }
     },
     
-    handleAction(action) {
+    async handleAction(action) {
       switch (action.type) {
         case 'save_solution':
-          this.saveToKnowledge()
+          await this.saveToKnowledge(action.data)
           break
         case 'update_progress':
-          this.updateProgress()
+          await this.updateProgress(action.data)
           break
         case 'update_plan':
-          this.updatePlan()
+          await this.updatePlan(action.data)
           break
         case 'get_suggestions':
-          this.getMoreSuggestions()
+          await this.getMoreSuggestions()
+          break
+        case 'retry':
+          // 重新发送最后一条用户消息
+          const lastUserMessage = this.messages.filter(m => m.type === 'user').pop()
+          if (lastUserMessage) {
+            this.inputText = lastUserMessage.content
+            this.sendMessage()
+          }
           break
       }
     },
     
-    saveToKnowledge() {
-      uni.showToast({
-        title: '已保存到知识库',
-        icon: 'success'
-      })
-    },
-    
-    updateProgress() {
-      uni.showToast({
-        title: '进度更新成功',
-        icon: 'success'
-      })
-    },
-    
-    updatePlan() {
-      uni.showToast({
-        title: '计划更新成功',
-        icon: 'success'
-      })
-    },
-    
-    getMoreSuggestions() {
-      const suggestion = {
-        type: 'ai',
-        content: '根据类似项目的经验，我还建议：1. 设置每日进度检查点 2. 建立问题解决流程 3. 定期进行代码审查。这些措施可以帮助提高项目成功率。',
-        timestamp: new Date().toISOString()
+    async saveToKnowledge(data) {
+      try {
+        await aiApi.saveToKnowledge(this.projectId, data)
+        uni.showToast({
+          title: '已保存到知识库',
+          icon: 'success'
+        })
+      } catch (error) {
+        console.error('保存到知识库失败:', error)
+        uni.showToast({
+          title: '保存失败',
+          icon: 'error'
+        })
       }
-      this.messages.push(suggestion)
-      this.$nextTick(() => {
-        this.scrollToBottom()
-      })
+    },
+    
+    async updateProgress(data) {
+      try {
+        await projectApi.updateProgress(this.projectId, data)
+        uni.showToast({
+          title: '进度更新成功',
+          icon: 'success'
+        })
+        // 刷新项目信息
+        await this.loadProjectContext()
+      } catch (error) {
+        console.error('更新进度失败:', error)
+        uni.showToast({
+          title: '更新失败',
+          icon: 'error'
+        })
+      }
+    },
+    
+    async updatePlan(data) {
+      try {
+        await projectApi.updatePlan(this.projectId, data)
+        uni.showToast({
+          title: '计划更新成功',
+          icon: 'success'
+        })
+        // 刷新项目信息
+        await this.loadProjectContext()
+      } catch (error) {
+        console.error('更新计划失败:', error)
+        uni.showToast({
+          title: '更新失败',
+          icon: 'error'
+        })
+      }
+    },
+    
+    async getMoreSuggestions() {
+      try {
+        const response = await aiApi.getProjectSuggestions(this.projectId, this.contextData)
+        const suggestion = {
+          type: 'ai',
+          content: response.content || '根据类似项目的经验，我还建议：1. 设置每日进度检查点 2. 建立问题解决流程 3. 定期进行代码审查。这些措施可以帮助提高项目成功率。',
+          timestamp: new Date().toISOString(),
+          actions: response.actions
+        }
+        this.messages.push(suggestion)
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
+      } catch (error) {
+        console.error('获取建议失败:', error)
+        const suggestion = {
+          type: 'ai',
+          content: '根据类似项目的经验，我还建议：1. 设置每日进度检查点 2. 建立问题解决流程 3. 定期进行代码审查。这些措施可以帮助提高项目成功率。',
+          timestamp: new Date().toISOString()
+        }
+        this.messages.push(suggestion)
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
+      }
     },
     
     toggleVoiceInput() {
@@ -510,6 +612,10 @@ export default {
       .message-content {
         align-items: flex-end;
       }
+      
+      .message-avatar {
+        background-color: #165dff;
+      }
     }
     
     &.ai-message {
@@ -527,14 +633,7 @@ export default {
       justify-content: center;
       margin: 0 16rpx;
       flex-shrink: 0;
-      
-      &:has(+ .message-content .user-bubble) {
-        background-color: #165dff;
-      }
-      
-      &:has(+ .message-content .ai-bubble) {
-        background-color: #f2f6ff;
-      }
+      background-color: #f2f6ff;
     }
     
     .message-content {
@@ -546,8 +645,9 @@ export default {
       .message-bubble {
         padding: 24rpx 32rpx;
         border-radius: 24rpx;
-        max-width: 100%;
+        max-width: calc(100% - 32rpx);
         word-wrap: break-word;
+        box-sizing: border-box;
         
         &.user-bubble {
           background-color: #165dff;

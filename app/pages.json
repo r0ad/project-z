@@ -69,6 +69,20 @@
         "navigationBarTitleText": "我的",
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/test/index",
+      "style": {
+        "navigationBarTitleText": "功能测试",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/settings/ai-settings",
+      "style": {
+        "navigationBarTitleText": "AI设置",
+        "navigationStyle": "custom"
+      }
     }
   ],
 

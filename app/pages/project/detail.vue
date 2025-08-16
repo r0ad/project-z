@@ -5,7 +5,7 @@
 			<view class="navbar-content">
 				<nut-icon name="left" size="20" color="#86909C" @click="goBack"></nut-icon>
 				<text class="navbar-title">{{ projectTitle }}</text>
-				<nut-icon name="more-x" size="20" color="#86909C"></nut-icon>
+				<nut-icon name="more-x" size="20" color="#86909C" @click="showMoreActions"></nut-icon>
 			</view>
 		</view>
 
@@ -93,25 +93,43 @@
 				<view v-if="activeTab === 1" class="tab-panel">
 					<view class="log-list">
 						<view 
-							v-for="(log, index) in projectLogs" 
-							:key="index"
-							class="log-item"
-						>
+						v-for="(log, index) in projectLogs" 
+						:key="index"
+						class="log-item"
+					>
+						<view class="log-header">
 							<view class="log-time">{{ log.time }}</view>
-							<view class="log-content">
-								<view v-if="log.progress" class="log-entry">
-									<text class="log-label progress">进展：</text>
-									<text class="log-text">{{ log.progress }}</text>
-								</view>
-								<view v-if="log.problem" class="log-entry">
-									<text class="log-label problem">问题：</text>
-									<text class="log-text">{{ log.problem }}</text>
-								</view>
-								<view v-if="log.plan" class="log-entry">
-									<text class="log-label plan">计划：</text>
-									<text class="log-text">{{ log.plan }}</text>
-								</view>
+							<view v-if="log.progressText || log.problemText || log.planText" class="log-actions">
+								<nut-button 
+									type="primary" 
+									size="small" 
+									plain
+									@click="editLog(log)"
+								>
+									编辑
+								</nut-button>
 							</view>
+						</view>
+						<view class="log-content">
+							<!-- 原始内容 -->
+							<view v-if="log.content" class="log-entry">
+								<text class="log-label content">内容：</text>
+								<text class="log-text">{{ log.content }}</text>
+							</view>
+							<!-- AI分析结果 -->
+							<view v-if="log.progressText" class="log-entry">
+								<text class="log-label progress">进展：</text>
+								<text class="log-text">{{ log.progressText }}</text>
+							</view>
+							<view v-if="log.problemText" class="log-entry">
+								<text class="log-label problem">问题：</text>
+								<text class="log-text">{{ log.problemText }}</text>
+							</view>
+							<view v-if="log.planText" class="log-entry">
+								<text class="log-label plan">计划：</text>
+								<text class="log-text">{{ log.planText }}</text>
+							</view>
+						</view>
 						</view>
 					</view>
 				</view>
@@ -139,6 +157,69 @@
 				</view>
 			</view>
 
+			<!-- 编辑日志弹窗 -->
+			<nut-popup 
+				v-model:visible="showEditModal" 
+				position="bottom" 
+				:style="{ height: '70%' }"
+				round
+				closeable
+				title="编辑日志分析"
+			>
+				<view class="edit-modal-content">
+					<view class="edit-form">
+						<view class="form-item">
+							<view class="form-label">进展情况</view>
+							<nut-textarea 
+								v-model="editForm.progressText"
+								placeholder="请输入项目进展情况"
+								:rows="3"
+								maxlength="500"
+								show-word-limit
+							/>
+						</view>
+						<view class="form-item">
+							<view class="form-label">遇到问题</view>
+							<nut-textarea 
+								v-model="editForm.problemText"
+								placeholder="请输入遇到的问题"
+								:rows="3"
+								maxlength="500"
+								show-word-limit
+							/>
+						</view>
+						<view class="form-item">
+							<view class="form-label">下步计划</view>
+							<nut-textarea 
+								v-model="editForm.planText"
+								placeholder="请输入下一步计划"
+								:rows="3"
+								maxlength="500"
+								show-word-limit
+							/>
+						</view>
+					</view>
+					<view class="edit-actions">
+						<nut-button 
+							type="default" 
+							size="large" 
+							@click="cancelEdit"
+							style="margin-right: 16rpx;"
+						>
+							取消
+						</nut-button>
+						<nut-button 
+							type="primary" 
+							size="large" 
+							@click="saveEdit"
+							:loading="saving"
+						>
+							保存
+						</nut-button>
+					</view>
+				</view>
+			</nut-popup>
+			
 			<!-- 底部操作区 -->
 			<view class="bottom-actions">
 				<nut-button type="primary" size="large" block @click="addLog">
@@ -155,6 +236,9 @@
 </template>
 
 <script>
+import projectApi from '@/api/projectApi.js'
+import logApi from '@/api/logApi.js'
+
 export default {
 	data() {
 		return {
@@ -162,61 +246,111 @@ export default {
 			projectTitle: 'AI工具开发',
 			projectGoal: '30天开发一款支持文本生成的AI小工具，用户留存率≥60%',
 			activeTab: 0,
+			loading: false,
+			refreshing: false,
 			tabs: [
 				{ name: '目标与节点' },
 				{ name: '项目日志' },
 				{ name: 'AI分析' },
 				{ name: '总结' }
 			],
-			milestones: [
-				{
-					title: '需求确认',
-					deadline: '2023-07-10',
-					status: 'completed'
-				},
-				{
-					title: '核心开发',
-					deadline: '2023-07-25',
-					status: 'progress',
-					progress: 80
-				},
-				{
-					title: '测试优化',
-					deadline: '2023-08-05',
-					status: 'pending'
-				}
-			],
-			projectLogs: [
-				{
-					time: '今天 14:30',
-					progress: '完成文本生成API对接，测试成功',
-					problem: '大文本生成时有延迟，超过3秒',
-					plan: '明天优化API调用方式，实现流式输出'
-				},
-				{
-					time: '昨天 09:15',
-					progress: '完成前端界面开发，包含输入框和结果展示区',
-					problem: '暂无',
-					plan: '今日开始对接后端API'
-				},
-				{
-					time: '2023-07-18 16:40',
-					progress: '完成后端服务搭建，数据库设计',
-					problem: 'API接口文档不清晰，需进一步确认',
-					plan: '明天与API提供方沟通确认细节'
-				}
-			]
+			milestones: [],
+			projectLogs: [],
+			project: {},
+			// 编辑日志相关
+			editingLog: null,
+			showEditModal: false,
+			saving: false,
+			editForm: {
+				progressText: '',
+				problemText: '',
+				planText: ''
+			}
 		}
 	},
 	onLoad(options) {
 		if (options.id) {
 			this.projectId = options.id
+			this.loadProjectDetail()
 		}
 		if (options.title) {
 			this.projectTitle = decodeURIComponent(options.title)
 		}
 	},
+	onShow() {
+		// 页面显示时刷新数据
+		if (this.projectId) {
+			this.loadProjectDetail()
+		}
+	},
+	onPullDownRefresh() {
+		this.refreshData()
+	},
 	methods: {
+		async loadProjectDetail() {
+			if (this.loading || !this.projectId) return
+			
+			this.loading = true
+			try {
+				// 并行加载项目详情、里程碑和最近日志
+				const [projectResult, milestonesResult, logsResult] = await Promise.all([
+					projectApi.getProjectDetail(this.projectId),
+					projectApi.getProjectMilestones(this.projectId),
+					logApi.getRecentLogs(this.projectId, 10)
+				])
+				
+				this.project = projectResult || {}
+			this.milestones = milestonesResult || []
+			// 处理日志数据，添加格式化时间
+			this.projectLogs = (logsResult || []).map(log => ({
+				...log,
+				time: this.formatDateTime(log.createdAt)
+			}))
+				
+				// 更新项目标题和目标
+			if (this.project.title) {
+				this.projectTitle = this.project.title
+			} else {
+				// 如果没有获取到项目标题，设置默认值
+				this.projectTitle = '项目详情'
+			}
+			if (this.project.goal) {
+				this.projectGoal = this.project.goal
+			} else {
+				// 如果没有获取到项目目标，设置默认值
+				this.projectGoal = '暂无项目目标'
+			}
+				
+			} catch (error) {
+				console.error('加载项目详情失败:', error)
+				uni.showToast({
+					title: '加载失败，请重试',
+					icon: 'none'
+				})
+			} finally {
+				this.loading = false
+			}
+		},
+		
+		async refreshData() {
+			this.refreshing = true
+			try {
+				await this.loadProjectDetail()
+				uni.showToast({
+					title: '刷新成功',
+					icon: 'success'
+				})
+			} catch (error) {
+				uni.showToast({
+					title: '刷新失败',
+					icon: 'none'
+				})
+			} finally {
+				this.refreshing = false
+				uni.stopPullDownRefresh()
+			}
+		},
+		
 		goBack() {
 			uni.navigateBack()
 		},
@@ -230,15 +364,232 @@ export default {
 				pending: status === 'pending'
 			}
 		},
+		
+		// 更新里程碑进度
+		async updateMilestoneProgress(milestone, newProgress) {
+			try {
+				await projectApi.updateMilestone(milestone.id, {
+					progress: newProgress
+				})
+				
+				// 更新本地数据
+				milestone.progress = newProgress
+				
+				// 重新计算项目整体进度
+				await this.updateProjectProgress()
+				
+				uni.showToast({
+					title: '进度更新成功',
+					icon: 'success'
+				})
+			} catch (error) {
+				console.error('更新里程碑进度失败:', error)
+				uni.showToast({
+					title: '更新失败',
+					icon: 'none'
+				})
+			}
+		},
+		
+		// 更新项目整体进度
+		async updateProjectProgress() {
+			if (this.milestones.length === 0) return
+			
+			const totalProgress = this.milestones.reduce((sum, milestone) => {
+				return sum + (milestone.progress || 0)
+			}, 0)
+			
+			const avgProgress = Math.round(totalProgress / this.milestones.length)
+			
+			try {
+				await projectApi.updateProjectProgress(this.projectId, avgProgress)
+				this.project.progress = avgProgress
+			} catch (error) {
+				console.error('更新项目进度失败:', error)
+			}
+		},
+		
+		// 格式化时间显示
+		formatTime(time) {
+			if (!time) return ''
+			const date = new Date(time)
+			const now = new Date()
+			const diffMs = now - date
+			const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+			
+			if (diffDays === 0) {
+				return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+			} else if (diffDays === 1) {
+				return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+			} else if (diffDays < 7) {
+				const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+				return `${weekdays[date.getDay()]} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+			} else {
+				return `${date.getMonth() + 1}-${date.getDate()}`
+			}
+		},
+		
 		addLog() {
+			const projectName = this.project.title || this.projectTitle || '未命名项目'
 			uni.navigateTo({
-				url: `/pages/project/log?projectId=${this.projectId}&projectName=${this.projectTitle}`
+				url: `/pages/project/log?projectId=${this.projectId}&projectName=${encodeURIComponent(projectName)}`
 			})
 		},
 		chatProject() {
+			const projectName = this.project.title || this.projectTitle || '未命名项目'
 			uni.navigateTo({
-				url: `/pages/project/chat?projectId=${this.projectId}&projectName=${this.projectTitle}&progress=${this.projectProgress}`
+				url: `/pages/project/chat?projectId=${this.projectId}&projectName=${encodeURIComponent(projectName)}&progress=${this.project.progress || 0}`
 			})
+		},
+		
+		// 显示更多操作菜单
+		showMoreActions() {
+			uni.showActionSheet({
+				itemList: ['删除项目'],
+				success: (res) => {
+					if (res.tapIndex === 0) {
+						this.deleteProject()
+					}
+				}
+			})
+		},
+		
+		// 删除项目
+		async deleteProject() {
+			uni.showModal({
+				title: '确认删除',
+				content: '删除后无法恢复，确定要删除这个项目吗？',
+				success: async (res) => {
+					if (res.confirm) {
+						try {
+							await projectApi.deleteProject(this.projectId)
+							uni.showToast({
+								title: '删除成功',
+								icon: 'success'
+							})
+							// 返回项目列表页
+							setTimeout(() => {
+								uni.navigateBack()
+							}, 1500)
+						} catch (error) {
+							console.error('删除项目失败:', error)
+							uni.showToast({
+								title: '删除失败，请重试',
+								icon: 'none'
+							})
+						}
+					}
+				}
+			})
+		},
+		
+		// 格式化时间显示
+		formatDateTime(dateTime) {
+			if (!dateTime) return ''
+			
+			const date = new Date(dateTime)
+			const now = new Date()
+			const diff = now - date
+			
+			// 小于1分钟
+			if (diff < 60000) {
+				return '刚刚'
+			}
+			
+			// 小于1小时
+			if (diff < 3600000) {
+				return Math.floor(diff / 60000) + '分钟前'
+			}
+			
+			// 小于1天
+			if (diff < 86400000) {
+				return Math.floor(diff / 3600000) + '小时前'
+			}
+			
+			// 小于7天
+			if (diff < 604800000) {
+				return Math.floor(diff / 86400000) + '天前'
+			}
+			
+			// 超过7天显示具体日期
+			const year = date.getFullYear()
+			const month = String(date.getMonth() + 1).padStart(2, '0')
+			const day = String(date.getDate()).padStart(2, '0')
+			const hour = String(date.getHours()).padStart(2, '0')
+			const minute = String(date.getMinutes()).padStart(2, '0')
+			
+			// 如果是今年，不显示年份
+			if (year === now.getFullYear()) {
+				return `${month}-${day} ${hour}:${minute}`
+			} else {
+				return `${year}-${month}-${day} ${hour}:${minute}`
+			}
+		},
+		
+		// 编辑日志
+		editLog(log) {
+			this.editingLog = log
+			this.editForm = {
+				progressText: log.progressText || '',
+				problemText: log.problemText || '',
+				planText: log.planText || ''
+			}
+			this.showEditModal = true
+		},
+		
+		// 取消编辑
+		cancelEdit() {
+			this.showEditModal = false
+			this.editingLog = null
+			this.editForm = {
+				progressText: '',
+				problemText: '',
+				planText: ''
+			}
+		},
+		
+		// 保存编辑
+		async saveEdit() {
+			if (!this.editingLog) return
+			
+			if (this.saving) return
+			
+			this.saving = true
+			
+			try {
+				const updateData = {
+					progressText: this.editForm.progressText.trim(),
+					problemText: this.editForm.problemText.trim(),
+					planText: this.editForm.planText.trim()
+				}
+				
+				await logApi.updateLog(this.editingLog.id, updateData)
+				
+				// 更新本地数据
+				const logIndex = this.projectLogs.findIndex(log => log.id === this.editingLog.id)
+				if (logIndex !== -1) {
+					this.projectLogs[logIndex] = {
+						...this.projectLogs[logIndex],
+						...updateData
+					}
+				}
+				
+				uni.showToast({
+					title: '保存成功',
+					icon: 'success'
+				})
+				
+				this.cancelEdit()
+				
+			} catch (error) {
+				console.error('保存日志编辑失败:', error)
+				uni.showToast({
+					title: error.message || '保存失败，请重试',
+					icon: 'none'
+				})
+			} finally {
+				this.saving = false
+			}
 		}
 	}
 }
@@ -278,7 +629,7 @@ export default {
 }
 
 .page-content {
-	padding: calc(var(--status-bar-height) + 120rpx) 32rpx 200rpx;
+	padding: calc(var(--status-bar-height) + 120rpx) 32rpx 240rpx;
 }
 
 .tab-nav {
@@ -483,7 +834,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 32rpx;
-	max-height: 600rpx;
+	max-height: 500rpx;
 	overflow-y: auto;
 }
 
@@ -556,6 +907,10 @@ export default {
 	color: #00B42A;
 }
 
+.log-label.content {
+	color: #1D2129;
+}
+
 .log-text {
 	font-size: 28rpx;
 	color: #4E5969;
@@ -569,6 +924,52 @@ export default {
 	color: #4E5969;
 	line-height: 1.6;
 	display: block;
+}
+
+.log-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16rpx;
+}
+
+.log-actions {
+	display: flex;
+	align-items: center;
+}
+
+.edit-modal-content {
+	padding: 32rpx;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.edit-form {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 32rpx;
+}
+
+.form-item {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.form-label {
+	font-size: 28rpx;
+	font-weight: 500;
+	color: #1D2129;
+}
+
+.edit-actions {
+	display: flex;
+	justify-content: flex-end;
+	padding-top: 32rpx;
+	border-top: 2rpx solid #E5E6EB;
+	margin-top: 32rpx;
 }
 
 .bottom-actions {
