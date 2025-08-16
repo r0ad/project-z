@@ -4,17 +4,6 @@
 		<view class="text-area">
 			<text class="title">{{ title }}</text>
 		</view>
-
-		<view class="demo-section">
-			<text class="section-title">插件示例</text>
-			<view class="btn-group">
-				<nut-button type="primary">主要按钮</nut-button>
-				<button class="demo-btn" @click="navigateToGitCode">GitCode同步示例</button>
-				<button class="demo-btn" @click="navigateToFileManager">文件管理示例</button>
-				<button class="demo-btn" @click="navigateToAppUpdater">应用更新示例</button>
-				<button class="demo-btn" @click="navigateToOpenAIChat">OpenAI Chat示例</button>
-			</view>
-		</view>
 	</view>
 </template>
 
@@ -29,32 +18,7 @@ export default {
 
 	},
 	methods: {
-		// 导航到GitCode同步示例
-		navigateToGitCode() {
-			uni.navigateTo({
-				url: '/pages/demo/gitcode-demo/gitcode-demo'
-			})
-		},
 
-		// 导航到文件管理示例
-		navigateToFileManager() {
-			uni.navigateTo({
-				url: '/pages/demo/file-demo/file-demo'
-			})
-		},
-
-		// 导航到应用更新示例
-		navigateToAppUpdater() {
-			uni.navigateTo({
-				url: '/pages/demo/update-demo/update-demo'
-			})
-		},
-		// 导航到OpenAI Chat示例
-		navigateToOpenAIChat() {
-			uni.navigateTo({
-				url: '/pages/demo/plugin-example/plugin-example'
-			})
-		}
 	}
 }
 </script>
