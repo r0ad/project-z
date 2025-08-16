@@ -4,8 +4,8 @@
  */
 
 const dbUpgradeConfig = {
-  current_version: '2.4.0',
-  upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.4.0'],
+  current_version: '2.5.0',
+  upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.4.0', '2.5.0'],
   versions: {
     '1.0.0': {
       description: '初始化数据库',
@@ -123,6 +123,37 @@ const dbUpgradeConfig = {
           name: 'project_logs',
           sql: 'ALTER TABLE project_logs ADD COLUMN updated_at DATETIME',
           ignore_error: true
+        }
+      ]
+    },
+    '2.5.0': {
+      description: '添加聊天历史功能',
+      dependencies: ['2.4.0'],
+      scripts: [
+        {
+          type: 'create_table',
+          name: 'chat_conversations',
+          sql: 'CREATE TABLE IF NOT EXISTS chat_conversations (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, title TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (project_id) REFERENCES projects(id))'
+        },
+        {
+          type: 'create_table',
+          name: 'chat_messages',
+          sql: 'CREATE TABLE IF NOT EXISTS chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id INTEGER NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, metadata TEXT, FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id))'
+        },
+        {
+          type: 'create_index',
+          name: 'idx_chat_conversations_project_id',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_chat_conversations_project_id ON chat_conversations(project_id)'
+        },
+        {
+          type: 'create_index',
+          name: 'idx_chat_messages_conversation_id',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id)'
+        },
+        {
+          type: 'create_index',
+          name: 'idx_chat_messages_timestamp',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)'
         }
       ]
     }

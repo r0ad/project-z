@@ -359,6 +359,68 @@ class ProjectApi {
   }
 
   /**
+   * 更新项目进度
+   * @param {number} projectId - 项目ID
+   * @param {Object} progressData - 进度数据
+   * @param {number} progressData.progress - 进度百分比
+   * @param {string} progressData.description - 进度描述
+   */
+  async updateProgress(projectId, progressData) {
+    await this.ensureDBInit()
+    
+    try {
+      // 更新项目进度
+      const updateData = {
+        progress: progressData.progress || 0
+      }
+      
+      if (progressData.description) {
+        updateData.description = progressData.description
+      }
+      
+      await dbService.update('projects', updateData, 'id = ?', [projectId])
+      
+      // 重新计算项目进度（基于里程碑）
+      await this.updateProjectProgress(projectId)
+      
+      return true
+    } catch (error) {
+      console.error('更新项目进度失败:', error)
+      throw error
+    }
+  }
+  
+  /**
+   * 更新项目计划
+   * @param {number} projectId - 项目ID
+   * @param {Object} planData - 计划数据
+   * @param {string} planData.plan - 计划内容
+   * @param {Array} planData.goals - 目标列表
+   */
+  async updatePlan(projectId, planData) {
+    await this.ensureDBInit()
+    
+    try {
+      const updateData = {}
+      
+      if (planData.plan) {
+        updateData.description = planData.plan
+      }
+      
+      if (planData.goals && Array.isArray(planData.goals)) {
+        updateData.goals = JSON.stringify(planData.goals)
+      }
+      
+      await dbService.update('projects', updateData, 'id = ?', [projectId])
+      
+      return true
+    } catch (error) {
+      console.error('更新项目计划失败:', error)
+      throw error
+    }
+  }
+
+  /**
    * 获取状态文本
    * @param {string} status - 状态值
    */

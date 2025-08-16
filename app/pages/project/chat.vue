@@ -74,6 +74,11 @@
             <view class="message-bubble" :class="message.type === 'user' ? 'user-bubble' : 'ai-bubble'">
               <text class="message-text">{{ message.content }}</text>
               
+              <!-- 流式输出指示器 -->
+              <view v-if="message.isStreaming" class="streaming-indicator">
+                <text class="cursor">|</text>
+              </view>
+              
               <!-- AI消息的操作按钮 -->
               <view class="message-actions" v-if="message.type === 'ai' && message.actions">
                 <nut-button 
@@ -118,6 +123,18 @@
 
     <!-- 输入区域 -->
     <view class="input-area">
+      <!-- 配置选项 -->
+      <view class="config-options">
+        <view class="option-item">
+          <text class="option-label">流式输出</text>
+          <switch 
+            :checked="enableStream" 
+            @change="onStreamToggle"
+            color="#165dff"
+          />
+        </view>
+      </view>
+      
       <view class="input-container">
         <nut-input
           v-model="inputText"
@@ -133,11 +150,11 @@
           <nut-button 
             type="primary"
             size="small"
-            :disabled="!inputText.trim() || isThinking"
+            :disabled="!inputText.trim() || isThinking || isStreaming"
             @click="sendMessage"
             class="send-btn"
           >
-            发送
+            {{ isStreaming ? '生成中...' : '发送' }}
           </nut-button>
         </view>
       </view>
@@ -171,6 +188,7 @@
 import aiApi from '@/api/aiApi.js'
 import logApi from '@/api/logApi.js'
 import projectApi from '@/api/projectApi.js'
+import chatApi from '@/api/chatApi.js'
 
 export default {
   data() {
@@ -190,7 +208,12 @@ export default {
         currentGoals: [],
         problems: []
       },
-      loading: false
+      loading: false,
+
+      currentConversationId: null,
+      enableStream: true,
+      streamContent: '',
+      isStreaming: false
     }
   },
   
@@ -227,6 +250,9 @@ export default {
         }
         this.recentLogCount = this.contextData.recentLogs.length
         
+        // 加载或创建对话
+        await this.loadOrCreateConversation()
+        
       } catch (error) {
         console.error('初始化聊天失败:', error)
         // 使用默认数据
@@ -248,6 +274,77 @@ export default {
     async loadProjectContext() {
       await this.initChat()
     },
+    
+    async loadOrCreateConversation() {
+      try {
+        // 尝试获取该项目的最新对话
+        const conversations = await chatApi.getConversationsByProject(this.projectId)
+        
+        if (conversations.length > 0) {
+          // 使用最新的对话
+          this.currentConversationId = conversations[0].id
+          // 加载历史消息
+          await this.loadChatHistory()
+        } else {
+          // 创建新对话
+          const conversation = await chatApi.createConversation({
+            projectId: this.projectId,
+            title: `${this.projectName} - 聊天记录`,
+            createdAt: new Date().toISOString()
+          })
+          this.currentConversationId = conversation.id
+        }
+      } catch (error) {
+        console.error('加载或创建对话失败:', error)
+        uni.showToast({
+          title: '加载对话失败',
+          icon: 'none'
+        })
+      }
+    },
+    
+    async loadChatHistory() {
+      try {
+        if (!this.currentConversationId) return
+        
+        const messages = await chatApi.getMessagesByConversation(this.currentConversationId)
+        
+        // 转换数据库消息格式为UI消息格式
+        this.messages = messages.map(msg => ({
+          type: msg.role === 'user' ? 'user' : 'ai',
+          content: msg.content,
+          timestamp: msg.timestamp,
+          actions: msg.role === 'assistant' ? this.extractActions(msg.content) : undefined
+        }))
+        
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
+      } catch (error) {
+        console.error('加载聊天历史失败:', error)
+        uni.showToast({
+          title: '加载历史失败',
+          icon: 'none'
+        })
+      }
+    },
+    
+    async saveMessageToHistory(role, content) {
+      try {
+        if (!this.currentConversationId) return
+        
+        await chatApi.addMessage({
+          conversationId: this.currentConversationId,
+          role: role,
+          content: content,
+          timestamp: new Date().toISOString()
+        })
+      } catch (error) {
+        console.error('保存消息失败:', error)
+      }
+    },
+    
+
     
     toggleContext() {
       this.showContext = !this.showContext
@@ -274,6 +371,10 @@ export default {
         timestamp: new Date().toISOString()
       }
       this.messages.push(userMessage)
+      
+      // 保存用户消息到数据库
+      await this.saveMessageToHistory('user', text)
+      
       this.inputText = ''
       
       // 滚动到底部
@@ -283,19 +384,28 @@ export default {
       
       // AI思考
       this.isThinking = true
+      this.streamContent = ''
+      
+      // 先添加一个空的AI消息用于流式更新
+      const aiMessage = {
+        type: 'ai',
+        content: '',
+        timestamp: new Date().toISOString(),
+        actions: []
+      }
+      this.messages.push(aiMessage)
       
       try {
-        // TODO: 调用AI接口
-        const aiResponse = await this.callAI(text)
+        // 调用AI接口（流式输出）
+        const aiResponse = await this.callAIWithStream(text)
         
-        // 添加AI回复
-        const aiMessage = {
-          type: 'ai',
-          content: aiResponse.content,
-          timestamp: new Date().toISOString(),
-          actions: aiResponse.actions
-        }
-        this.messages.push(aiMessage)
+        // 更新AI消息的最终内容和动作
+        const messageIndex = this.messages.length - 1
+        this.messages[messageIndex].content = aiResponse.content
+        this.messages[messageIndex].actions = aiResponse.actions
+        
+        // 保存AI消息到数据库
+        await this.saveMessageToHistory('assistant', aiResponse.content)
         
       } catch (error) {
         console.error('AI回复失败:', error)
@@ -305,6 +415,9 @@ export default {
           timestamp: new Date().toISOString()
         }
         this.messages.push(errorMessage)
+        
+        // 保存错误消息到数据库
+        await this.saveMessageToHistory('assistant', errorMessage.content)
       } finally {
         this.isThinking = false
         this.$nextTick(() => {
@@ -313,7 +426,7 @@ export default {
       }
     },
     
-    async callAI(userInput) {
+    async callAIWithStream(userInput) {
       try {
         // 构建聊天历史
         const chatHistory = this.messages.slice(-10).map(msg => ({
@@ -321,15 +434,30 @@ export default {
           content: msg.content
         }))
         
-        // 调用真实的AI API
-        const response = await aiApi.chatWithProject(this.projectId, userInput, {
-          history: chatHistory,
-          context: this.contextData
+        // 使用aiApi进行项目聊天（流式输出）
+        let fullContent = ''
+        let currentMessageIndex = this.messages.length - 1 // AI回复消息的索引
+        
+        const response = await aiApi.chatWithProject(this.projectId, userInput, chatHistory, {
+          stream: true,
+          onData: (chunk) => {
+            // 流式更新AI回复内容
+            fullContent += chunk
+            if (this.messages[currentMessageIndex]) {
+              this.messages[currentMessageIndex].content = fullContent
+              // 触发界面更新
+              this.$forceUpdate()
+              // 滚动到底部
+              this.$nextTick(() => {
+                this.scrollToBottom()
+              })
+            }
+          }
         })
         
         return {
           content: response.content,
-          actions: response.actions || []
+          actions: this.extractActions(response.content)
         }
         
       } catch (error) {
@@ -364,6 +492,52 @@ export default {
           actions: [{ type: 'retry', text: '重试' }]
         }
       }
+    },
+    
+    buildSystemPrompt() {
+      const contextInfo = {
+        projectName: this.projectName,
+        projectProgress: this.projectProgress,
+        recentLogs: this.contextData.recentLogs.slice(0, 3),
+        currentGoals: this.contextData.currentGoals,
+        problems: this.contextData.problems
+      }
+      
+      return `你是一个专业的AI项目助手，正在协助用户管理项目「${this.projectName}」。
+
+当前项目信息：
+- 项目名称：${this.projectName}
+- 当前进度：${this.projectProgress}%
+- 最近日志：${this.contextData.recentLogs.map(log => log.content).join('；')}
+- 当前目标：${this.contextData.currentGoals.join('；')}
+- 遇到问题：${this.contextData.problems.join('；')}
+
+请基于以上信息，为用户提供专业、有针对性的建议和帮助。回答要简洁明了，并在适当时候提供可操作的建议。`
+    },
+    
+
+    
+    extractActions(content) {
+      const actions = []
+      
+      // 根据内容提取可能的操作
+      if (content.includes('进度') || content.includes('完成')) {
+        actions.push({ type: 'update_progress', text: '更新进度' })
+      }
+      
+      if (content.includes('问题') || content.includes('解决')) {
+        actions.push({ type: 'save_solution', text: '保存解决方案' })
+      }
+      
+      if (content.includes('计划') || content.includes('建议')) {
+        actions.push({ type: 'update_plan', text: '更新计划' })
+      }
+      
+      if (content.includes('知识') || content.includes('经验')) {
+        actions.push({ type: 'save_knowledge', text: '保存到知识库' })
+      }
+      
+      return actions
     },
     
     async handleAction(action) {
@@ -470,6 +644,14 @@ export default {
       }
     },
     
+    onStreamToggle(e) {
+      this.enableStream = e.detail.value
+      uni.showToast({
+        title: this.enableStream ? '已启用流式输出' : '已关闭流式输出',
+        icon: 'none'
+      })
+    },
+    
     toggleVoiceInput() {
       uni.showToast({
         title: '语音功能开发中',
@@ -477,26 +659,83 @@ export default {
       })
     },
     
-    loadMoreContext() {
+    async loadMoreContext() {
       this.showMenu = false
-      uni.showToast({
-        title: '已加载更多历史',
-        icon: 'success'
-      })
+      try {
+        if (!this.currentConversationId) {
+          uni.showToast({
+            title: '暂无历史记录',
+            icon: 'none'
+          })
+          return
+        }
+        
+        // 获取更多历史消息（分页加载）
+        const offset = this.messages.length
+        const limit = 20
+        const moreMessages = await chatApi.getMessagesByConversation(
+          this.currentConversationId, 
+          { offset, limit }
+        )
+        
+        if (moreMessages.length === 0) {
+          uni.showToast({
+            title: '暂无更多记录',
+            icon: 'none'
+          })
+          return
+        }
+        
+        // 将新消息添加到消息列表开头
+        const newMessages = moreMessages.map(msg => ({
+          type: msg.role === 'user' ? 'user' : 'ai',
+          content: msg.content,
+          timestamp: msg.createdAt,
+          actions: msg.role === 'assistant' ? this.extractActions(msg.content) : undefined
+        }))
+        
+        this.messages = [...newMessages, ...this.messages]
+        
+        uni.showToast({
+          title: `加载了${moreMessages.length}条记录`,
+          icon: 'success'
+        })
+      } catch (error) {
+        console.error('加载历史记录失败:', error)
+        uni.showToast({
+          title: '加载失败',
+          icon: 'none'
+        })
+      }
     },
     
-    clearContext() {
+    async clearContext() {
       this.showMenu = false
       uni.showModal({
         title: '确认清空',
         content: '确定要清空所有对话记录吗？',
-        success: (res) => {
+        success: async (res) => {
           if (res.confirm) {
-            this.messages = []
-            uni.showToast({
-              title: '对话已清空',
-              icon: 'success'
-            })
+            try {
+              // 清空数据库中的消息
+              if (this.currentConversationId) {
+                await chatApi.clearMessages(this.currentConversationId)
+              }
+              
+              // 清空UI中的消息
+              this.messages = []
+              
+              uni.showToast({
+                title: '对话已清空',
+                icon: 'success'
+              })
+            } catch (error) {
+              console.error('清空对话失败:', error)
+              uni.showToast({
+                title: '清空失败',
+                icon: 'none'
+              })
+            }
           }
         }
       })
@@ -725,6 +964,23 @@ export default {
   border-top: 1rpx solid #e5e6eb;
   padding: 24rpx 32rpx;
   
+  .config-options {
+    padding: 16rpx 0;
+    border-bottom: 1rpx solid #f0f0f0;
+    margin-bottom: 16rpx;
+    
+    .option-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      
+      .option-label {
+        font-size: 26rpx;
+        color: #1d2129;
+      }
+    }
+  }
+  
   .input-container {
     display: flex;
     align-items: center;
@@ -787,6 +1043,25 @@ export default {
   }
   40% {
     transform: scale(1);
+  }
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+.streaming-indicator {
+  display: inline;
+  
+  .cursor {
+    animation: blink 1s infinite;
+    color: #165dff;
+    font-weight: bold;
   }
 }
 </style>

@@ -447,8 +447,9 @@ class AiApi {
    * @param {number} projectId - 项目ID
    * @param {string} message - 用户消息
    * @param {Array} chatHistory - 聊天历史
+   * @param {Object} options - 选项（包括流式输出配置）
    */
-  async chatWithProject(projectId, message, chatHistory = []) {
+  async chatWithProject(projectId, message, chatHistory = [], options = {}) {
     await this.ensureDBInit()
     
     try {
@@ -502,16 +503,54 @@ class AiApi {
         { role: 'user', content: message }
       ]
       
-      // 使用OpenAI API进行对话
-      const response = await api.chatCompletion(messages, {
-        useHistory: false,
-        enableFunctions: false
-      })
-      
-      return {
-        content: response.content,
-        timestamp: new Date().toISOString(),
-        tokenUsage: response.usage?.totalTokens || 0
+      // 检查是否使用流式输出
+      if (options.stream && options.onData) {
+        // 流式输出
+        return new Promise((resolve, reject) => {
+          let fullContent = ''
+          
+          api.chatCompletionStream(
+            messages,
+            (chunk) => {
+              if (chunk === '[DONE]') {
+                resolve({
+                  content: fullContent,
+                  timestamp: new Date().toISOString(),
+                  tokenUsage: 0
+                })
+              } else {
+                fullContent += chunk
+                options.onData(chunk)
+              }
+            },
+            (result) => {
+              resolve({
+                content: fullContent,
+                timestamp: new Date().toISOString(),
+                tokenUsage: result.usage?.totalTokens || 0
+              })
+            },
+            (error) => {
+              reject(error)
+            },
+            {
+              useHistory: false,
+              enableFunctions: false
+            }
+          )
+        })
+      } else {
+        // 非流式输出
+        const response = await api.chatCompletion(messages, {
+          useHistory: false,
+          enableFunctions: false
+        })
+        
+        return {
+          content: response.content,
+          timestamp: new Date().toISOString(),
+          tokenUsage: response.usage?.totalTokens || 0
+        }
       }
     } catch (error) {
       console.error('项目聊天失败:', error)
