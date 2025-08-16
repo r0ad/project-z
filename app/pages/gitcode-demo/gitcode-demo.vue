@@ -69,8 +69,10 @@ export default {
 	data() {
 		return {
 			config: {
-				repoUrl: '',
-				accessToken: '',
+				repoUrl: 'https://gitcode.com/xxx/diary-demo',
+				owner: 'xxxx',
+				repo: 'diary-demo',
+				accessToken: 'xxxx',
 				branchName: 'main'
 			},
 			testData: JSON.stringify({
@@ -123,13 +125,22 @@ export default {
 				return null
 			}
 			
-			const syncConfig = new GitCodeSyncConfig(
-				this.config.repoUrl,
-				this.config.accessToken,
-				this.config.branchName
-			)
+			// 直接传递配置对象给GitCodeSync构造函数
+			const syncConfig = {
+				repoUrl: this.config.repoUrl,
+				accessToken: this.config.accessToken,
+				branch: this.config.branchName || 'main'
+			}
 			
-			return new GitCodeSync(syncConfig)
+			console.log('创建GitCodeSync配置:', syncConfig)
+			
+			try {
+				return new GitCodeSync(syncConfig)
+			} catch (error) {
+				console.error('创建GitCodeSync失败:', error)
+				uni.showToast({ title: '配置错误: ' + error.message, icon: 'none' })
+				return null
+			}
 		},
 		
 		// 测试连接
