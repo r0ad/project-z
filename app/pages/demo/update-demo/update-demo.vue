@@ -130,8 +130,8 @@ export default {
 			appInfo: {},
 			updateSupported: false,
 			config: {
-				updateUrl: '',
-				downloadUrl: '',
+				updateUrl: 'https://diary.r0ad.host/version.json',
+				downloadUrl: 'https://diary.r0ad.host/day-record.apk',
 				autoInstall: true,
 				showProgress: true
 			},

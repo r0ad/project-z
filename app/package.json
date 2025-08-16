@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "nutui-uniapp": "^1.8.4"
+  },
+  "devDependencies": {
+    "sass": "^1.90.0"
+  }
+}

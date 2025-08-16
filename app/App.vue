@@ -12,6 +12,7 @@
 	}
 </script>
 
-<style>
-	/*每个页面公共css */
+<style lang="scss">
+// @import "nutui-uniapp/styles/index.scss";
+
 </style>
