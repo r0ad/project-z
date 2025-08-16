@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目管理APP UI设计</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#FF7D00',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        gray: {
+                            100: '#F2F3F5',
+                            200: '#E5E6EB',
+                            300: '#C9CDD4',
+                            400: '#86909C',
+                            500: '#4E5969',
+                            600: '#272E3B',
+                            700: '#1D2129',
+                        }
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'card': '0 2px 8px 0 rgba(0, 0, 0, 0.08)',
+                        'elevated': '0 4px 16px 0 rgba(0, 0, 0, 0.12)',
+                    }
+                },
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .app-container {
+                @apply bg-gray-100 rounded-xl shadow-lg border border-gray-200 overflow-hidden;
+            }
+            .app-header {
+                @apply bg-white px-4 py-3 border-b border-gray-200 flex items-center justify-between;
+            }
+            .app-content {
+                @apply p-4;
+            }
+            .btn-primary {
+                @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-all duration-200 flex items-center justify-center gap-2;
+            }
+            .btn-secondary {
+                @apply bg-white text-gray-600 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-all duration-200 flex items-center justify-center gap-2;
+            }
+            .card {
+                @apply bg-white rounded-lg shadow-card p-4 mb-4 transition-all duration-200 hover:shadow-elevated;
+            }
+            .tab-active {
+                @apply text-primary border-b-2 border-primary font-medium;
+            }
+            .tab-inactive {
+                @apply text-gray-500 hover:text-gray-700 transition-colors duration-200;
+            }
+            .progress-bar {
+                @apply h-2 rounded-full bg-gray-200 overflow-hidden;
+            }
+            .progress-value {
+                @apply h-full bg-primary rounded-full transition-all duration-500 ease-out;
+            }
+            .timeline-item {
+                @apply relative pl-6 pb-6 last:pb-0;
+            }
+            .timeline-item::before {
+                content: '';
+                @apply absolute left-0 top-1 w-3 h-3 rounded-full bg-primary;
+            }
+            .timeline-item::after {
+                content: '';
+                @apply absolute left-1.5 top-4 bottom-0 w-0.5 bg-gray-200;
+            }
+            .timeline-item:last-child::after {
+                @apply hidden;
+            }
+            .flow-connector {
+                @apply absolute border-t-2 border-dashed border-primary/50 -left-6 top-1/2 w-6;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 text-gray-700 min-h-screen p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- 标题和说明 -->
+        <div class="mb-8 text-center">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-gray-700 mb-2">AI项目管理APP UI设计</h1>
+            <p class="text-gray-500 max-w-2xl mx-auto">极简设计 · 项目管理 · 日志记录 · 知识库 · AI辅助 · 目标达成</p>
+            <div class="mt-4 inline-block bg-primary/10 text-primary px-4 py-1 rounded-full text-sm">
+                口号：达成目标，指日可待
+            </div>
+        </div>
+
+        <!-- 主要展示区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 1. 首页/项目列表页 -->
+            <div class="app-container relative">
+                <div class="absolute -top-3 -left-3 bg-primary text-white text-xs px-2 py-1 rounded">1/5</div>
+                <div class="app-header">
+                    <h2 class="font-bold text-gray-700">项目列表</h2>
+                    <button class="btn-primary text-sm">
+                        <i class="fa fa-plus"></i> 新建项目
+                    </button>
+                </div>
+                <div class="app-content">
+                    <!-- 快捷提示 -->
+                    <div class="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4 text-sm">
+                        <p class="flex items-start gap-2">
+                            <i class="fa fa-lightbulb-o text-primary mt-0.5"></i>
+                            <span>点击项目卡片进入详情，或使用右上角按钮创建新项目</span>
+                        </p>
+                    </div>
+
+                    <!-- 项目卡片 -->
+                    <div class="card cursor-pointer">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-semibold text-gray-700">AI工具开发</h3>
+                            <span class="bg-success/10 text-success text-xs px-2 py-0.5 rounded-full">进行中</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-3">30天开发一款支持文本生成的AI小工具</p>
+                        <div class="mb-2">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span>进度</span>
+                                <span>65%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-value" style="width: 65%"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-400">最近更新：今天 14:30</div>
+                    </div>
+
+                    <div class="card cursor-pointer">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-semibold text-gray-700">健身计划</h3>
+                            <span class="bg-warning/10 text-warning text-xs px-2 py-0.5 rounded-full">需关注</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-3">90天减重10kg，每周运动3次</p>
+                        <div class="mb-2">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span>进度</span>
+                                <span>30%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-value" style="width: 30%"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-400">最近更新：昨天 08:15</div>
+                    </div>
+
+                    <div class="card cursor-pointer">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-semibold text-gray-700">小程序开发</h3>
+                            <span class="bg-gray-200 text-gray-500 text-xs px-2 py-0.5 rounded-full">已完成</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-3">电商小程序功能开发与上线</p>
+                        <div class="mb-2">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span>进度</span>
+                                <span>100%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-value bg-success" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-400">最近更新：2023-06-10</div>
+                    </div>
+
+                    <!-- 底部导航 -->
+                    <div class="flex justify-around mt-6 pt-3 border-t border-gray-200">
+                        <button class="flex flex-col items-center text-primary text-xs">
+                            <i class="fa fa-home text-lg mb-1"></i>
+                            <span>首页</span>
+                        </button>
+                        <button class="flex flex-col items-center text-gray-400 text-xs">
+                            <i class="fa fa-book text-lg mb-1"></i>
+                            <span>知识库</span>
+                        </button>
+                        <button class="flex flex-col items-center text-gray-400 text-xs">
+                            <i class="fa fa-user text-lg mb-1"></i>
+                            <span>我的</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 项目详情页 - 目标与节点 -->
+            <div class="app-container relative">
+                <div class="absolute -top-3 -left-3 bg-primary text-white text-xs px-2 py-1 rounded">2/5</div>
+                <div class="app-header">
+                    <button class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-arrow-left"></i>
+                    </button>
+                    <h2 class="font-bold text-gray-700">AI工具开发</h2>
+                    <button class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-ellipsis-v"></i>
+                    </button>
+                </div>
+                <div class="app-content">
+                    <!-- 标签导航 -->
+                    <div class="flex border-b border-gray-200 mb-4">
+                        <button class="tab-active px-3 py-2 text-sm">目标与节点</button>
+                        <button class="tab-inactive px-3 py-2 text-sm">项目日志</button>
+                        <button class="tab-inactive px-3 py-2 text-sm">AI分析</button>
+                        <button class="tab-inactive px-3 py-2 text-sm">总结</button>
+                    </div>
+
+                    <!-- 目标 -->
+                    <div class="card">
+                        <h3 class="font-semibold text-gray-700 mb-2 flex items-center">
+                            <i class="fa fa-bullseye text-primary mr-2"></i> 项目目标
+                        </h3>
+                        <p class="text-sm text-gray-600 mb-3">30天开发一款支持文本生成的AI小工具，用户留存率≥60%</p>
+                        <div class="text-xs bg-primary/5 text-primary p-2 rounded">
+                            <p>AI提示：目标符合SMART原则，可执行性高</p>
+                        </div>
+                    </div>
+
+                    <!-- 关键节点 -->
+                    <div class="card">
+                        <h3 class="font-semibold text-gray-700 mb-3 flex items-center">
+                            <i class="fa fa-list-ol text-primary mr-2"></i> 关键节点
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-start gap-3">
+                                <div class="bg-success/10 text-success rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">1</div>
+                                <div>
+                                    <div class="font-medium text-sm">需求确认</div>
+                                    <div class="text-xs text-gray-500">截止：2023-07-10</div>
+                                    <div class="text-xs text-success mt-1">已完成</div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">2</div>
+                                <div>
+                                    <div class="font-medium text-sm">核心开发</div>
+                                    <div class="text-xs text-gray-500">截止：2023-07-25</div>
+                                    <div class="mt-1">
+                                        <div class="flex justify-between text-xs mb-0.5">
+                                            <span>进度</span>
+                                            <span>80%</span>
+                                        </div>
+                                        <div class="progress-bar h-1.5">
+                                            <div class="progress-value" style="width: 80%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="bg-gray-100 text-gray-500 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">3</div>
+                                <div>
+                                    <div class="font-medium text-sm">测试优化</div>
+                                    <div class="text-xs text-gray-500">截止：2023-08-05</div>
+                                    <div class="text-xs text-gray-400 mt-1">未开始</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI提醒 -->
+                    <div class="bg-warning/10 border border-warning/20 rounded-lg p-3 text-sm">
+                        <p class="flex items-start gap-2">
+                            <i class="fa fa-bell text-warning mt-0.5"></i>
+                            <span>AI提醒：核心开发节点按当前进度，可能提前2天完成，建议提前准备测试计划</span>
+                        </p>
+                    </div>
+
+                    <!-- 底部操作区 -->
+                    <div class="mt-4 flex gap-2">
+                        <button class="btn-primary flex-1 text-sm">
+                            <i class="fa fa-plus"></i> 记录日志
+                        </button>
+                        <button class="btn-secondary flex-1 text-sm">
+                            <i class="fa fa-comments"></i> 聊项目
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 项目详情页 - 日志与聊天 -->
+            <div class="app-container relative">
+                <div class="absolute -top-3 -left-3 bg-primary text-white text-xs px-2 py-1 rounded">3/5</div>
+                <div class="app-header">
+                    <button class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-arrow-left"></i>
+                    </button>
+                    <h2 class="font-bold text-gray-700">AI工具开发</h2>
+                    <button class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-ellipsis-v"></i>
+                    </button>
+                </div>
+                <div class="app-content">
+                    <!-- 标签导航 -->
+                    <div class="flex border-b border-gray-200 mb-4">
+                        <button class="tab-inactive px-3 py-2 text-sm">目标与节点</button>
+                        <button class="tab-active px-3 py-2 text-sm">项目日志</button>
+                        <button class="tab-inactive px-3 py-2 text-sm">AI分析</button>
+                        <button class="tab-inactive px-3 py-2 text-sm">总结</button>
+                    </div>
+
+                    <!-- 日志列表 -->
+                    <div class="space-y-4 mb-6 max-h-[240px] overflow-y-auto pr-2">
+                        <div class="timeline-item">
+                            <div class="font-medium text-sm">今天 14:30</div>
+                            <div class="mt-1 space-y-2 text-sm">
+                                <div>
+                                    <span class="text-primary font-medium">进展：</span>
+                                    <span class="text-gray-600">完成文本生成API对接，测试成功</span>
+                                </div>
+                                <div>
+                                    <span class="text-warning font-medium">问题：</span>
+                                    <span class="text-gray-600">大文本生成时有延迟，超过3秒</span>
+                                </div>
+                                <div>
+                                    <span class="text-success font-medium">计划：</span>
+                                    <span class="text-gray-600">明天优化API调用方式，实现流式输出</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item">
+                            <div class="font-medium text-sm">昨天 09:15</div>
+                            <div class="mt-1 space-y-2 text-sm">
+                                <div>
+                                    <span class="text-primary font-medium">进展：</span>
+                                    <span class="text-gray-600">完成前端界面开发，包含输入框和结果展示区</span>
+                                </div>
+                                <div>
+                                    <span class="text-warning font-medium">问题：</span>
+                                    <span class="text-gray-600">暂无</span>
+                                </div>
+                                <div>
+                                    <span class="text-success font-medium">计划：</span>
+                                    <span class="text-gray-600">今日开始对接后端API</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item">
+                            <div class="font-medium text-sm">2023-07-18 16:40</div>
+                            <div class="mt-1 space-y-2 text-sm">
+                                <div>
+                                    <span class="text-primary font-medium">进展：</span>
+                                    <span class="text-gray-600">完成后端服务搭建，数据库设计</span>
+                                </div>
+                                <div>
+                                    <span class="text-warning font-medium">问题：</span>
+                                    <span class="text-gray-600">API接口文档不清晰，需进一步确认</span>
+                                </div>
+                                <div>
+                                    <span class="text-success font-medium">计划：</span>
+                                    <span class="text-gray-600">明天与API提供方沟通确认细节</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 项目聊天界面 -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 px-3 py-2 border-b border-gray-200 text-sm font-medium">
+                            项目聊天
+                        </div>
+                        <div class="p-3 h-[180px] overflow-y-auto bg-white">
+                            <div class="flex gap-2 mb-3">
+                                <div class="bg-gray-200 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-gray-600">
+                                    <i class="fa fa-user"></i>
+                                </div>
+                                <div class="bg-gray-100 rounded-lg px-3 py-2 text-sm max-w-[80%]">
+                                    文本生成有延迟，怎么优化？
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-2 mb-3 justify-end">
+                                <div class="bg-primary text-white rounded-lg px-3 py-2 text-sm max-w-[80%]">
+                                    基于你的项目日志，建议实现流式输出或增加缓存机制。历史项目"文本编辑器"中采用了分块加载策略，将响应时间从3.5秒减少到1.2秒，需要查看详细方案吗？
+                                </div>
+                                <div class="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa fa-robot"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-2 mb-3">
+                                <div class="bg-gray-200 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-gray-600">
+                                    <i class="fa fa-user"></i>
+                                </div>
+                                <div class="bg-gray-100 rounded-lg px-3 py-2 text-sm max-w-[80%]">
+                                    需要，查看分块加载策略
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-2 justify-end">
+                                <div class="bg-primary text-white rounded-lg px-3 py-2 text-sm max-w-[80%]">
+                                    分块加载策略：1. 将大文本分成500字左右的块；2. 优先返回前2块；3. 后续块通过异步加载... <span class="text-primary-100 text-xs">（已省略部分内容）</span>
+                                </div>
+                                <div class="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa fa-robot"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-2 border-t border-gray-200 flex gap-2">
+                            <input type="text" placeholder="问AI关于项目的问题..." class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                            <button class="bg-primary text-white rounded-lg p-2">
+                                <i class="fa fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 底部按钮 -->
+                    <button class="w-full btn-primary mt-4 text-sm">
+                        <i class="fa fa-plus"></i> 添加新日志
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. 项目详情页 - AI分析与反馈 -->
+            <div class="app-container relative">
+                <div class="absolute -top-3 -left-3 bg-primary text-white text-xs px-2 py-1 rounded">4/5</div>
+                <div class="app-header">
+                    <button class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-arrow-left"></i>
+                    </button>
+                    <h2 class="font-bold text-gray-700">AI工具开发</h2>
+                    <button class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-ellipsis-v"></i>
+                    </button>
+                </div>
+                <div class="app-content">
+                    <!-- 标签导航 -->
+                    <div class="flex border-b border-gray-200 mb-4">
+                        <button class="tab-inactive px-3 py-2 text-sm">目标与节点</button>
+                        <button class="tab-inactive px-3 py-2 text-sm">项目日志</button>
+                        <button class="tab-active px-3 py-2 text-sm">AI分析</button>
+                        <button class="tab-inactive px-3 py-2 text-sm">总结</button>
+                    </div>
+
+                    <!-- 进度趋势 -->
+                    <div class="card">
+                        <h3 class="font-semibold text-gray-700 mb-3 flex items-center">
+                            <i class="fa fa-line-chart text-primary mr-2"></i> 进度趋势
+                        </h3>
+                        <div class="h-[120px]">
+                            <canvas id="progressChart"></canvas>
+                        </div>
+                        <div class="mt-3 text-sm text-center text-gray-600">
+                            目标达成概率：85% <span class="text-success">(较高)</span>
+                        </div>
+                    </div>
+
+                    <!-- 问题分析 -->
+                    <div class="card">
+                        <h3 class="font-semibold text-gray-700 mb-3 flex items-center">
+                            <i class="fa fa-exclamation-triangle text-primary mr-2"></i> 问题分析
+                        </h3>
+                        
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-warning"><i class="fa fa-clock-o"></i></span>
+                                    <span class="text-sm">性能问题</span>
+                                </div>
+                                <div class="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full">
+                                    60%
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-400"><i class="fa fa-code"></i></span>
+                                    <span class="text-sm">代码问题</span>
+                                </div>
+                                <div class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                                    20%
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-400"><i class="fa fa-plug"></i></span>
+                                    <span class="text-sm">接口问题</span>
+                                </div>
+                                <div class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                                    20%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI反馈建议 -->
+                    <div class="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4">
+                        <h3 class="font-medium text-primary text-sm mb-2">AI改进建议</h3>
+                        <p class="text-sm text-gray-600 mb-2">
+                            检测到性能问题占比较高，建议优先优化。参考项目"智能问答系统"的解决方案：
+                        </p>
+                        <ul class="text-sm text-gray-600 space-y-1 list-disc pl-4 mb-3">
+                            <li>实现文本分块加载</li>
+                            <li>增加热点内容缓存</li>
+                            <li>优化模型参数配置</li>
+                        </ul>
+                        <button class="text-primary text-sm flex items-center">
+                            <i class="fa fa-check-circle mr-1"></i> 采纳建议
+                        </button>
+                    </div>
+
+                    <!-- 底部按钮 -->
+                    <div class="flex gap-2">
+                        <button class="btn-secondary flex-1 text-sm">
+                            <i class="fa fa-history"></i> 历史分析
+                        </button>
+                        <button class="btn-primary flex-1 text-sm">
+                            <i class="fa fa-lightbulb-o"></i> 更多建议
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. 项目详情页 - 总结与知识库 + 新建项目 -->
+            <div class="app-container relative">
+                <div class="absolute -top-3 -left-3 bg-primary text-white text-xs px-2 py-1 rounded">5/5</div>
+                <div class="app-header">
+                    <button class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-arrow-left"></i>
+                    </button>
+                    <h2 class="font-bold text-gray-700">AI工具开发</h2>
+                    <button class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-ellipsis-v"></i>
+                    </button>
+                </div>
+                <div class="app-content">
+                    <!-- 标签导航 -->
+                    <div class="flex border-b border-gray-200 mb-4">
+                        <button class="tab-inactive px-3 py-2 text-sm">目标与节点</button>
+                        <button class="tab-inactive px-3 py-2 text-sm">项目日志</button>
+                        <button class="tab-inactive px-3 py-2 text-sm">AI分析</button>
+                        <button class="tab-active px-3 py-2 text-sm">总结</button>
+                    </div>
+
+                    <!-- 阶段总结 -->
+                    <div class="card">
+                        <h3 class="font-semibold text-gray-700 mb-3 flex items-center">
+                            <i class="fa fa-flag-checkered text-primary mr-2"></i> 阶段总结
+                        </h3>
+                        
+                        <div class="space-y-3">
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <div class="font-medium text-sm mb-1">需求确认阶段 (已完成)</div>
+                                <p class="text-xs text-gray-600">
+                                    耗时3天，完成了需求分析和功能规划，明确了文本生成、历史记录、导出功能三大核心模块。
+                                </p>
+                            </div>
+                            
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <div class="font-medium text-sm mb-1">核心开发阶段 (进行中)</div>
+                                <p class="text-xs text-gray-600">
+                                    已完成后端服务搭建、前端界面开发和API对接，目前存在大文本生成延迟问题，计划通过分块加载优化。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 项目知识库 -->
+                    <div class="card">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-semibold text-gray-700 flex items-center">
+                                <i class="fa fa-book text-primary mr-2"></i> 项目知识库
+                            </h3>
+                            <button class="text-primary text-xs">查看全部</button>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <div class="p-2 border border-gray-100 rounded-lg hover:border-primary/30 transition-colors cursor-pointer">
+                                <div class="font-medium text-sm">文本生成API优化方案</div>
+                                <div class="text-xs text-gray-500">关键词：性能优化、API对接、流式输出</div>
+                            </div>
+                            
+                            <div class="p-2 border border-gray-100 rounded-lg hover:border-primary/30 transition-colors cursor-pointer">
+                                <div class="font-medium text-sm">前端界面设计规范</div>
+                                <div class="text-xs text-gray-500">关键词：UI设计、用户体验、响应式</div>
+                            </div>
+                            
+                            <div class="p-2 border border-gray-100 rounded-lg hover:border-primary/30 transition-colors cursor-pointer">
+                                <div class="font-medium text-sm">后端服务部署指南</div>
+                                <div class="text-xs text-gray-500">关键词：部署、服务器、性能调优</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 新建项目表单（点击首页新建按钮可显示） -->
+                    <div class="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-10" style="display: none;">
+                        <div class="bg-white rounded-xl w-full max-w-xs p-4 shadow-elevated">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-gray-700">新建项目</h3>
+                                <button class="text-gray-400 hover:text-gray-600">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">项目名称</label>
+                                    <input type="text" placeholder="输入项目名称" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                                </div>
+                                
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">目标关键词</label>
+                                    <input type="text" placeholder="输入目标关键词，如'30天开发小程序'" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                                </div>
+                                
+                                <div class="text-xs bg-gray-50 p-2 rounded">
+                                    <p class="text-gray-500">AI将根据您的输入生成符合SMART原则的目标和关键节点</p>
+                                </div>
+                                
+                                <button class="w-full btn-primary text-sm">
+                                    创建项目
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 底部按钮 -->
+                    <button class="w-full btn-primary mt-4 text-sm">
+                        <i class="fa fa-file-text-o"></i> 生成项目总结
+                    </button>
+                </div>
+            </div>
+
+            <!-- 操作流程说明 -->
+            <div class="app-container bg-white">
+                <div class="app-header">
+                    <h2 class="font-bold text-gray-700">操作流程说明</h2>
+                </div>
+                <div class="app-content">
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-4">
+                            <div class="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">1</div>
+                            <div>
+                                <h3 class="font-medium text-gray-700">创建项目</h3>
+                                <p class="text-sm text-gray-500 mt-1">点击首页"+"按钮，输入项目名称和目标关键词，AI自动生成细化目标和关键节点</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-4">
+                            <div class="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">2</div>
+                            <div>
+                                <h3 class="font-medium text-gray-700">记录日志</h3>
+                                <p class="text-sm text-gray-500 mt-1">在项目详情页点击"记录日志"，语音或文字输入内容，AI自动拆分为进展、问题和计划</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-4">
+                            <div class="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">3</div>
+                            <div>
+                                <h3 class="font-medium text-gray-700">AI互动</h3>
+                                <p class="text-sm text-gray-500 mt-1">通过"聊项目"功能向AI提问，AI基于项目上下文提供解决方案，支持知识库同步</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-4">
+                            <div class="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">4</div>
+                            <div>
+                                <h3 class="font-medium text-gray-700">分析改进</h3>
+                                <p class="text-sm text-gray-500 mt-1">查看AI分析结果和改进建议，采纳后自动更新项目计划，优化执行路径</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-4">
+                            <div class="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-0.5">5</div>
+                            <div>
+                                <h3 class="font-medium text-gray-700">总结沉淀</h3>
+                                <p class="text-sm text-gray-500 mt-1">项目节点完成后，AI自动生成总结并沉淀到知识库，供未来项目参考复用</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 p-3 bg-primary/5 rounded-lg">
+                        <h4 class="font-medium text-primary text-sm mb-2">AI能力说明</h4>
+                        <ul class="text-sm text-gray-600 space-y-1 list-disc pl-4">
+                            <li>自动结构化日志内容，提取关键信息</li>
+                            <li>基于项目数据预测进度，预警风险</li>
+                            <li>关联历史项目知识库，提供解决方案</li>
+                            <li>生成项目总结和改进建议</li>
+                            <li>优化上下文管理，适应大模型长度限制</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化进度图表
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['7/10', '7/15', '7/20', '7/25', '7/30', '8/5'],
+                    datasets: [{
+                        label: '实际进度',
+                        data: [20, 35, 45, 65, null, null],
+                        borderColor: '#165DFF',
+                        backgroundColor: 'rgba(22, 93, 255, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }, {
+                        label: '计划进度',
+                        data: [20, 30, 50, 70, 90, 100],
+                        borderColor: '#C9CDD4',
+                        borderDash: [5, 5],
+                        backgroundColor: 'transparent',
+                        tension: 0.3,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                boxWidth: 10,
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                font: {
+                                    size: 9
+                                },
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: {
+                                    size: 9
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+        // 为了演示，添加简单的交互效果
+        document.addEventListener('DOMContentLoaded', function() {
+            // 项目卡片点击效果
+            const projectCards = document.querySelectorAll('.card.cursor-pointer');
+            projectCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    this.classList.add('shadow-elevated');
+                    setTimeout(() => {
+                        this.classList.remove('shadow-elevated');
+                    }, 300);
+                });
+            });
+
+            // 按钮悬停效果增强
+            const buttons = document.querySelectorAll('.btn-primary, .btn-secondary');
+            buttons.forEach(button => {
+                button.addEventListener('mouseenter', function() {
+                    this.classList.add('transform', 'scale-[1.02]');
+                });
+                button.addEventListener('mouseleave', function() {
+                    this.classList.remove('transform', 'scale-[1.02]');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
