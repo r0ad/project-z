@@ -4,6 +4,7 @@
  */
 
 import dbService from '@/utils/dbService.js'
+import DateUtils from '@/utils/dateUtils.js'
 
 class LogApi {
   /**
@@ -42,12 +43,12 @@ class LogApi {
     const logs = await dbService.findMany('project_logs', where, params, orderBy, limitClause)
     
     // 格式化日志数据
-    return logs.map(log => ({
-      ...log,
-      created_at: this.formatDateTime(log.created_at),
-      hasProgress: !!log.progress_text,
-      hasProblem: !!log.problem_text,
-      hasPlan: !!log.plan_text
+		return logs.map(log => ({
+			...log,
+			created_at: DateUtils.formatDateTime(log.created_at),
+			hasProgress: !!log.progress_text,
+			hasProblem: !!log.problem_text,
+			hasPlan: !!log.plan_text
     }))
   }
 
@@ -65,7 +66,7 @@ class LogApi {
     
     return {
       ...log,
-      created_at: this.formatDateTime(log.created_at)
+      created_at: DateUtils.formatDateTime(log.created_at)
     }
   }
 
@@ -309,27 +310,7 @@ class LogApi {
    * 格式化日期时间
    * @param {string} dateTime - 日期时间字符串
    */
-  formatDateTime(dateTime) {
-    const date = new Date(dateTime)
-    const now = new Date()
-    const diffMs = now - date
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 0) {
-      // 今天
-      return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-    } else if (diffDays === 1) {
-      // 昨天
-      return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-    } else if (diffDays < 7) {
-      // 一周内
-      const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-      return `${weekdays[date.getDay()]} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-    } else {
-      // 超过一周
-      return `${date.getMonth() + 1}-${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-    }
-  }
+
 }
 
 // 创建单例实例

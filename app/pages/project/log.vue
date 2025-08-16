@@ -6,7 +6,7 @@
         <view class="navbar-left" @click="goBack">
           <nut-icon name="left" size="20" color="#1D2129"></nut-icon>
         </view>
-        <view class="navbar-title">记录日志</view>
+        <view class="navbar-title">{{ projectName || '记录日志' }}</view>
         <view class="navbar-right">
           <view class="save-btn" @click="saveLog" v-if="logContent.trim()">
             <text class="save-text">保存</text>
@@ -174,6 +174,7 @@
 <script>
 import logApi from '@/api/logApi.js'
 import aiApi from '@/api/aiApi.js'
+import DateUtils from '@/utils/dateUtils.js'
 
 export default {
   data() {
@@ -195,7 +196,7 @@ export default {
   onLoad(options) {
     this.projectId = parseInt(options.projectId) || ''
     this.projectName = decodeURIComponent(options.projectName) || '项目名称'
-    this.currentDate = this.formatDate(new Date())
+    this.currentDate = this.formatDateWithWeekday(new Date())
   },
   
   methods: {
@@ -203,7 +204,7 @@ export default {
       uni.navigateBack()
     },
     
-    formatDate(date) {
+    formatDateWithWeekday(date) {
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')

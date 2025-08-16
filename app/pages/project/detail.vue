@@ -99,7 +99,7 @@
 					>
 						<view class="log-header">
 							<view class="log-time">{{ log.time }}</view>
-							<view v-if="log.progressText || log.problemText || log.planText" class="log-actions">
+							<view class="log-actions">
 								<nut-button 
 									type="primary" 
 									size="small" 
@@ -168,8 +168,18 @@
 			>
 				<view class="edit-modal-content">
 					<view class="edit-form">
-						<view class="form-item">
-							<view class="form-label">进展情况</view>
+					<view class="form-item">
+						<view class="form-label">原始内容</view>
+						<nut-textarea 
+							v-model="editForm.content"
+							placeholder="请输入日志内容"
+							:rows="4"
+							maxlength="1000"
+							show-word-limit
+						/>
+					</view>
+					<view class="form-item">
+						<view class="form-label">进展情况</view>
 							<nut-textarea 
 								v-model="editForm.progressText"
 								placeholder="请输入项目进展情况"
@@ -238,6 +248,7 @@
 <script>
 import projectApi from '@/api/projectApi.js'
 import logApi from '@/api/logApi.js'
+import DateUtils from '@/utils/dateUtils.js'
 
 export default {
 	data() {
@@ -262,6 +273,7 @@ export default {
 			showEditModal: false,
 			saving: false,
 			editForm: {
+				content: '',
 				progressText: '',
 				problemText: '',
 				planText: ''
@@ -304,7 +316,7 @@ export default {
 			// 处理日志数据，添加格式化时间
 			this.projectLogs = (logsResult || []).map(log => ({
 				...log,
-				time: this.formatDateTime(log.createdAt)
+				time: DateUtils.formatDateTime(log.createdAt)
 			}))
 				
 				// 更新项目标题和目标
@@ -483,53 +495,13 @@ export default {
 			})
 		},
 		
-		// 格式化时间显示
-		formatDateTime(dateTime) {
-			if (!dateTime) return ''
-			
-			const date = new Date(dateTime)
-			const now = new Date()
-			const diff = now - date
-			
-			// 小于1分钟
-			if (diff < 60000) {
-				return '刚刚'
-			}
-			
-			// 小于1小时
-			if (diff < 3600000) {
-				return Math.floor(diff / 60000) + '分钟前'
-			}
-			
-			// 小于1天
-			if (diff < 86400000) {
-				return Math.floor(diff / 3600000) + '小时前'
-			}
-			
-			// 小于7天
-			if (diff < 604800000) {
-				return Math.floor(diff / 86400000) + '天前'
-			}
-			
-			// 超过7天显示具体日期
-			const year = date.getFullYear()
-			const month = String(date.getMonth() + 1).padStart(2, '0')
-			const day = String(date.getDate()).padStart(2, '0')
-			const hour = String(date.getHours()).padStart(2, '0')
-			const minute = String(date.getMinutes()).padStart(2, '0')
-			
-			// 如果是今年，不显示年份
-			if (year === now.getFullYear()) {
-				return `${month}-${day} ${hour}:${minute}`
-			} else {
-				return `${year}-${month}-${day} ${hour}:${minute}`
-			}
-		},
+
 		
 		// 编辑日志
 		editLog(log) {
 			this.editingLog = log
 			this.editForm = {
+				content: log.content || '',
 				progressText: log.progressText || '',
 				problemText: log.problemText || '',
 				planText: log.planText || ''
@@ -542,6 +514,7 @@ export default {
 			this.showEditModal = false
 			this.editingLog = null
 			this.editForm = {
+				content: '',
 				progressText: '',
 				problemText: '',
 				planText: ''
@@ -558,10 +531,11 @@ export default {
 			
 			try {
 				const updateData = {
-					progressText: this.editForm.progressText.trim(),
-					problemText: this.editForm.problemText.trim(),
-					planText: this.editForm.planText.trim()
-				}
+			content: this.editForm.content.trim(),
+			progress_text: this.editForm.progressText.trim(),
+			problem_text: this.editForm.problemText.trim(),
+			plan_text: this.editForm.planText.trim()
+		}
 				
 				await logApi.updateLog(this.editingLog.id, updateData)
 				

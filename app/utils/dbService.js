@@ -2,12 +2,14 @@
  * SQLite数据库统一访问工具
  * 提供数据库初始化、基础CRUD操作等功能
  */
+import dbUpgradeConfig from '@/utils/dbUpgradeConfig.js'
 
 class DBService {
   constructor() {
     this.dbName = 'ai_project_manage.db'
     this.dbPath = '_doc/ai_project_manage.db'
     this.isInitialized = false
+    this.currentVersion = '2.2.0' // 当前数据库版本
   }
 
   /**
@@ -93,7 +95,9 @@ class DBService {
    * 检查并升级数据库
    */
   async checkAndUpgradeDatabase() {
-    const currentVersion = '2.1.0'
+    // 加载升级配置
+    const upgradeConfig = await this.loadUpgradeConfig()
+    const targetVersion = upgradeConfig.current_version
     let dbVersion = '0.0.0' // 默认版本
     
     try {
@@ -107,194 +111,136 @@ class DBService {
       dbVersion = '0.0.0'
     }
     
-    console.log(`当前数据库版本: ${dbVersion}, 目标版本: ${currentVersion}`)
+    console.log(`当前数据库版本: ${dbVersion}, 目标版本: ${targetVersion}`)
     
-    if (dbVersion === currentVersion) {
+    if (dbVersion === targetVersion) {
       console.log('数据库版本已是最新，无需升级')
       return
     }
     
-    // 根据版本进行升级
-    if (dbVersion === '0.0.0') {
-      // 全量初始化
-      console.log('执行全量数据库初始化...')
-      await this.fullDatabaseInit()
-    } else {
-      // 增量升级
-      console.log('执行增量数据库升级...')
-      await this.incrementalDatabaseUpgrade(dbVersion, currentVersion)
-    }
+    // 执行升级
+    await this.executeUpgrade(dbVersion, targetVersion, upgradeConfig)
     
     // 更新版本信息
-    await this.updateDatabaseVersion(currentVersion)
+    await this.updateDatabaseVersion(targetVersion)
   }
   
   /**
-    * 全量数据库初始化
-    */
-   async fullDatabaseInit() {
-     console.log('开始全量数据库初始化...')
-     await this.createAllTables()
-     console.log('全量数据库初始化完成')
-   }
-  
-  /**
-   * 增量数据库升级
+   * 加载升级配置文件
    */
-  async incrementalDatabaseUpgrade(fromVersion, toVersion) {
-    console.log(`执行增量升级: ${fromVersion} -> ${toVersion}`)
-    
-    // 根据版本号执行相应的升级脚本
-    const upgradePath = this.getUpgradePath(fromVersion, toVersion)
-    
-    for (const version of upgradePath) {
-      console.log(`升级到版本: ${version}`)
-      await this.executeUpgradeScript(version)
+  async loadUpgradeConfig() {
+    try {
+      // 导入JS配置文件
+      const config = dbUpgradeConfig
+      return config
+    } catch (error) {
+      console.error('加载升级配置失败:', error)
+      // 返回默认配置
+      return this.getDefaultUpgradeConfig()
     }
   }
   
   /**
-   * 获取升级路径
+   * 获取默认升级配置（备用方案）
    */
-  getUpgradePath(fromVersion, toVersion) {
-    const versions = ['1.0.0', '2.0.0', '2.1.0']
-    const fromIndex = versions.indexOf(fromVersion)
-    const toIndex = versions.indexOf(toVersion)
-    
-    if (fromIndex === -1 || toIndex === -1 || fromIndex >= toIndex) {
-      return []
-    }
-    
-    return versions.slice(fromIndex + 1, toIndex + 1)
-  }
-  
-  /**
-   * 执行特定版本的升级脚本
-   */
-  async executeUpgradeScript(version) {
-    switch (version) {
-      case '1.0.0':
-        await this.upgradeTo1_0_0()
-        break
-      case '2.0.0':
-        await this.upgradeTo2_0_0()
-        break
-      case '2.1.0':
-        await this.upgradeTo2_1_0()
-        break
-      default:
-        console.log(`未知版本升级脚本: ${version}`)
+  getDefaultUpgradeConfig() {
+    return {
+      current_version: '2.2.0',
+      upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0'],
+      versions: {}
     }
   }
   
   /**
-    * 升级到1.0.0版本
-    */
-   async upgradeTo1_0_0() {
-     console.log('执行1.0.0版本升级脚本...')
-     // 基础表结构创建
-     await this.createBasicTables()
-   }
+   * 执行数据库升级
+   */
+  async executeUpgrade(fromVersion, toVersion, upgradeConfig) {
+    console.log(`执行数据库升级: ${fromVersion} -> ${toVersion}`)
+    
+    // 获取需要执行的版本列表
+    const versionsToExecute = this.getVersionsToExecute(fromVersion, toVersion, upgradeConfig.upgrade_order)
+    
+    if (versionsToExecute.length === 0) {
+      console.log('没有需要执行的升级脚本')
+      return
+    }
+    
+    // 按顺序执行每个版本的脚本
+    for (const version of versionsToExecute) {
+      console.log(`执行版本 ${version} 的升级脚本...`)
+      const versionConfig = upgradeConfig.versions[version]
+      
+      if (!versionConfig) {
+        console.warn(`版本 ${version} 的配置不存在，跳过`)
+        continue
+      }
+      
+      await this.executeVersionScripts(version, versionConfig)
+    }
+    
+    console.log('数据库升级完成')
+  }
   
   /**
-    * 升级到2.0.0版本
-    */
-   async upgradeTo2_0_0() {
-     console.log('执行2.0.0版本升级脚本...')
-     
-     // 添加AI相关表
-     await this.createAITables()
-     
-     // 为projects表添加ai_suggestions字段
-     try {
-       await this.executeSql('ALTER TABLE projects ADD COLUMN ai_suggestions TEXT')
-       console.log('已为projects表添加ai_suggestions字段')
-     } catch (error) {
-       console.log('添加ai_suggestions字段失败或字段已存在:', error)
-     }
-   }
-   
-   /**
-    * 创建AI相关表
-    */
-   async createAITables() {
-     console.log('创建AI相关表...')
-     
-     // AI配置表
-     await this.executeSql(`
-       CREATE TABLE IF NOT EXISTS ai_config (
-         id INTEGER PRIMARY KEY AUTOINCREMENT,
-         name TEXT NOT NULL,
-         provider TEXT NOT NULL,
-         api_key TEXT NOT NULL,
-         base_url TEXT,
-         model TEXT,
-         is_active INTEGER DEFAULT 0,
-         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-       )
-     `)
-     
-     // AI分析表
-     await this.executeSql(`
-       CREATE TABLE IF NOT EXISTS ai_analyses (
-         id INTEGER PRIMARY KEY AUTOINCREMENT,
-         project_id INTEGER NOT NULL,
-         analysis_type TEXT NOT NULL,
-         input_data TEXT,
-         result TEXT,
-         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-         FOREIGN KEY (project_id) REFERENCES projects(id)
-       )
-     `)
-     
-     // 知识库表
-     await this.executeSql(`
-       CREATE TABLE IF NOT EXISTS knowledge_base (
-         id INTEGER PRIMARY KEY AUTOINCREMENT,
-         title TEXT NOT NULL,
-         content TEXT NOT NULL,
-         category TEXT,
-         tags TEXT,
-         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-       )
-     `)
-     
-     // 知识标签表
-     await this.executeSql(`
-       CREATE TABLE IF NOT EXISTS knowledge_tags (
-         id INTEGER PRIMARY KEY AUTOINCREMENT,
-         name TEXT UNIQUE NOT NULL,
-         color TEXT,
-         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-       )
-     `)
-     
-     // 知识标签映射表
-     await this.executeSql(`
-       CREATE TABLE IF NOT EXISTS knowledge_tag_mappings (
-         id INTEGER PRIMARY KEY AUTOINCREMENT,
-         knowledge_id INTEGER NOT NULL,
-         tag_id INTEGER NOT NULL,
-         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-         FOREIGN KEY (knowledge_id) REFERENCES knowledge_base(id),
-         FOREIGN KEY (tag_id) REFERENCES knowledge_tags(id),
-         UNIQUE(knowledge_id, tag_id)
-       )
-     `)
-     
-     console.log('AI相关表创建完成')
-   }
+   * 获取需要执行的版本列表
+   */
+  getVersionsToExecute(fromVersion, toVersion, upgradeOrder) {
+    if (fromVersion === '0.0.0') {
+      // 全量初始化，执行所有版本
+      return upgradeOrder.filter(v => this.compareVersion(v, toVersion) <= 0)
+    }
+    
+    // 增量升级，只执行大于当前版本且小于等于目标版本的脚本
+    return upgradeOrder.filter(v => 
+      this.compareVersion(v, fromVersion) > 0 && 
+      this.compareVersion(v, toVersion) <= 0
+    )
+  }
   
   /**
-    * 升级到2.1.0版本
-    */
-   async upgradeTo2_1_0() {
-     console.log('执行2.1.0版本升级脚本...')
-     // 优化索引和性能
-     await this.createIndexes()
-   }
+   * 执行特定版本的脚本
+   */
+  async executeVersionScripts(version, versionConfig) {
+    console.log(`执行版本 ${version}: ${versionConfig.description}`)
+    
+    for (const script of versionConfig.scripts) {
+      try {
+        console.log(`执行脚本: ${script.type} - ${script.name || 'unnamed'}`)
+        await this.executeSql(script.sql)
+        console.log(`脚本执行成功: ${script.name || 'unnamed'}`)
+      } catch (error) {
+        if (script.ignore_error) {
+          console.log(`脚本执行失败但忽略错误: ${script.name || 'unnamed'}`, error)
+        } else {
+          console.error(`脚本执行失败: ${script.name || 'unnamed'}`, error)
+          throw error
+        }
+      }
+    }
+  }
+  
+  /**
+   * 版本比较函数
+   * 返回值: -1 表示 v1 < v2, 0 表示 v1 = v2, 1 表示 v1 > v2
+   */
+  compareVersion(v1, v2) {
+    const parts1 = v1.split('.').map(Number)
+    const parts2 = v2.split('.').map(Number)
+    
+    for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+      const part1 = parts1[i] || 0
+      const part2 = parts2[i] || 0
+      
+      if (part1 < part2) return -1
+      if (part1 > part2) return 1
+    }
+    
+    return 0
+  }
+  
+
+  
+
    
    /**
     * 创建基础表（1.0.0版本）
@@ -380,6 +326,7 @@ class DBService {
           content TEXT,
           log_type TEXT DEFAULT 'general',
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (project_id) REFERENCES projects(id)
         )
       `)
@@ -629,9 +576,15 @@ class DBService {
   async update(table, data, where, whereParams = []) {
     const keys = Object.keys(data)
     const values = Object.values(data)
-    const setClause = keys.map(key => `${key} = ?`).join(', ')
     
-    const sql = `UPDATE ${table} SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE ${where}`
+    // 构建SET子句
+    const setClauses = []
+    if (keys.length > 0) {
+      setClauses.push(...keys.map(key => `${key} = ?`))
+    }
+    setClauses.push('updated_at = CURRENT_TIMESTAMP')
+    
+    const sql = `UPDATE ${table} SET ${setClauses.join(', ')} WHERE ${where}`
     
     return await this.executeSql(sql, [...values, ...whereParams])
   }
