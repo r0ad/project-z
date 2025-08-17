@@ -31,36 +31,51 @@
 					v-for="(item, index) in filteredKnowledge" 
 					:key="index"
 					class="knowledge-card"
-					@click="viewDetail(item)"
 				>
-					<view class="card-header">
-						<view class="title-section">
-							<text class="knowledge-title">{{ item.title }}</text>
-							<view class="knowledge-tags">
-								<text 
-									v-for="(tag, tagIndex) in item.tags" 
-									:key="tagIndex"
-									class="knowledge-tag"
-								>
-									{{ tag }}
-								</text>
+					<view class="card-content" @click="viewDetail(item)">
+						<view class="card-header">
+							<view class="title-section">
+								<text class="knowledge-title">{{ item.title }}</text>
+								<view class="knowledge-tags">
+									<text 
+										v-for="(tag, tagIndex) in item.tags" 
+										:key="tagIndex"
+										class="knowledge-tag"
+									>
+										{{ tag }}
+									</text>
+								</view>
+							</view>
+							<nut-icon name="right" size="16" color="#C9CDD4"></nut-icon>
+						</view>
+						
+						<text class="knowledge-summary">{{ item.summary }}</text>
+						
+						<view class="card-footer">
+							<view class="meta-info">
+								<view class="meta-item">
+									<nut-icon name="time" size="12" color="#86909C"></nut-icon>
+									<text class="meta-text">{{ item.updateTime }}</text>
+								</view>
+								<view class="meta-item">
+									<nut-icon name="eye" size="12" color="#86909C"></nut-icon>
+									<text class="meta-text">{{ item.viewCount }}</text>
+								</view>
 							</view>
 						</view>
-						<nut-icon name="right" size="16" color="#C9CDD4"></nut-icon>
 					</view>
 					
-					<text class="knowledge-summary">{{ item.summary }}</text>
-					
-					<view class="card-footer">
-						<view class="meta-info">
-							<view class="meta-item">
-								<nut-icon name="time" size="12" color="#86909C"></nut-icon>
-								<text class="meta-text">{{ item.updateTime }}</text>
-							</view>
-							<view class="meta-item">
-								<nut-icon name="eye" size="12" color="#86909C"></nut-icon>
-								<text class="meta-text">{{ item.viewCount }}</text>
-							</view>
+					<!-- 操作按钮区域 -->
+					<view class="card-actions">
+						<view class="action-btn" @click.stop="toggleFavorite(item)">
+							<nut-icon 
+								:name="item.isFavorite ? 'heart-fill' : 'heart'" 
+								size="16" 
+								:color="item.isFavorite ? '#FF6B6B' : '#86909C'"
+							></nut-icon>
+						</view>
+						<view class="action-btn" @click.stop="confirmDelete(item)">
+							<nut-icon name="del" size="16" color="#F53F3F"></nut-icon>
 						</view>
 					</view>
 				</view>
@@ -141,7 +156,17 @@ export default {
 					limit: 50,
 					offset: 0
 				}
-				this.knowledgeList = await knowledgeApi.getKnowledgeList(options)
+				const knowledgeList = await knowledgeApi.getKnowledgeList(options)
+				
+				// 获取收藏状态
+				const favoriteKnowledge = await knowledgeApi.getFavoriteKnowledge()
+				const favoriteIds = favoriteKnowledge.map(item => item.id)
+				
+				// 为每个知识项添加收藏状态
+				this.knowledgeList = knowledgeList.map(item => ({
+					...item,
+					isFavorite: favoriteIds.includes(item.id)
+				}))
 			} catch (error) {
 				console.error('加载知识列表失败:', error)
 				uni.showToast({
@@ -213,6 +238,63 @@ export default {
 			uni.navigateTo({
 				url: '/pages/knowledge/create'
 			})
+		},
+		
+		// 切换收藏状态
+		async toggleFavorite(item) {
+			try {
+				await knowledgeApi.toggleFavorite(item.id)
+				item.isFavorite = !item.isFavorite
+				uni.showToast({
+					title: item.isFavorite ? '已收藏' : '已取消收藏',
+					icon: 'success'
+				})
+			} catch (error) {
+				console.error('收藏操作失败:', error)
+				uni.showToast({
+					title: '操作失败',
+					icon: 'none'
+				})
+			}
+		},
+		
+		// 确认删除
+		confirmDelete(item) {
+			uni.showModal({
+				title: '确认删除',
+				content: `确定要删除知识「${item.title}」吗？删除后无法恢复。`,
+				confirmText: '删除',
+				confirmColor: '#F53F3F',
+				success: (res) => {
+					if (res.confirm) {
+						this.deleteKnowledge(item)
+					}
+				}
+			})
+		},
+		
+		// 删除知识
+		async deleteKnowledge(item) {
+			try {
+				await knowledgeApi.deleteKnowledge(item.id)
+				
+				// 从列表中移除
+				const index = this.knowledgeList.findIndex(k => k.id === item.id)
+				if (index > -1) {
+					this.knowledgeList.splice(index, 1)
+				}
+				
+				uni.showToast({
+					title: '删除成功',
+					icon: 'success'
+				})
+			} catch (error) {
+				console.error('删除知识失败:', error)
+				uni.showToast({
+					title: '删除失败',
+					icon: 'none'
+				})
+			}
 		}
 	}
 }
@@ -356,5 +438,34 @@ export default {
 	left: 32rpx;
 	right: 32rpx;
 	z-index: 100;
+}
+
+.card-content {
+	flex: 1;
+}
+
+.card-actions {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	padding-top: 16rpx;
+	border-top: 1rpx solid #F2F3F5;
+	margin-top: 16rpx;
+}
+
+.action-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 64rpx;
+	height: 64rpx;
+	border-radius: 50%;
+	background-color: #F7F8FA;
+	transition: all 0.3s ease;
+}
+
+.action-btn:active {
+	transform: scale(0.9);
+	background-color: #E5E6EB;
 }
 </style>

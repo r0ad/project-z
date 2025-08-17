@@ -87,9 +87,9 @@
 
 			<!-- 底部操作区 -->
 			<view class="bottom-actions">
-				<nut-button type="default" size="large" @click="collectKnowledge">
-					<nut-icon name="star" size="14"></nut-icon>
-					收藏
+				<nut-button :type="isFavorite ? 'primary' : 'default'" size="large" @click="collectKnowledge">
+					<nut-icon :name="isFavorite ? 'heart-fill' : 'heart'" size="14" :color="isFavorite ? '#FF6B6B' : ''"></nut-icon>
+					{{ isFavorite ? '已收藏' : '收藏' }}
 				</nut-button>
 				<nut-button type="primary" size="large" @click="chatKnowledge">
 					<nut-icon name="comment" size="14"></nut-icon>
@@ -119,7 +119,8 @@ export default {
 				updateTime: '',
 				viewCount: 0
 			},
-			relatedKnowledge: []
+			relatedKnowledge: [],
+			isFavorite: false
 		}
 	},
 	onLoad(options) {
@@ -155,6 +156,11 @@ export default {
 					updateTime: knowledge.updated_at || '',
 					viewCount: knowledge.view_count || 0
 				}
+				
+				// 检查收藏状态
+				const favoriteKnowledge = await knowledgeApi.getFavoriteKnowledge()
+				this.isFavorite = favoriteKnowledge.some(item => item.id == this.knowledgeId)
+				
 				// 增加浏览量
 				await knowledgeApi.incrementViewCount(this.knowledgeId)
 				
@@ -181,8 +187,9 @@ export default {
 		async collectKnowledge() {
 		try {
 			const result = await knowledgeApi.toggleFavorite(this.knowledgeId)
+			this.isFavorite = !this.isFavorite
 			uni.showToast({
-				title: result.is_favorite ? '收藏成功' : '取消收藏',
+				title: this.isFavorite ? '收藏成功' : '取消收藏',
 				icon: 'success'
 			})
 		} catch (error) {

@@ -230,28 +230,28 @@ class KnowledgeApi {
   async deleteKnowledge(knowledgeId) {
     await this.ensureDBInit()
     
-    // 删除标签关联
-    await dbService.delete('knowledge_tag_mappings', 'knowledge_id = ?', [knowledgeId])
-    
-    // 删除项目关联
-    await dbService.delete('project_knowledge_mappings', 'knowledge_id = ?', [knowledgeId])
-    
-    // 删除AI分析
-    await dbService.delete('knowledge_ai_analysis', 'knowledge_id = ?', [knowledgeId])
-    
-    // 删除浏览记录
-    await dbService.delete('knowledge_views', 'knowledge_id = ?', [knowledgeId])
-    
-    // 删除收藏记录
-    await dbService.delete('favorites', 'target_type = ? AND target_id = ?', ['knowledge', knowledgeId])
-    
-    // 删除评论
-    await dbService.delete('knowledge_comments', 'knowledge_id = ?', [knowledgeId])
-    
-    // 删除知识记录
-    await dbService.delete('knowledge_base', 'id = ?', [knowledgeId])
-    
-    return true
+    try {
+      // 删除标签关联
+      await dbService.delete('knowledge_tag_mappings', 'knowledge_id = ?', [knowledgeId])
+      
+      // 删除项目关联（如果存在）
+      try {
+        await dbService.delete('project_knowledge_mappings', 'knowledge_id = ?', [knowledgeId])
+      } catch (error) {
+        console.log('project_knowledge_mappings表不存在或删除失败:', error)
+      }
+      
+      // 删除收藏记录
+      await dbService.delete('favorites', 'target_type = ? AND target_id = ?', ['knowledge', knowledgeId])
+      
+      // 删除知识记录
+      await dbService.delete('knowledge_base', 'id = ?', [knowledgeId])
+      
+      return true
+    } catch (error) {
+      console.error('删除知识失败:', error)
+      throw error
+    }
   }
 
   /**
