@@ -115,6 +115,12 @@
         "navigationBarTitleText": "数据统计",
         "navigationStyle": "custom"
       }
+    },{
+      "path": "pages/profile/edit",
+      "style": {
+        "navigationBarTitleText": "编辑个人信息",
+        "navigationStyle": "custom"
+      }
     }
   ],
 

@@ -64,6 +64,29 @@ class ProjectApi {
   }
 
   /**
+   * 获取所有项目（用于统计和简单列表）
+   * @param {number} userId - 用户ID
+   * @returns {Promise<Array>} 项目列表
+   */
+  async getAllProjects(userId = 1) {
+    await this.ensureDBInit()
+    
+    const projects = await dbService.findMany('projects', 'user_id = ?', [userId], 'updated_at DESC')
+    
+    // 简单格式化，只返回基本信息
+    return projects.map(project => ({
+      id: project.id,
+      name: project.name,
+      title: project.name, // 字段映射
+      description: project.description,
+      status: this.mapDatabaseStatus(project.status),
+      progress: project.progress || 0,
+      created_at: project.created_at,
+      updated_at: project.updated_at
+    }))
+  }
+
+  /**
    * 获取项目详情
    * @param {number} projectId - 项目ID
    */

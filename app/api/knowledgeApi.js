@@ -737,7 +737,7 @@ class KnowledgeApi {
 
   /**
    * 获取知识统计信息
-   * @param {number} userId - 用户ID
+   * @param {number} userId - 用户ID (暂时未使用，因为knowledge_base表没有user_id字段)
    */
   async getKnowledgeStats(userId = 1) {
     await this.ensureDBInit()
@@ -745,31 +745,27 @@ class KnowledgeApi {
     const stats = {}
     
     // 总知识数
-    stats.totalCount = await dbService.count('knowledge_base', 'user_id = ?', [userId])
+    stats.totalCount = await dbService.count('knowledge_base', '1=1', [])
     
-    // 已发布知识数
-    stats.publishedCount = await dbService.count('knowledge_base', 'user_id = ?', [userId])
+    // 已发布知识数 (由于没有status字段，暂时等于总数)
+    stats.publishedCount = await dbService.count('knowledge_base', '1=1', [])
     
-    // 草稿数
-    stats.draftCount = await dbService.count('knowledge_base', 'user_id = ? AND status = "draft"', [userId])
+    // 草稿数 (由于没有status字段，暂时为0)
+    stats.draftCount = 0
     
     // 总浏览量
     const viewResult = await dbService.query(
-      'SELECT SUM(view_count) as total_views FROM knowledge_base WHERE user_id = ?',
-      [userId]
+      'SELECT SUM(view_count) as total_views FROM knowledge_base',
+      []
     )
     stats.totalViews = viewResult[0]?.total_views || 0
     
     // 收藏数
     stats.favoriteCount = await dbService.count('favorites', 'user_id = ? AND target_type = "knowledge"', [userId])
     
-    // 分类统计
-    const categoryResult = await dbService.query(
-      'SELECT category, COUNT(*) as count FROM knowledge_base WHERE user_id = ? GROUP BY category',
-      [userId]
-    )
-    stats.categoryStats = categoryResult
-    
+    // 分类统计 (由于没有category字段，返回空数组)
+    stats.categoryStats = []
+    console.log('stats',stats)
     return stats
   }
 

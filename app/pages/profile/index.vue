@@ -14,7 +14,9 @@
 			<view class="user-card">
 				<view class="user-info">
 					<view class="avatar-section">
-						<image class="user-avatar" :src="userInfo.avatar" mode="aspectFill"></image>
+						<view class="user-avatar">
+							<text class="avatar-emoji">{{ userInfo.avatar }}</text>
+						</view>
 						<view class="vip-badge" v-if="userInfo.isVip">
 							<nut-icon name="crown" size="12" color="#FFD700"></nut-icon>
 							<text class="vip-text">VIP</text>
@@ -80,6 +82,7 @@ import projectApi from '@/api/projectApi.js'
 import knowledgeApi from '@/api/knowledgeApi.js'
 import chatApi from '@/api/chatApi.js'
 import favoriteApi from '@/api/favoriteApi.js'
+import userApi from '@/api/userApi.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 import CustomTabBar from '@/custom-tab-bar/index.vue'
 import dbService from '@/utils/dbService.js'
@@ -92,18 +95,23 @@ export default {
 	data() {
 		return {
 			userInfo: {
-				avatar: '/static/images/avatar.png',
-				name: '张三',
+				avatar: '👤',
+				name: '用户',
 				title: '产品经理',
-				isVip: true,
-				projectCount: 12,
-				knowledgeCount: 48,
-				days: 365
+				isVip: false,
+				projectCount: 0,
+				knowledgeCount: 0,
+				days: 0
 			},
 			aiStats: {
 				todayChats: 0,
 				totalAnalysis: 0
 			},
+			statsData: [
+				{ label: '项目数', value: 0 },
+				{ label: '知识数', value: 0 },
+				{ label: '完成率', value: '0%' }
+			],
 			menuItems: [
 				{
 					icon: 'JIMI40',
@@ -170,8 +178,9 @@ export default {
 		}
 	},
 	async mounted() {
+		await this.loadUserInfo()
 		await this.loadUserData()
-		await this.loadStatsData()
+		// await this.loadStatsData()
 		await this.loadAIStats()
 		await this.loadFavoriteCount()
 		this.getCurrentVersion()
@@ -193,9 +202,8 @@ export default {
 			})
 		},
 		editProfile() {
-			uni.showToast({
-				title: '编辑资料',
-				icon: 'none'
+			uni.navigateTo({
+				url: '/pages/profile/edit'
 			})
 		},
 		chatWithAI() {
@@ -314,14 +322,35 @@ export default {
 				}
 			})
 		},
+		/**
+		 * 加载用户信息
+		 */
+		async loadUserInfo() {
+			try {
+				const userData = await userApi.getCurrentUser()
+				
+				this.userInfo = {
+					name: userData.username,
+					title: userData.title,
+					avatar: userData.avatar,
+					isVip: userData.isVip,
+					projectCount: 0, // 将在loadUserData中更新
+					knowledgeCount: 0, // 将在loadUserData中更新
+					days: userApi.calculateUsageDays(userData.created_at)
+				}
+			} catch (error) {
+				console.error('加载用户信息失败:', error)
+			}
+		},
+		
 		async loadUserData() {
 			try {
 				// 获取用户项目和知识统计
-				const projects = await projectApi.getAllProjects()
-				const knowledge = await knowledgeApi.getAllKnowledge()
+				const projects = await projectApi.getAllProjects(1)
+				const knowledge = await knowledgeApi.getKnowledgeStats()
 
 				this.userInfo.projectCount = projects.length
-				this.userInfo.knowledgeCount = knowledge.length
+				this.userInfo.knowledgeCount = knowledge.publishedCount ? knowledge.publishedCount : 0
 			} catch (error) {
 				console.error('加载用户数据失败:', error)
 			}
@@ -329,12 +358,12 @@ export default {
 		async loadStatsData() {
 			try {
 				// 获取项目统计
-				const projects = await projectApi.getAllProjects()
+				const projects = await projectApi.getAllProjects(1)
 				this.statsData[0].value = projects.length
 
 				// 获取知识统计
-				const knowledge = await knowledgeApi.getAllKnowledge()
-				this.statsData[1].value = knowledge.length
+				const knowledge = await knowledgeApi.getKnowledgeStats({ page: 1, pageSize: 1000 })
+				this.statsData[1].value = knowledge.publishedCount ? knowledge.publishedCount : 0
 
 				// 计算完成率（示例逻辑）
 				const completedProjects = projects.filter(p => p.status === 'completed')
@@ -437,6 +466,13 @@ export default {
 	height: 120rpx;
 	border-radius: 50%;
 	background-color: #F2F3F5;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.avatar-emoji {
+	font-size: 64rpx;
 }
 
 .vip-badge {

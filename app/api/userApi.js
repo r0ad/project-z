@@ -2,13 +2,17 @@
  * 用户API - 处理用户相关的数据库操作
  */
 import dbService from '@/utils/dbService.js'
+import projectApi from './projectApi.js'
+import knowledgeApi from './knowledgeApi.js'
 
 class UserApi {
 	/**
-	 * 初始化用户API
+	 * 确保数据库已初始化
 	 */
-	constructor() {
-		this.tableName = 'users'
+	async ensureDBInit() {
+		if (!dbService.isInitialized) {
+			await dbService.initDB()
+		}
 	}
 
 	/**
@@ -17,18 +21,22 @@ class UserApi {
 	 */
 	async getCurrentUser() {
 		try {
-			await dbService.init()
+			await this.ensureDBInit()
 			
 			// 获取第一个用户（默认用户）
-			const sql = `SELECT * FROM ${this.tableName} ORDER BY id ASC LIMIT 1`
-			const result = await dbService.selectSQL(sql)
+			const user = await dbService.findOne('users', '1=1', [])
 			
-			if (result.length > 0) {
-				return this.formatUserData(result[0])
-			} else {
-				// 如果没有用户，创建默认用户
-				return await this.createDefaultUser()
-			}
+			if (user) {
+			// 获取真实的统计数据
+			const projectStats = await projectApi.getProjectStats(user.id)
+			const knowledgeStats = await knowledgeApi.getKnowledgeStats(user.id)
+			
+			// 格式化用户数据并包含真实统计
+			return this.formatUserData(user, projectStats, knowledgeStats)
+		} else {
+			// 如果没有用户，创建默认用户
+			return await this.createDefaultUser()
+		}
 		} catch (error) {
 			console.error('获取用户信息失败:', error)
 			throw error
@@ -41,7 +49,7 @@ class UserApi {
 	 */
 	async createDefaultUser() {
 		try {
-			const defaultUser = {
+			const defaultUserData = {
 				username: '用户',
 				email: '',
 				avatar: '👤', // 默认头像emoji
@@ -52,26 +60,16 @@ class UserApi {
 				})
 			}
 			
-			const sql = `
-				INSERT INTO ${this.tableName} (username, email, avatar, settings)
-				VALUES (?, ?, ?, ?)
-			`
+			const userId = await dbService.insert('users', defaultUserData)
 			
-			const result = await dbService.executeSql(sql, [
-				defaultUser.username,
-				defaultUser.email,
-				defaultUser.avatar,
-				defaultUser.settings
-			])
+			// 获取创建的用户信息
+			const user = await dbService.findOne('users', 'id = ?', [userId])
 			
-			// 返回创建的用户信息
-			return {
-				id: result.insertId,
-				...defaultUser,
-				settings: JSON.parse(defaultUser.settings),
-				created_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
-			}
+			// 获取统计数据
+			const projectStats = await projectApi.getProjectStats(userId)
+			const knowledgeStats = await knowledgeApi.getKnowledgeStats(userId)
+			
+			return this.formatUserData(user, projectStats, knowledgeStats)
 		} catch (error) {
 			console.error('创建默认用户失败:', error)
 			throw error
@@ -85,49 +83,34 @@ class UserApi {
 	 */
 	async updateUser(userData) {
 		try {
-			await dbService.init()
+			await this.ensureDBInit()
 			
 			const currentUser = await this.getCurrentUser()
 			const userId = currentUser.id
 			
 			// 准备更新数据
-			const updateFields = []
-			const updateValues = []
+			const updateData = {}
 			
 			if (userData.username !== undefined) {
-				updateFields.push('username = ?')
-				updateValues.push(userData.username)
+				updateData.username = userData.username
 			}
 			
 			if (userData.email !== undefined) {
-				updateFields.push('email = ?')
-				updateValues.push(userData.email)
+				updateData.email = userData.email
 			}
 			
 			if (userData.avatar !== undefined) {
-				updateFields.push('avatar = ?')
-				updateValues.push(userData.avatar)
+				updateData.avatar = userData.avatar
 			}
 			
 			if (userData.settings !== undefined) {
-				updateFields.push('settings = ?')
-				updateValues.push(typeof userData.settings === 'string' ? userData.settings : JSON.stringify(userData.settings))
+				updateData.settings = typeof userData.settings === 'string' ? userData.settings : JSON.stringify(userData.settings)
 			}
 			
 			// 添加更新时间
-			updateFields.push('updated_at = ?')
-			updateValues.push(new Date().toISOString())
+			updateData.updated_at = new Date().toISOString()
 			
-			// 添加用户ID到参数末尾
-			updateValues.push(userId)
-			
-			const sql = `
-				UPDATE ${this.tableName} 
-				SET ${updateFields.join(', ')}
-				WHERE id = ?
-			`
-			
-			await dbService.executeSql(sql, updateValues)
+			await dbService.update('users', updateData, 'id = ?', [userId])
 			
 			// 返回更新后的用户信息
 			return await this.getCurrentUser()
@@ -140,38 +123,46 @@ class UserApi {
 	/**
 	 * 格式化用户数据
 	 * @param {Object} rawData 原始数据
+	 * @param {Object} projectStats 项目统计数据
+	 * @param {Object} knowledgeStats 知识统计数据
 	 * @returns {Object} 格式化后的用户数据
 	 */
-	formatUserData(rawData) {
+	formatUserData(rawData, projectStats = null, knowledgeStats = null) {
 		try {
 			const settings = rawData.settings ? JSON.parse(rawData.settings) : {}
 			
 			return {
-				id: rawData.id,
-				username: rawData.username || '用户',
-				email: rawData.email || '',
-				avatar: rawData.avatar || '👤',
-				title: settings.title || '产品经理',
-				isVip: settings.isVip || false,
-				theme: settings.theme || 'light',
-				created_at: rawData.created_at,
-				updated_at: rawData.updated_at,
-				settings: settings
-			}
+			id: rawData.id,
+			username: rawData.username || '用户',
+			email: rawData.email || '',
+			avatar: rawData.avatar || '👤',
+			title: settings.title || '产品经理',
+			isVip: settings.isVip || false,
+			theme: settings.theme || 'light',
+			projectCount: projectStats ? projectStats.totalProjects : 0,
+			knowledgeCount: knowledgeStats ? knowledgeStats.totalCount : 0,
+			days: this.calculateUsageDays(rawData.created_at),
+			created_at: rawData.created_at,
+			updated_at: rawData.updated_at,
+			settings: settings
+		}
 		} catch (error) {
 			console.error('格式化用户数据失败:', error)
 			return {
-				id: rawData.id,
-				username: rawData.username || '用户',
-				email: rawData.email || '',
-				avatar: rawData.avatar || '👤',
-				title: '产品经理',
-				isVip: false,
-				theme: 'light',
-				created_at: rawData.created_at,
-				updated_at: rawData.updated_at,
-				settings: {}
-			}
+			id: rawData.id,
+			username: rawData.username || '用户',
+			email: rawData.email || '',
+			avatar: rawData.avatar || '👤',
+			title: '产品经理',
+			isVip: false,
+			theme: 'light',
+			projectCount: 0,
+			knowledgeCount: 0,
+			days: 0,
+			created_at: rawData.created_at,
+			updated_at: rawData.updated_at,
+			settings: {}
+		}
 		}
 	}
 
