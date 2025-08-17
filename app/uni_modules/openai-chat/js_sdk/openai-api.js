@@ -261,13 +261,15 @@ class OpenAIAPI {
 							this.addMessageToHistory('assistant', content, message.function_call)
 						}
 						
-						// 将内容按词分割，模拟流式发送
+						// 将内容按词分割，模拟流式发送（一次返回多个字符）
 						const words = content.split('')
 						let index = 0
+						const chunkSize = 6 // 每次返回6个字符
 						
 						const sendNextChunk = () => {
 							if (index < words.length) {
-								const chunk = words[index]
+								// 一次取多个字符
+								const chunk = words.slice(index, index + chunkSize).join('')
 								
 								try {
 									if (typeof onData === 'function') {
@@ -277,8 +279,8 @@ class OpenAIAPI {
 									console.error('[OpenAI API] 流式模拟 - onData回调执行错误:', error)
 								}
 								
-								index++
-								setTimeout(sendNextChunk, 20) // 20ms间隔，更快的流式效果
+								index += chunkSize
+								setTimeout(sendNextChunk, 50) // 50ms间隔，模拟多字符返回
 							} else {
 								console.log('[OpenAI API] 流式模拟 - 发送完成')
 								
