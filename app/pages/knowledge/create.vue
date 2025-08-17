@@ -1,17 +1,11 @@
 <template>
   <view class="create-knowledge-page">
     <!-- 自定义导航栏 -->
-    <view class="custom-navbar">
-      <view class="navbar-content">
-        <view class="navbar-left" @click="goBack">
-          <nut-icon name="left" size="20" color="#1D2129"></nut-icon>
-        </view>
-        <view class="navbar-title">{{ isEdit ? '编辑知识' : '新增知识' }}</view>
-        <view class="navbar-right" @click="saveDraft">
-          <text class="save-draft-text">草稿</text>
-        </view>
-      </view>
-    </view>
+    <CustomNavbar :title="isEdit ? '编辑知识' : '新增知识'" :show-back="true" @back="goBack">
+    </CustomNavbar>
+    
+    <!-- 导航栏占位 -->
+    <view class="navbar-placeholder"></view>
 
     <!-- 表单内容 -->
     <scroll-view class="form-content" scroll-y>
@@ -31,16 +25,21 @@
         <view class="char-count">{{ formData.title.length }}/50</view>
       </view>
 
-      <!-- 知识分类 -->
+      <!-- 知识概要 -->
       <view class="form-section">
         <view class="section-header">
-          <text class="section-title">知识分类</text>
-          <text class="required-mark">*</text>
+          <text class="section-title">知识概要</text>
+          <text class="optional-mark">（可选）</text>
         </view>
-        <view class="category-selector" @click="showCategoryPicker">
-          <text class="category-text" :class="{ placeholder: !formData.category }">{{ formData.category || '请选择分类' }}</text>
-          <nut-icon name="right" size="16" color="#86909C"></nut-icon>
-        </view>
+        <nut-textarea
+          v-model="formData.summary"
+          placeholder="请输入知识概要，简要描述知识内容"
+          :border="false"
+          class="summary-input"
+          :maxlength="200"
+          :rows="3"
+        />
+        <view class="char-count">{{ formData.summary.length }}/200</view>
       </view>
 
       <!-- 知识标签 -->
@@ -87,7 +86,7 @@
           <text class="required-mark">*</text>
         </view>
         <view class="content-editor">
-          <view class="editor-toolbar">
+         <!--  <view class="editor-toolbar">
             <view class="toolbar-item" @click="toggleBold">
               <nut-icon name="bold" size="16" color="#86909C"></nut-icon>
             </view>
@@ -104,10 +103,10 @@
               <nut-icon name="service" size="16" color="#165DFF"></nut-icon>
               <text class="ai-text">AI</text>
             </view>
-          </view>
+          </view> -->
           <textarea
             v-model="formData.content"
-            placeholder="请输入知识内容，支持Markdown格式..."
+            placeholder="请输入知识内容..."
             class="content-textarea"
             :maxlength="5000"
           />
@@ -170,18 +169,47 @@
           </view>
         </view>
       </view>
+
+      <!-- 相关知识 -->
+      <view class="form-section" v-if="isEdit">
+        <view class="section-header">
+          <text class="section-title">相关知识</text>
+          <text class="optional-mark">（基于项目关联）</text>
+        </view>
+        <view class="related-knowledge">
+          <view class="knowledge-list" v-if="relatedKnowledge.length > 0">
+            <view 
+              class="knowledge-item" 
+              v-for="(item, index) in relatedKnowledge" 
+              :key="item.id"
+            >
+              <view class="knowledge-info">
+                <text class="knowledge-title">{{ item.title }}</text>
+                <text class="knowledge-summary">{{ item.summary }}</text>
+              </view>
+              <view class="knowledge-actions">
+                <nut-icon name="eye" size="16" color="#165DFF" @click="viewKnowledge(item.id)"></nut-icon>
+                <nut-icon name="delete" size="16" color="#F53F3F" @click="removeRelatedKnowledge(item.id)"></nut-icon>
+              </view>
+            </view>
+          </view>
+          <view class="empty-knowledge" v-else>
+            <text class="empty-text">暂无相关知识，关联项目后会自动显示</text>
+          </view>
+          <nut-button 
+            type="default" 
+            size="small" 
+            @click="refreshRelatedKnowledge"
+            class="refresh-btn"
+          >
+            刷新相关知识
+          </nut-button>
+        </view>
+      </view>
     </scroll-view>
 
     <!-- 底部操作区 -->
     <view class="bottom-actions">
-      <nut-button 
-        type="default" 
-        size="large" 
-        @click="previewKnowledge"
-        class="preview-btn"
-      >
-        预览
-      </nut-button>
       <nut-button 
         type="primary" 
         size="large" 
@@ -189,36 +217,13 @@
         :loading="saving"
         :disabled="!canSave"
         class="save-btn"
+        block
       >
         {{ isEdit ? '更新' : '发布' }}
       </nut-button>
     </view>
 
-    <!-- 分类选择器 -->
-    <nut-popup v-model:visible="showCategoryModal" position="bottom">
-      <view class="category-picker">
-        <view class="picker-header">
-          <text class="picker-title">选择分类</text>
-          <nut-icon name="close" size="20" color="#86909C" @click="showCategoryModal = false"></nut-icon>
-        </view>
-        <view class="category-list">
-          <view 
-            class="category-option" 
-            v-for="category in categories" 
-            :key="category"
-            @click="selectCategory(category)"
-          >
-            <text class="category-name">{{ category }}</text>
-            <nut-icon 
-              name="check" 
-              size="16" 
-              color="#165DFF" 
-              v-if="formData.category === category"
-            ></nut-icon>
-          </view>
-        </view>
-      </view>
-    </nut-popup>
+
 
     <!-- 项目选择器 -->
     <nut-popup v-model:visible="showProjectModal" position="bottom">
@@ -271,33 +276,30 @@
 </template>
 
 <script>
+import CustomNavbar from '@/components/CustomNavbar.vue'
+import knowledgeApi from '@/api/knowledgeApi.js'
+
 export default {
+  components: {
+    CustomNavbar
+  },
   data() {
     return {
       isEdit: false,
       knowledgeId: '',
       saving: false,
-      showCategoryModal: false,
       showProjectModal: false,
       showTagModal: false,
       newTag: '',
       formData: {
         title: '',
-        category: '',
+        summary: '',
         tags: [],
         content: '',
         relatedProject: ''
       },
-      categories: [
-        '技术文档',
-        '项目经验',
-        '问题解决',
-        '学习笔记',
-        '最佳实践',
-        '工具使用',
-        '其他'
-      ],
       projects: [],
+      relatedKnowledge: [],
       suggestedTags: ['前端', '后端', '数据库', 'API', 'UI设计'],
       aiAnalysis: null
     }
@@ -306,7 +308,6 @@ export default {
   computed: {
     canSave() {
       return this.formData.title.trim() && 
-             this.formData.category && 
              this.formData.content.trim()
     }
   },
@@ -347,14 +348,17 @@ export default {
     
     async loadKnowledge() {
       try {
-        // TODO: 从数据库加载知识详情
-        // 模拟加载数据
-        this.formData = {
-          title: '示例知识标题',
-          category: '技术文档',
-          tags: ['前端', 'Vue'],
-          content: '这是示例知识内容...',
-          relatedProject: '示例项目'
+        const knowledge = await knowledgeApi.getKnowledgeDetail(this.knowledgeId)
+        if (knowledge) {
+          this.formData = {
+            title: knowledge.title || '',
+            summary: knowledge.summary || '',
+            tags: knowledge.tags || [],
+            content: knowledge.content || '',
+            relatedProject: knowledge.project_name || ''
+          }
+          // 加载相关知识
+          await this.loadRelatedKnowledge()
         }
       } catch (error) {
         console.error('加载知识失败:', error)
@@ -367,26 +371,65 @@ export default {
     
     async loadProjects() {
       try {
-        // TODO: 从数据库加载项目列表
-        this.projects = [
-          { id: '1', name: '项目管理APP' },
-          { id: '2', name: '知识库系统' },
-          { id: '3', name: '用户管理系统' }
-        ]
+        const projects = await knowledgeApi.getAllProjects()
+        this.projects = projects || []
       } catch (error) {
         console.error('加载项目列表失败:', error)
+        this.projects = []
       }
     },
     
-    showCategoryPicker() {
-      this.showCategoryModal = true
+    async loadRelatedKnowledge() {
+      try {
+        console.log('加载相关知识，当前知识ID:', this.knowledgeId)
+        this.relatedKnowledge = await knowledgeApi.getRelatedKnowledge(this.knowledgeId)
+        console.log('加载到的相关知识:', this.relatedKnowledge)
+      } catch (error) {
+        console.error('加载相关知识失败:', error)
+        this.relatedKnowledge = []
+      }
     },
     
-    selectCategory(category) {
-      this.formData.category = category
-      this.showCategoryModal = false
+    async refreshRelatedKnowledge() {
+      await this.loadRelatedKnowledge()
+      uni.showToast({
+        title: '已刷新',
+        icon: 'success'
+      })
     },
     
+    viewKnowledge(knowledgeId) {
+      uni.navigateTo({
+        url: `/pages/knowledge/detail?id=${knowledgeId}`
+      })
+    },
+    
+    async removeRelatedKnowledge(knowledgeId) {
+      uni.showModal({
+        title: '确认操作',
+        content: '确定要移除此相关知识的关联吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              // 这里需要实现移除关联的API
+              await knowledgeApi.removeKnowledgeRelation(this.knowledgeId, knowledgeId)
+              await this.loadRelatedKnowledge()
+              uni.showToast({
+                title: '移除成功',
+                icon: 'success'
+              })
+            } catch (error) {
+              console.error('移除关联失败:', error)
+              uni.showToast({
+                title: '移除失败',
+                icon: 'error'
+              })
+            }
+          }
+        }
+      })
+    },
+
     showProjectPicker() {
       this.showProjectModal = true
     },
@@ -481,21 +524,7 @@ export default {
       }
     },
     
-    previewKnowledge() {
-      if (!this.canSave) {
-        uni.showToast({
-          title: '请完善必填信息',
-          icon: 'none'
-        })
-        return
-      }
-      
-      // TODO: 实现预览功能
-      uni.showToast({
-        title: '预览功能开发中',
-        icon: 'none'
-      })
-    },
+
     
     async saveKnowledge() {
       if (!this.canSave) {
@@ -509,8 +538,23 @@ export default {
       this.saving = true
       
       try {
-        // TODO: 保存到数据库
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        const knowledgeData = {
+          title: this.formData.title.trim(),
+          summary: this.formData.summary.trim(),
+          category: this.formData.category,
+          content: this.formData.content.trim(),
+          tags: this.formData.tags,
+          project_name: this.formData.relatedProject
+        }
+        
+        if (this.isEdit) {
+          await knowledgeApi.updateKnowledge(this.knowledgeId, knowledgeData)
+        } else {
+          await knowledgeApi.createKnowledge(knowledgeData)
+        }
+        
+        // 清除草稿
+        uni.removeStorageSync('knowledge_draft')
         
         uni.showToast({
           title: this.isEdit ? '更新成功' : '发布成功',
@@ -532,79 +576,24 @@ export default {
       }
     },
     
-    async saveDraft() {
-      if (!this.hasChanges()) {
-        uni.showToast({
-          title: '暂无内容需要保存',
-          icon: 'none'
-        })
-        return
-      }
-      
-      try {
-        // TODO: 保存草稿到本地存储
-        uni.setStorageSync('knowledge_draft', this.formData)
-        uni.showToast({
-          title: '草稿已保存',
-          icon: 'success'
-        })
-      } catch (error) {
-        console.error('保存草稿失败:', error)
-        uni.showToast({
-          title: '保存草稿失败',
-          icon: 'error'
-        })
-      }
-    }
+
   }
 }
 </script>
 
 <style lang="scss" scoped>
 .create-knowledge-page {
-  height: 100vh;
+  min-height: 100vh;
   background-color: #f5f5f5;
-  display: flex;
-  flex-direction: column;
+  padding-bottom: 120rpx;
 }
 
-.custom-navbar {
-  background-color: #ffffff;
-  border-bottom: 1rpx solid #e5e6eb;
-  
-  .navbar-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 88rpx;
-    padding: 0 32rpx;
-    
-    .navbar-left {
-      width: 60rpx;
-      height: 60rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .navbar-title {
-      font-size: 36rpx;
-      font-weight: 600;
-      color: #1d2129;
-    }
-    
-    .navbar-right {
-      .save-draft-text {
-        font-size: 28rpx;
-        color: #165dff;
-      }
-    }
-  }
+.navbar-placeholder {
+  height: 88rpx;
 }
 
 .form-content {
-  flex: 1;
-  padding: 32rpx;
+  padding: 24rpx;
 }
 
 .form-section {
@@ -646,11 +635,26 @@ export default {
   .char-count {
     text-align: right;
     font-size: 24rpx;
-    color: #86909c;
-    margin-top: 16rpx;
+    color: #86909C;
+    margin-top: 10rpx;
+  }
+
+  .summary-input {
+    background-color: #F7F8FA;
+    border-radius: 12rpx;
+    padding: 20rpx;
+    font-size: 28rpx;
+    color: #1D2129;
+    min-height: 120rpx;
+  }
+
+  .summary-input ::v-deep .nut-textarea__textarea {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    resize: none;
   }
   
-  .category-selector,
   .project-selector {
     display: flex;
     align-items: center;
@@ -659,7 +663,6 @@ export default {
     border-radius: 12rpx;
     padding: 24rpx;
     
-    .category-text,
     .project-text {
       font-size: 28rpx;
       color: #1d2129;
@@ -834,22 +837,23 @@ export default {
 }
 
 .bottom-actions {
-  display: flex;
-  gap: 24rpx;
-  padding: 32rpx;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background-color: #ffffff;
+  padding: 24rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
   border-top: 1rpx solid #e5e6eb;
-  
-  .preview-btn {
-    flex: 1;
-  }
+  z-index: 100;
   
   .save-btn {
-    flex: 2;
+    height: 88rpx;
+    border-radius: 44rpx;
+    background: linear-gradient(135deg, #165dff 0%, #0e42d2 100%);
   }
 }
 
-.category-picker,
 .project-picker {
   background-color: #ffffff;
   border-radius: 24rpx 24rpx 0 0;
@@ -868,19 +872,20 @@ export default {
     }
   }
   
-  .category-list,
   .project-list {
     max-height: 600rpx;
     
-    .category-option,
     .project-option {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 32rpx;
-      border-bottom: 1rpx solid #f5f5f5;
+      padding: 24rpx 32rpx;
+      border-bottom: 1rpx solid #f2f3f5;
       
-      .category-name,
+      &:last-child {
+        border-bottom: none;
+      }
+      
       .project-name {
         font-size: 28rpx;
         color: #1d2129;
@@ -895,8 +900,8 @@ export default {
   width: 600rpx;
   
   .modal-header {
-    padding: 32rpx 32rpx 24rpx;
-    border-bottom: 1rpx solid #e5e6eb;
+    padding: 32rpx 32rpx 16rpx;
+    text-align: center;
     
     .modal-title {
       font-size: 32rpx;
@@ -906,20 +911,72 @@ export default {
   }
   
   .modal-content {
-    padding: 32rpx;
+    padding: 0 32rpx 24rpx;
     
     .tag-input {
-      background-color: #f5f5f5;
+      background-color: #f2f3f5;
       border-radius: 12rpx;
       padding: 24rpx;
-      font-size: 28rpx;
     }
   }
   
   .modal-actions {
     display: flex;
-    gap: 24rpx;
-    padding: 24rpx 32rpx 32rpx;
+    gap: 16rpx;
+    padding: 0 32rpx 32rpx;
+  }
+}
+
+.related-knowledge {
+  .knowledge-list {
+    .knowledge-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24rpx;
+      background-color: #f8f9fa;
+      border-radius: 12rpx;
+      margin-bottom: 16rpx;
+      
+      .knowledge-info {
+        flex: 1;
+        
+        .knowledge-title {
+          display: block;
+          font-size: 28rpx;
+          font-weight: 500;
+          color: #1d2129;
+          margin-bottom: 8rpx;
+        }
+        
+        .knowledge-summary {
+          font-size: 24rpx;
+          color: #86909c;
+          line-height: 1.4;
+        }
+      }
+      
+      .knowledge-actions {
+        display: flex;
+        gap: 16rpx;
+        margin-left: 16rpx;
+      }
+    }
+  }
+  
+  .empty-knowledge {
+    text-align: center;
+    padding: 48rpx 24rpx;
+    
+    .empty-text {
+      font-size: 26rpx;
+      color: #86909c;
+    }
+  }
+  
+  .refresh-btn {
+    margin-top: 16rpx;
+    width: 100%;
   }
 }
 </style>

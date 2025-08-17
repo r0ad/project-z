@@ -1,12 +1,14 @@
 <template>
 	<view class="knowledge-page">
 		<!-- 自定义导航栏 -->
-		<view class="custom-navbar">
-			<view class="navbar-content">
-				<text class="navbar-title">知识库</text>
+		<CustomNavbar title="知识库" :show-back="false">
+			<template #right>
 				<nut-icon name="search" size="20" color="#86909C" @click="showSearch"></nut-icon>
-			</view>
-		</view>
+			</template>
+		</CustomNavbar>
+		
+		<!-- 导航栏占位 -->
+		<view class="navbar-placeholder"></view>
 
 		<!-- 页面内容 -->
 		<view class="page-content">
@@ -21,21 +23,7 @@
 				></nut-searchbar>
 			</view>
 
-			<!-- 分类标签 -->
-			<view class="category-section">
-				<view class="category-title">分类</view>
-				<view class="category-tags">
-					<view 
-						v-for="(category, index) in categories" 
-						:key="index"
-						class="category-tag"
-						:class="{ active: activeCategory === category.id }"
-						@click="selectCategory(category.id)"
-					>
-						{{ category.name }}
-					</view>
-				</view>
-			</view>
+
 
 			<!-- 知识列表 -->
 			<view class="knowledge-list">
@@ -74,9 +62,6 @@
 								<text class="meta-text">{{ item.viewCount }}</text>
 							</view>
 						</view>
-						<view class="ai-score" :class="getScoreClass(item.aiScore)">
-							AI评分: {{ item.aiScore }}
-						</view>
 					</view>
 				</view>
 			</view>
@@ -104,124 +89,126 @@
 
 <script>
 import CustomTabBar from '@/custom-tab-bar/index.vue'
+import CustomNavbar from '@/components/CustomNavbar.vue'
+import knowledgeApi from '@/api/knowledgeApi.js'
 
 export default {
 	components: {
-		CustomTabBar
+		CustomTabBar,
+		CustomNavbar
 	},
 	data() {
-		return {
-			searchVisible: false,
-			searchKeyword: '',
-			activeCategory: 'all',
-			categories: [
-				{ id: 'all', name: '全部' },
-				{ id: 'tech', name: '技术' },
-				{ id: 'design', name: '设计' },
-				{ id: 'product', name: '产品' },
-				{ id: 'business', name: '商业' },
-				{ id: 'other', name: '其他' }
-			],
-			knowledgeList: [
-				{
-					id: 1,
-					title: 'Vue3 Composition API 最佳实践',
-					summary: '详细介绍Vue3 Composition API的使用方法和最佳实践，包括响应式数据、生命周期钩子、组合式函数等核心概念。',
-					tags: ['Vue3', 'JavaScript', '前端'],
-					category: 'tech',
-					updateTime: '2天前',
-					viewCount: 128,
-					aiScore: 9.2
-				},
-				{
-					id: 2,
-					title: 'UI设计系统构建指南',
-					summary: '从零开始构建完整的UI设计系统，包括颜色规范、字体规范、组件库设计等，提升设计效率和一致性。',
-					tags: ['UI设计', '设计系统', 'Figma'],
-					category: 'design',
-					updateTime: '5天前',
-					viewCount: 89,
-					aiScore: 8.7
-				},
-				{
-					id: 3,
-					title: '产品需求分析方法论',
-					summary: '系统性的产品需求分析方法，包括用户调研、需求收集、优先级排序、可行性评估等关键环节。',
-					tags: ['产品管理', '需求分析', '用户研究'],
-					category: 'product',
-					updateTime: '1周前',
-					viewCount: 156,
-					aiScore: 8.9
-				},
-				{
-					id: 4,
-					title: 'React性能优化技巧',
-					summary: 'React应用性能优化的实用技巧，包括组件优化、状态管理、代码分割、懒加载等方面的最佳实践。',
-					tags: ['React', '性能优化', '前端'],
-					category: 'tech',
-					updateTime: '3天前',
-					viewCount: 203,
-					aiScore: 9.1
-				},
-				{
-					id: 5,
-					title: '商业模式画布应用指南',
-					summary: '商业模式画布的详细应用指南，帮助创业者和产品经理系统性地分析和设计商业模式。',
-					tags: ['商业模式', '创业', '战略'],
-					category: 'business',
-					updateTime: '1周前',
-					viewCount: 67,
-					aiScore: 8.5
-				}
-			]
-		}
-	},
+			return {
+				searchVisible: false,
+				searchKeyword: '',
+				loading: false,
+				refreshing: false,
+				knowledgeList: [],
+				allTags: []
+			}
+		},
 	computed: {
-		filteredKnowledge() {
-			let result = this.knowledgeList
-			
-			// 分类筛选
-			if (this.activeCategory !== 'all') {
-				result = result.filter(item => item.category === this.activeCategory)
+			filteredKnowledge() {
+				let result = this.knowledgeList
+				
+				// 搜索筛选
+				if (this.searchKeyword) {
+					const keyword = this.searchKeyword.toLowerCase()
+					result = result.filter(item => 
+						item.title.toLowerCase().includes(keyword) ||
+						item.summary.toLowerCase().includes(keyword) ||
+						item.tags.some(tag => tag.toLowerCase().includes(keyword))
+					)
+				}
+				
+				return result
 			}
-			
-			// 搜索筛选
-			if (this.searchKeyword) {
-				const keyword = this.searchKeyword.toLowerCase()
-				result = result.filter(item => 
-					item.title.toLowerCase().includes(keyword) ||
-					item.summary.toLowerCase().includes(keyword) ||
-					item.tags.some(tag => tag.toLowerCase().includes(keyword))
-				)
-			}
-			
-			return result
-		}
+		},
+	onLoad() {
+		this.loadKnowledgeList()
+		this.loadAllTags()
+	},
+	onPullDownRefresh() {
+		this.refreshData()
 	},
 	methods: {
+		// 加载知识列表
+		async loadKnowledgeList() {
+			try {
+				this.loading = true
+				const options = {
+					keyword: this.searchKeyword,
+					limit: 50,
+					offset: 0
+				}
+				this.knowledgeList = await knowledgeApi.getKnowledgeList(options)
+			} catch (error) {
+				console.error('加载知识列表失败:', error)
+				uni.showToast({
+					title: '加载失败',
+					icon: 'none'
+				})
+			} finally {
+				this.loading = false
+			}
+		},
+		
+		// 加载所有标签
+		async loadAllTags() {
+			try {
+				this.allTags = await knowledgeApi.getAllTags()
+			} catch (error) {
+				console.error('加载标签失败:', error)
+			}
+		},
+		
+		// 刷新数据
+		async refreshData() {
+			try {
+				this.refreshing = true
+				await Promise.all([
+					this.loadKnowledgeList(),
+					this.loadAllTags()
+				])
+				uni.showToast({
+					title: '刷新成功',
+					icon: 'success'
+				})
+			} catch (error) {
+				uni.showToast({
+					title: '刷新失败',
+					icon: 'none'
+				})
+			} finally {
+				this.refreshing = false
+				uni.stopPullDownRefresh()
+			}
+		},
+		
 		showSearch() {
 			this.searchVisible = !this.searchVisible
 		},
-		handleSearch(value) {
+		
+		async handleSearch(value) {
 			this.searchKeyword = value
+			await this.loadKnowledgeList()
 		},
-		clearSearch() {
+		
+		async clearSearch() {
 			this.searchKeyword = ''
+			await this.loadKnowledgeList()
 		},
-		selectCategory(categoryId) {
-			this.activeCategory = categoryId
-		},
+		
+
+		
 		viewDetail(item) {
 			uni.navigateTo({
 				url: `/pages/knowledge/detail?id=${item.id}&title=${encodeURIComponent(item.title)}`
 			})
 		},
-		getScoreClass(score) {
-			if (score >= 9) return 'excellent'
-			if (score >= 8) return 'good'
-			if (score >= 7) return 'average'
-			return 'poor'
-		},
+		
+
+		
 		addKnowledge() {
 			uni.navigateTo({
 				url: '/pages/knowledge/create'
@@ -238,70 +225,19 @@ export default {
 	padding-bottom: 160rpx;
 }
 
-.custom-navbar {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	z-index: 1000;
-	background-color: #ffffff;
-	border-bottom: 2rpx solid #E5E6EB;
-	padding-top: var(--status-bar-height);
-}
-
-.navbar-content {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 24rpx 32rpx;
-}
-
-.navbar-title {
-	font-size: 36rpx;
-	font-weight: bold;
-	color: #1D2129;
+.navbar-placeholder {
+	height: calc(var(--status-bar-height) + 136rpx);
 }
 
 .page-content {
-	padding: calc(var(--status-bar-height) + 120rpx) 32rpx 200rpx;
+	padding: 32rpx 32rpx 200rpx;
 }
 
 .search-section {
 	margin-bottom: 32rpx;
 }
 
-.category-section {
-	margin-bottom: 32rpx;
-}
 
-.category-title {
-	font-size: 28rpx;
-	font-weight: 600;
-	color: #1D2129;
-	margin-bottom: 16rpx;
-}
-
-.category-tags {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 16rpx;
-}
-
-.category-tag {
-	padding: 12rpx 24rpx;
-	background-color: #ffffff;
-	border: 2rpx solid #E5E6EB;
-	border-radius: 32rpx;
-	font-size: 24rpx;
-	color: #4E5969;
-	transition: all 0.3s ease;
-}
-
-.category-tag.active {
-	background-color: #165DFF;
-	border-color: #165DFF;
-	color: #ffffff;
-}
 
 .knowledge-list {
 	display: flex;
@@ -390,32 +326,7 @@ export default {
 	color: #86909C;
 }
 
-.ai-score {
-	font-size: 24rpx;
-	font-weight: 500;
-	padding: 8rpx 16rpx;
-	border-radius: 8rpx;
-}
 
-.ai-score.excellent {
-	background-color: #00B42A10;
-	color: #00B42A;
-}
-
-.ai-score.good {
-	background-color: #165DFF10;
-	color: #165DFF;
-}
-
-.ai-score.average {
-	background-color: #FF7D0010;
-	color: #FF7D00;
-}
-
-.ai-score.poor {
-	background-color: #F53F3F10;
-	color: #F53F3F;
-}
 
 .empty-state {
 	display: flex;

@@ -1,44 +1,51 @@
 <template>
-  <view class="custom-navbar" :class="{ fixed: fixed }">
+  <view class="custom-navbar" :class="{ fixed: fixed }" :style="{ backgroundColor: backgroundColor }">
     <view class="navbar-content">
-      <!-- 左侧内容 -->
-      <view class="navbar-left" @click="handleLeftClick">
-        <nut-icon 
-          v-if="showBack" 
-          name="left" 
-          size="20" 
-          :color="leftIconColor"
-        ></nut-icon>
-        <slot name="left" v-else></slot>
+      <!-- 左侧内容插槽 -->
+      <view class="navbar-left">
+        <slot name="left">
+          <!-- 默认返回按钮 -->
+          <nut-icon 
+            v-if="showBack" 
+            name="left" 
+            size="20" 
+            :color="leftIconColor"
+            @click="handleLeftClick"
+          ></nut-icon>
+        </slot>
       </view>
       
-      <!-- 标题 -->
-      <view class="navbar-title">
-        <text class="title-text" :style="{ color: titleColor }">{{ title }}</text>
-        <slot name="title"></slot>
+      <!-- 中间标题插槽 -->
+      <view class="navbar-center">
+        <slot name="center">
+          <text v-if="title" class="navbar-title" :style="{ color: titleColor }">{{ title }}</text>
+        </slot>
       </view>
       
-      <!-- 右侧内容 -->
-      <view class="navbar-right" @click="handleRightClick">
-        <nut-icon 
-          v-if="rightIcon" 
-          :name="rightIcon" 
-          size="20" 
-          :color="rightIconColor"
-        ></nut-icon>
-        <nut-button 
-          v-else-if="rightButton"
-          :type="rightButton.type || 'primary'"
-          :size="rightButton.size || 'small'"
-          @click="handleRightButtonClick"
-        >
-          <nut-icon v-if="rightButton.icon" :name="rightButton.icon" size="14"></nut-icon>
-          {{ rightButton.text }}
-        </nut-button>
-        <view v-else-if="rightText" class="right-text" :style="{ color: rightTextColor }">
-          {{ rightText }}
-        </view>
-        <slot name="right" v-else></slot>
+      <!-- 右侧内容插槽 -->
+      <view class="navbar-right">
+        <slot name="right">
+          <!-- 兼容旧版本的属性配置 -->
+          <nut-icon 
+            v-if="rightIcon" 
+            :name="rightIcon" 
+            size="20" 
+            :color="rightIconColor"
+            @click="handleRightClick"
+          ></nut-icon>
+          <nut-button 
+            v-else-if="rightButton"
+            :type="rightButton.type || 'primary'"
+            :size="rightButton.size || 'small'"
+            @click="handleRightButtonClick"
+          >
+            <nut-icon v-if="rightButton.icon" :name="rightButton.icon" size="14"></nut-icon>
+            {{ rightButton.text }}
+          </nut-button>
+          <view v-else-if="rightText" class="right-text" :style="{ color: rightTextColor }">
+            {{ rightText }}
+          </view>
+        </slot>
       </view>
     </view>
   </view>
@@ -152,6 +159,7 @@ export default {
   justify-content: space-between;
   padding: 24rpx 32rpx;
   height: 88rpx;
+  position: relative;
 }
 
 .navbar-left {
@@ -159,20 +167,22 @@ export default {
   align-items: center;
   min-width: 80rpx;
   justify-content: flex-start;
+  z-index: 2;
+}
+
+.navbar-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 60%;
+  z-index: 1;
 }
 
 .navbar-title {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.title-text {
   font-size: 36rpx;
   font-weight: bold;
-  max-width: 400rpx;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -183,6 +193,7 @@ export default {
   align-items: center;
   min-width: 80rpx;
   justify-content: flex-end;
+  z-index: 2;
 }
 
 .right-text {
