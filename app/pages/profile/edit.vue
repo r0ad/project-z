@@ -51,15 +51,6 @@
 				</view>
 			</view>
 			
-			<!-- VIP设置 -->
-			<view class="form-section">
-				<view class="section-title">会员设置</view>
-				<view class="form-item switch-item">
-					<text class="form-label">VIP会员</text>
-					<nut-switch v-model="formData.isVip" size="small" />
-				</view>
-			</view>
-			
 			<!-- 保存按钮 -->
 			<view class="save-section">
 				<nut-button

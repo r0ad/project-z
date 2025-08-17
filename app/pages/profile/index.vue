@@ -4,7 +4,7 @@
 		<view class="custom-navbar">
 			<view class="navbar-content">
 				<text class="navbar-title">我的</text>
-				<nut-icon name="setting" size="20" color="#86909C" @click="openSettings"></nut-icon>
+				<!-- <nut-icon name="setting" size="20" color="#86909C" @click="openSettings"></nut-icon> -->
 			</view>
 		</view>
 
@@ -181,7 +181,7 @@ export default {
 		await this.loadUserInfo()
 		await this.loadUserData()
 		// await this.loadStatsData()
-		await this.loadAIStats()
+		// await this.loadAIStats()
 		await this.loadFavoriteCount()
 		this.getCurrentVersion()
 	},
@@ -192,7 +192,7 @@ export default {
 			return plus.runtime.version
 			// #endif
 			// #ifndef APP-PLUS
-			return '1.0.0'
+			return '1.0.1'
 			// #endif
 		},
 		openSettings() {
@@ -204,12 +204,6 @@ export default {
 		editProfile() {
 			uni.navigateTo({
 				url: '/pages/profile/edit'
-			})
-		},
-		chatWithAI() {
-			uni.showToast({
-				title: 'AI对话',
-				icon: 'none'
 			})
 		},
 		handleMenuClick(item) {
@@ -260,21 +254,6 @@ export default {
 					})
 			}
 		},
-		
-		/**
-		 * 打开AI设置
-		 */
-		openAISettings() {
-			uni.showToast({
-				title: 'AI设置功能开发中',
-				icon: 'none'
-			})
-			// TODO: 实现AI设置页面跳转
-			// uni.navigateTo({
-			//     url: '/pages/settings/ai'
-			// })
-		},
-
 		async retryDatabaseUpgrade() {
 			uni.showModal({
 				title: '数据库升级重试',
