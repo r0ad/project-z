@@ -602,7 +602,7 @@ export default {
     
     toggleVoiceInput() {
       uni.showToast({
-        title: '语音功能开发中',
+        title: '语音功能开发中，建议使用输入法自带语音输入',
         icon: 'none'
       })
     },
@@ -725,9 +725,7 @@ export default {
 
 .chat-messages {
   flex: 1;
-  padding: 32rpx;
-  padding-top: 120rpx;
-  padding-bottom: 160rpx;
+  padding: 120rpx 40rpx 160rpx 40rpx;
 }
 
 .message-list {
@@ -744,6 +742,8 @@ export default {
 
 .user-message {
   flex-direction: row-reverse;
+    max-width: calc(100% - 80rpx);
+
 }
 
 .message-avatar {
@@ -766,7 +766,8 @@ export default {
 
 .message-content {
   flex: 1;
-  max-width: calc(100% - 80rpx);
+  max-width: calc(100% - 170rpx);
+  min-width: 0;
 }
 
 .message-bubble {
