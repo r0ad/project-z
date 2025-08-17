@@ -12,35 +12,23 @@
 
     <!-- 项目上下文信息 -->
     <view class="context-info" v-if="showContext">
-      <view class="context-header">
-        <nut-icon name="tips" size="16" color="#165DFF"></nut-icon>
-        <text class="context-title">当前上下文</text>
+      <view class="context-compact">
+        <nut-icon name="tips" size="14" color="#165DFF"></nut-icon>
+        <text class="context-text">{{ projectName }} · {{ projectProgress }}% · {{ recentLogCount }}条日志</text>
         <view class="context-toggle" @click="toggleContext">
-          <nut-icon :name="showContext ? 'up' : 'down'" size="14" color="#86909C"></nut-icon>
-        </view>
-      </view>
-      <view class="context-content">
-        <view class="context-item">
-          <text class="context-label">项目：</text>
-          <text class="context-value">{{ projectName }}</text>
-        </view>
-        <view class="context-item">
-          <text class="context-label">进度：</text>
-          <text class="context-value">{{ projectProgress }}%</text>
-        </view>
-        <view class="context-item">
-          <text class="context-label">最近日志：</text>
-          <text class="context-value">{{ recentLogCount }}条</text>
+          <nut-icon name="close" size="12" color="#86909C"></nut-icon>
         </view>
       </view>
     </view>
 
     <!-- 聊天消息列表 -->
     <scroll-view 
+      id="messageScrollView"
       class="chat-messages" 
       scroll-y
       :scroll-top="scrollTop"
       scroll-with-animation
+      @scroll="onScroll"
     >
       <view class="message-list">
         <!-- 欢迎消息 -->
@@ -121,7 +109,7 @@
     <!-- 输入区域 -->
     <view class="input-area">
       <!-- 配置选项 -->
-      <view class="config-options">
+      <!-- <view class="config-options">
         <view class="option-item">
           <text class="option-label">流式输出</text>
           <switch 
@@ -130,7 +118,7 @@
             color="#165dff"
           />
         </view>
-      </view>
+      </view> -->
       
       <view class="input-container">
         <nut-input
@@ -228,24 +216,131 @@
     <nut-popup 
       v-model:visible="showLogConfig" 
       position="center"
-      :style="{ width: '80%' }"
+      :style="{ width: '90%', maxWidth: '400rpx' }"
     >
       <view class="log-config">
         <view class="popup-header">
           <text class="popup-title">设置日志数量</text>
+          <nut-icon name="close" size="20" @click="cancelLogConfig" class="close-btn"></nut-icon>
         </view>
+        
         <view class="config-content">
-          <text class="config-label">每次对话携带的日志数量：</text>
-          <nut-input-number 
-            v-model="tempLogCount" 
-            :min="1" 
-            :max="20"
-            :step="1"
-          ></nut-input-number>
+          <!-- 选择模式 -->
+          <view class="mode-selector">
+            <view class="mode-tabs">
+              <view 
+                class="mode-tab" 
+                :class="{ active: logSelectionMode === 'quick' }"
+                @click="logSelectionMode = 'quick'"
+              >
+                快捷选择
+              </view>
+              <view 
+                class="mode-tab" 
+                :class="{ active: logSelectionMode === 'manual' }"
+                @click="logSelectionMode = 'manual'"
+              >
+                手动选择
+              </view>
+            </view>
+          </view>
+          
+          <!-- 快捷选择模式 -->
+          <view v-if="logSelectionMode === 'quick'" class="quick-mode">
+            <text class="mode-label">选择最近的日志数量：</text>
+            
+            <view class="quick-buttons">
+              <view 
+                class="quick-btn" 
+                :class="{ active: tempLogCount === 3 }"
+                @click="setQuickLogCount(3)"
+              >
+                最近3条
+              </view>
+              <view 
+                class="quick-btn" 
+                :class="{ active: tempLogCount === 7 }"
+                @click="setQuickLogCount(7)"
+              >
+                最近7条
+              </view>
+              <view 
+                class="quick-btn" 
+                :class="{ active: tempLogCount === 14 }"
+                @click="setQuickLogCount(14)"
+              >
+                最近14条
+              </view>
+              <view 
+                class="quick-btn" 
+                :class="{ active: tempLogCount === 20 }"
+                @click="setQuickLogCount(20)"
+              >
+                最近20条
+              </view>
+            </view>
+            
+            <!-- 自定义数量 -->
+            <view class="custom-select">
+              <text class="custom-label">或自定义数量：</text>
+              <nut-input-number 
+                v-model="tempLogCount" 
+                :min="1" 
+                :max="50"
+                :step="1"
+                class="custom-input"
+              ></nut-input-number>
+            </view>
+          </view>
+          
+          <!-- 手动选择模式 -->
+          <view v-if="logSelectionMode === 'manual'" class="manual-mode">
+            <text class="mode-label">选择具体的日志条目：</text>
+            
+            <scroll-view class="log-list" scroll-y :style="{ height: '300rpx' }">
+              <view 
+                class="log-item" 
+                v-for="(log, index) in availableLogs" 
+                :key="index"
+                @click="toggleLogSelection(index)"
+                :class="{ selected: selectedLogIndexes.includes(index) }"
+              >
+                <view class="log-checkbox">
+                  <nut-icon 
+                    :name="selectedLogIndexes.includes(index) ? 'checked' : 'check-normal'" 
+                    size="16" 
+                    :color="selectedLogIndexes.includes(index) ? '#165DFF' : '#C9CDD4'"
+                  ></nut-icon>
+                </view>
+                <view class="log-content">
+                  <text class="log-text">{{ log.content }}</text>
+                  <text class="log-time">{{ formatTime(log.timestamp) }}</text>
+                </view>
+              </view>
+              
+              <view v-if="availableLogs.length === 0" class="empty-logs">
+                <text>暂无可选择的日志</text>
+              </view>
+            </scroll-view>
+            
+            <view class="selection-summary">
+              <text class="summary-text">已选择 {{ selectedLogIndexes.length }} 条日志</text>
+              <view class="selection-actions">
+                <text class="action-link" @click="selectAllLogs">全选</text>
+                <text class="action-link" @click="clearLogSelection">清空</text>
+              </view>
+            </view>
+          </view>
+          
+          <view class="config-tip">
+            <nut-icon name="tips" size="14" color="#999"></nut-icon>
+            <text class="tip-text">{{ logSelectionMode === 'quick' ? '日志数量越多，AI理解上下文越准确，但会消耗更多token' : '选择相关的日志条目可以提供更精准的上下文信息' }}</text>
+          </view>
         </view>
+        
         <view class="config-actions">
-          <nut-button type="default" @click="cancelLogConfig">取消</nut-button>
-          <nut-button type="primary" @click="saveLogCount">确定</nut-button>
+          <nut-button type="default" @click="cancelLogConfig" class="action-btn">取消</nut-button>
+          <nut-button type="primary" @click="saveLogCount" class="action-btn">确定</nut-button>
         </view>
       </view>
     </nut-popup>
@@ -273,7 +368,22 @@ export default {
       showMenu: false,
       inputText: '',
       isThinking: false,
-      scrollTop: 0,
+      
+      // 智能滚动控制系统
+      scrollTop: 0, // 当前滚动位置
+      scrollState: 'AUTO_FOLLOW', // AUTO_FOLLOW | USER_BROWSING | RETURNING_TO_BOTTOM
+      lastScrollTop: 0, // 上次滚动位置
+      lastScrollTime: 0, // 上次滚动时间戳
+      scrollDirection: 0, // 滚动方向：1向下，-1向上，0无变化
+      isAutoScrolling: false, // 是否正在执行自动滚动
+      userScrollThreshold: 30, // 用户主动滚动的阈值（像素）
+      nearBottomThreshold: 50, // 接近底部的阈值（像素）
+      scrollDebounceTimer: null, // 滚动防抖定时器
+      autoScrollTimer: null, // 自动滚动定时器
+      scrollThrottleTimer: null, // 滚动节流定时器
+      lastThrottleTime: 0, // 上次节流时间
+      lastContentHeight: 0, // 上次内容高度
+      
       messages: [],
       contextData: {
         recentLogs: [],
@@ -292,7 +402,13 @@ export default {
       showConversationList: false,
       logCount: 5, // 可配置的日志数量
       showLogConfig: false,
-      tempLogCount: 5
+      tempLogCount: 5,
+      
+      // 日志选择功能
+      logSelectionMode: 'quick', // 'quick' | 'manual'
+      availableLogs: [], // 可选择的日志列表
+      selectedLogIndexes: [], // 已选择的日志索引
+      selectedLogs: [] // 已选择的具体日志
     }
   },
   
@@ -301,6 +417,23 @@ export default {
     this.projectName = options.projectName || '项目名称'
     this.projectProgress = parseInt(options.progress) || 0
     this.initChat()
+  },
+  
+  onUnload() {
+    // 清理所有滚动相关定时器
+    if (this.scrollDebounceTimer) {
+      clearTimeout(this.scrollDebounceTimer)
+      this.scrollDebounceTimer = null
+    }
+    if (this.autoScrollTimer) {
+      clearTimeout(this.autoScrollTimer)
+      this.autoScrollTimer = null
+    }
+    if (this.scrollThrottleTimer) {
+      clearTimeout(this.scrollThrottleTimer)
+      this.scrollThrottleTimer = null
+    }
+    console.log('智能滚动系统已清理')
   },
   
   methods: {
@@ -438,8 +571,16 @@ export default {
     },
     
     formatTime(date) {
-      const hours = String(date.getHours()).padStart(2, '0')
-      const minutes = String(date.getMinutes()).padStart(2, '0')
+      // 确保date是Date对象
+      const dateObj = date instanceof Date ? date : new Date(date)
+      
+      // 检查是否是有效的日期
+      if (isNaN(dateObj.getTime())) {
+        return '--:--'
+      }
+      
+      const hours = String(dateObj.getHours()).padStart(2, '0')
+      const minutes = String(dateObj.getMinutes()).padStart(2, '0')
       return `${hours}:${minutes}`
     },
     
@@ -460,9 +601,10 @@ export default {
       
       this.inputText = ''
       
-      // 滚动到底部
+      // 强制滚动到底部（用户发送消息）
       this.$nextTick(() => {
-        this.scrollToBottom()
+        this.scrollState = 'AUTO_FOLLOW'
+        this.scrollToBottom(true)
       })
       
       // AI思考
@@ -504,7 +646,7 @@ export default {
       } finally {
         this.isThinking = false
         this.$nextTick(() => {
-          this.scrollToBottom()
+          this.scrollToBottom(true)
         })
       }
     },
@@ -530,9 +672,9 @@ export default {
               this.messages[currentMessageIndex].content = fullContent
               // 触发界面更新
               this.$forceUpdate()
-              // 滚动到底部
+              // 使用节流滚动到底部（流式输出）
               this.$nextTick(() => {
-                this.scrollToBottom()
+                this.throttledScrollToBottom()
               })
             }
           }
@@ -604,17 +746,17 @@ export default {
       const actions = []
       
       // 根据内容提取可能的操作
-      if (content.includes('进度') || content.includes('完成')) {
+      /* if (content.includes('进度') || content.includes('完成')) {
         actions.push({ type: 'update_progress', text: '更新进度' })
-      }
+      } */
       
-      if (content.includes('问题') || content.includes('解决')) {
+      /* if (content.includes('问题') || content.includes('解决')) {
         actions.push({ type: 'save_solution', text: '保存解决方案' })
-      }
+      } */
       
-      if (content.includes('计划') || content.includes('建议')) {
+      /* if (content.includes('计划') || content.includes('建议')) {
         actions.push({ type: 'update_plan', text: '更新计划' })
-      }
+      } */
       
       if (content.includes('知识') || content.includes('经验')) {
         actions.push({ type: 'save_knowledge', text: '保存到知识库' })
@@ -625,9 +767,9 @@ export default {
         actions.push({ type: 'manage_milestone', text: '管理里程碑' })
       }
       
-      if (content.includes('创建') && (content.includes('里程碑') || content.includes('节点'))) {
+      /* if (content.includes('创建') && (content.includes('里程碑') || content.includes('节点'))) {
         actions.push({ type: 'create_milestone', text: '创建里程碑' })
-      }
+      } */
       
       if (content.includes('完成') && (content.includes('里程碑') || content.includes('节点'))) {
         actions.push({ type: 'complete_milestone', text: '标记完成' })
@@ -1084,28 +1226,61 @@ export default {
       })
     },
     
-    showLogCountConfig() {
+    async showLogCountConfig() {
       this.showMenu = false
       this.tempLogCount = this.logCount
+      
+      try {
+        // 加载所有可用的日志用于手动选择
+        const allLogs = await logApi.getRecentLogs(this.projectId, 50) // 获取最近50条日志
+        this.availableLogs = allLogs || []
+        
+        // 如果当前使用的是手动选择的日志，恢复选择状态
+        if (this.selectedLogs.length > 0) {
+          this.selectedLogIndexes = []
+          this.selectedLogs.forEach(selectedLog => {
+            const index = this.availableLogs.findIndex(log => 
+              log.id === selectedLog.id || 
+              (log.content === selectedLog.content && log.timestamp === selectedLog.timestamp)
+            )
+            if (index > -1) {
+              this.selectedLogIndexes.push(index)
+            }
+          })
+        }
+      } catch (error) {
+        console.error('加载日志列表失败:', error)
+        this.availableLogs = []
+      }
+      
       this.showLogConfig = true
     },
     
     async saveLogCount() {
-      this.logCount = this.tempLogCount
       this.showLogConfig = false
       
       try {
-        // 重新加载项目日志
-        const logsResult = await logApi.getRecentLogs(this.projectId, this.logCount)
-        this.contextData.recentLogs = logsResult || []
+        if (this.logSelectionMode === 'quick') {
+          // 快捷选择模式：使用数量
+          this.logCount = this.tempLogCount
+          const logsResult = await logApi.getRecentLogs(this.projectId, this.logCount)
+          this.contextData.recentLogs = logsResult || []
+          this.selectedLogs = []
+        } else {
+          // 手动选择模式：使用选中的日志
+          this.selectedLogs = this.selectedLogIndexes.map(index => this.availableLogs[index])
+          this.contextData.recentLogs = this.selectedLogs
+          this.logCount = this.selectedLogs.length
+        }
+        
         this.recentLogCount = this.contextData.recentLogs.length
         
         uni.showToast({
-          title: '日志数量已更新',
+          title: `已设置${this.recentLogCount}条日志`,
           icon: 'success'
         })
       } catch (error) {
-        console.error('更新日志数量失败:', error)
+        console.error('更新日志配置失败:', error)
         uni.showToast({
           title: '更新失败',
           icon: 'none'
@@ -1115,11 +1290,228 @@ export default {
     
     cancelLogConfig() {
       this.showLogConfig = false
+      // 重置临时变量
       this.tempLogCount = this.logCount
+      this.selectedLogIndexes = []
     },
     
-    scrollToBottom() {
-      this.scrollTop = 999999
+    // 日志选择相关方法
+    setQuickLogCount(count) {
+      this.tempLogCount = count
+    },
+    
+    toggleLogSelection(index) {
+      const selectedIndex = this.selectedLogIndexes.indexOf(index)
+      if (selectedIndex > -1) {
+        // 取消选择
+        this.selectedLogIndexes.splice(selectedIndex, 1)
+      } else {
+        // 添加选择
+        this.selectedLogIndexes.push(index)
+      }
+    },
+    
+    selectAllLogs() {
+      this.selectedLogIndexes = this.availableLogs.map((_, index) => index)
+    },
+    
+    clearLogSelection() {
+      this.selectedLogIndexes = []
+    },
+    
+    // 智能滚动系统方法
+    
+    // 检查是否接近底部
+    checkNearBottom(scrollTop, scrollHeight, clientHeight) {
+      return scrollTop + clientHeight >= scrollHeight - this.nearBottomThreshold
+    },
+    
+    // 滚动到底部（智能滚动入口）
+    scrollToBottom(force = false) {
+      // 如果不是强制滚动且不在自动跟随状态，跳过
+      if (!force && this.scrollState !== 'AUTO_FOLLOW') {
+        console.log(`滚动状态为 ${this.scrollState}，跳过自动滚动`)
+        return
+      }
+      
+      // 如果不是强制滚动且正在自动滚动中，跳过
+      if (!force && this.isAutoScrolling) {
+        return
+      }
+      
+      // 执行自动滚动
+      this.performAutoScroll(force)
+    },
+    
+    // 执行自动滚动
+    performAutoScroll(forceScroll = false) {
+      console.log('开始执行智能滚动到底部', { forceScroll })
+      this.isAutoScrolling = true
+      
+      // 清除之前的自动滚动定时器
+      if (this.autoScrollTimer) {
+        clearTimeout(this.autoScrollTimer)
+      }
+      
+      const query = uni.createSelectorQuery().in(this)
+      query.select('#messageScrollView').boundingClientRect()
+      query.select('.message-list').boundingClientRect()
+      query.exec((res) => {
+        if (res && res[0] && res[1]) {
+          const scrollViewHeight = res[0].height
+          const contentHeight = res[1].height
+          const currentScrollTop = this.scrollTop
+          
+          // 如果内容高度大于滚动视图高度，需要滚动
+          if (contentHeight > scrollViewHeight) {
+            const targetScrollTop = Math.max(0, contentHeight - scrollViewHeight)
+            const scrollDifference = Math.abs(currentScrollTop - targetScrollTop)
+            
+            console.log('滚动计算:', {
+              contentHeight,
+              scrollViewHeight,
+              currentScrollTop,
+              targetScrollTop,
+              scrollDifference,
+              forceScroll
+            })
+            
+            // 如果不是强制滚动且滚动差异很小，不需要滚动
+            if (!forceScroll && scrollDifference < 10) {
+              console.log('滚动差异很小，跳过滚动')
+              this.finishAutoScroll()
+              return
+            }
+            
+            // 执行平滑滚动
+            this.smoothScrollTo(targetScrollTop)
+          } else {
+            this.finishAutoScroll()
+          }
+        } else {
+          this.finishAutoScroll()
+        }
+      })
+    },
+    
+    // 平滑滚动到指定位置
+    smoothScrollTo(targetScrollTop) {
+      console.log('设置滚动位置:', targetScrollTop)
+      this.scrollTop = targetScrollTop
+      
+      // 设置自动滚动完成定时器
+      this.autoScrollTimer = setTimeout(() => {
+        this.finishAutoScroll()
+      }, 300) // 等待滚动动画完成
+    },
+    
+    // 完成自动滚动
+    finishAutoScroll() {
+      this.isAutoScrolling = false
+      if (this.autoScrollTimer) {
+        clearTimeout(this.autoScrollTimer)
+        this.autoScrollTimer = null
+      }
+      console.log('自动滚动完成')
+    },
+    
+    // 节流滚动到底部（用于流式回复）
+    throttledScrollToBottom() {
+      // 如果不在自动跟随状态，不执行滚动
+      if (this.scrollState !== 'AUTO_FOLLOW') {
+        return
+      }
+      
+      const now = Date.now()
+      
+      // 节流控制：200ms内最多执行一次
+      if (now - this.lastThrottleTime < 200) {
+        return
+      }
+      
+      // 检查内容高度是否显著增加
+      const query = uni.createSelectorQuery().in(this)
+      query.select('.message-list').boundingClientRect()
+      query.exec((res) => {
+        if (res && res[0]) {
+          const currentHeight = res[0].height
+          
+          // 如果高度增加少于30px，不滚动
+          if (this.lastContentHeight && currentHeight - this.lastContentHeight < 30) {
+            return
+          }
+          
+          this.lastContentHeight = currentHeight
+          this.lastThrottleTime = now
+          
+          // 执行非强制滚动
+          this.scrollToBottom(false)
+        }
+      })
+    },
+    
+    // 滚动事件处理
+    onScroll(e) {
+      const { scrollTop, scrollHeight, scrollLeft } = e.detail
+      const now = Date.now()
+      
+      // 防抖处理：清除之前的防抖定时器
+      if (this.scrollDebounceTimer) {
+        clearTimeout(this.scrollDebounceTimer)
+      }
+      
+      // 如果正在自动滚动，不处理用户滚动
+      if (this.isAutoScrolling) {
+        return
+      }
+      
+      // 计算滚动方向
+      const direction = scrollTop > this.lastScrollTop ? 'down' : 'up'
+      this.scrollDirection = direction
+      
+      // 更新滚动位置和时间
+      this.lastScrollTop = scrollTop
+      this.lastScrollTime = now
+      
+      // 防抖处理滚动状态变化
+      this.scrollDebounceTimer = setTimeout(() => {
+        this.handleScrollStateChange(scrollTop, scrollHeight)
+      }, 150)
+    },
+    
+    // 处理滚动状态变化
+    handleScrollStateChange(scrollTop, scrollHeight) {
+      const query = uni.createSelectorQuery().in(this)
+      query.select('#messageScrollView').boundingClientRect()
+      query.exec((res) => {
+        if (res && res[0]) {
+          const scrollViewHeight = res[0].height
+          const isNearBottom = this.checkNearBottom(scrollTop, scrollHeight, scrollViewHeight)
+          
+          console.log('滚动状态检查:', {
+            scrollTop,
+            scrollHeight,
+            scrollViewHeight,
+            isNearBottom,
+            currentState: this.scrollState
+          })
+          
+          // 根据滚动位置更新状态
+          if (isNearBottom) {
+            // 接近底部，切换到自动跟随状态
+            if (this.scrollState !== 'AUTO_FOLLOW') {
+              console.log('切换到自动跟随状态')
+              this.scrollState = 'AUTO_FOLLOW'
+            }
+          } else {
+            // 不在底部，切换到用户浏览状态
+            if (this.scrollState !== 'USER_BROWSING') {
+              console.log('切换到用户浏览状态')
+              this.scrollState = 'USER_BROWSING'
+            }
+          }
+        }
+      })
     }
   }
 }
@@ -1132,47 +1524,38 @@ export default {
   display: flex;
   flex-direction: column;
   padding-top: calc(var(--status-bar-height) + 120rpx);
+  padding-bottom: 0;
 }
 
 .context-info {
+  position: fixed;
+  top: calc(var(--status-bar-height) + 120rpx);
+  left: 0;
+  right: 0;
   background-color: #ffffff;
   border-bottom: 1rpx solid #e5e6eb;
+  z-index: 100;
   
-  .context-header {
+  .context-compact {
     display: flex;
     align-items: center;
-    gap: 8rpx;
-    padding: 24rpx 32rpx 16rpx;
+    gap: 12rpx;
+    padding: 16rpx 32rpx;
     
-    .context-title {
+    .context-text {
       font-size: 24rpx;
       color: #4e5969;
       flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     
     .context-toggle {
       padding: 8rpx;
-    }
-  }
-  
-  .context-content {
-    padding: 0 32rpx 24rpx;
-    
-    .context-item {
       display: flex;
-      margin-bottom: 8rpx;
-      
-      .context-label {
-        font-size: 24rpx;
-        color: #86909c;
-        width: 120rpx;
-      }
-      
-      .context-value {
-        font-size: 24rpx;
-        color: #1d2129;
-        flex: 1;
-      }
+      align-items: center;
+      justify-content: center;
     }
   }
 }
@@ -1180,6 +1563,8 @@ export default {
 .chat-messages {
   flex: 1;
   padding: 32rpx;
+  margin-top: 80rpx; /* 为固定的上下文信息留出空间 */
+  margin-bottom: 200rpx; /* 为固定的输入区域留出空间 */
 }
 
 .message-list {
@@ -1308,9 +1693,15 @@ export default {
 }
 
 .input-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background-color: #ffffff;
   border-top: 1rpx solid #e5e6eb;
   padding: 24rpx 32rpx;
+  z-index: 100;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.1);
   
   .config-options {
     padding: 16rpx 0;
@@ -1410,6 +1801,316 @@ export default {
     animation: blink 1s infinite;
     color: #165dff;
     font-weight: bold;
+  }
+}
+
+// 日志配置弹窗样式
+.log-config {
+  background-color: #ffffff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  
+  .popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32rpx 32rpx 24rpx;
+    border-bottom: 1rpx solid #f2f3f5;
+    
+    .popup-title {
+      font-size: 32rpx;
+      font-weight: 600;
+      color: #1d2129;
+    }
+    
+    .close-btn {
+      padding: 8rpx;
+      color: #86909c;
+      
+      &:active {
+        opacity: 0.7;
+      }
+    }
+  }
+  
+  .config-content {
+    padding: 32rpx;
+  }
+  
+  .config-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 12rpx;
+    padding: 24rpx;
+    background-color: #f8f9fa;
+    border-radius: 12rpx;
+    margin: 24rpx 0;
+    
+    .tip-text {
+      font-size: 24rpx;
+      color: #86909c;
+      line-height: 1.5;
+      flex: 1;
+    }
+  }
+  
+  .config-actions {
+    display: flex;
+    gap: 24rpx;
+    padding: 24rpx 32rpx 32rpx;
+    border-top: 1rpx solid #f2f3f5;
+    
+    .action-btn {
+      flex: 1;
+      height: 80rpx;
+      border-radius: 12rpx;
+      font-size: 28rpx;
+    }
+  }
+}
+
+// 日志选择界面样式
+.mode-selector {
+  margin-bottom: 32rpx;
+  
+  .mode-tabs {
+    display: flex;
+    background-color: #f2f3f5;
+    border-radius: 12rpx;
+    padding: 4rpx;
+    
+    .mode-tab {
+      flex: 1;
+      text-align: center;
+      padding: 16rpx 24rpx;
+      font-size: 28rpx;
+      color: #86909c;
+      border-radius: 8rpx;
+      transition: all 0.3s;
+      
+      &.active {
+        background-color: #ffffff;
+        color: #165dff;
+        box-shadow: 0 2rpx 8rpx rgba(22, 93, 255, 0.1);
+      }
+    }
+  }
+}
+
+.quick-mode, .manual-mode {
+  .mode-label {
+    font-size: 28rpx;
+    color: #1d2129;
+    margin-bottom: 24rpx;
+    display: block;
+  }
+}
+
+.quick-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-bottom: 32rpx;
+  
+  .quick-btn {
+    padding: 20rpx 24rpx;
+    background-color: #f2f3f5;
+    color: #4e5969;
+    border-radius: 12rpx;
+    font-size: 26rpx;
+    text-align: center;
+    transition: all 0.3s;
+    border: 2rpx solid transparent;
+    
+    &.active {
+      background-color: #165dff;
+      color: #ffffff;
+      border-color: #165dff;
+      box-shadow: 0 4rpx 12rpx rgba(22, 93, 255, 0.2);
+    }
+    
+    &:active {
+      transform: scale(0.95);
+    }
+    
+    &:hover {
+      background-color: #e8f4ff;
+      border-color: #b3d8ff;
+    }
+  }
+}
+
+.custom-select {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+  padding: 24rpx;
+  background-color: #f8f9fa;
+  border-radius: 12rpx;
+  border: 1rpx solid #e5e6eb;
+  
+  .custom-label {
+    font-size: 26rpx;
+    color: #4e5969;
+    white-space: nowrap;
+  }
+  
+  .custom-input {
+    flex: 1;
+    min-width: 120rpx;
+  }
+}
+
+.log-list {
+  border: 1rpx solid #e5e6eb;
+  border-radius: 12rpx;
+  margin-bottom: 24rpx;
+  background-color: #ffffff;
+  
+  .log-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 24rpx;
+    border-bottom: 1rpx solid #f2f3f5;
+    transition: all 0.3s;
+    cursor: pointer;
+    
+    &:last-child {
+       border-bottom: none;
+     }
+     
+     &.selected {
+       background-color: #f0f7ff;
+       border-left: 4rpx solid #165dff;
+     }
+    
+    &:active {
+      background-color: #f8f9fa;
+    }
+    
+    .log-checkbox {
+      margin-right: 16rpx;
+      margin-top: 4rpx;
+    }
+    
+    .log-content {
+      flex: 1;
+      
+      .log-text {
+        font-size: 26rpx;
+        color: #1d2129;
+        line-height: 1.5;
+        display: block;
+        margin-bottom: 8rpx;
+        word-break: break-all;
+      }
+      
+      .log-time {
+        font-size: 22rpx;
+        color: #86909c;
+      }
+    }
+  }
+  
+  .empty-logs {
+    padding: 60rpx 24rpx;
+    text-align: center;
+    color: #86909c;
+    font-size: 26rpx;
+  }
+}
+
+.selection-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  background-color: #f8f9fa;
+  border-radius: 12rpx;
+  margin-bottom: 24rpx;
+  
+  .summary-text {
+    font-size: 26rpx;
+    color: #4e5969;
+  }
+  
+  .selection-actions {
+    display: flex;
+    gap: 24rpx;
+    
+    .action-link {
+      font-size: 26rpx;
+      color: #165dff;
+      
+      &:active {
+        opacity: 0.7;
+      }
+    }
+  }
+    
+    &.selected {
+      background-color: #f0f7ff;
+    }
+    
+    &:active {
+      background-color: #e8f4ff;
+    }
+    
+    .log-checkbox {
+      margin-right: 16rpx;
+      margin-top: 4rpx;
+    }
+    
+    .log-content {
+      flex: 1;
+      
+      .log-text {
+        font-size: 26rpx;
+        color: #1d2129;
+        line-height: 1.5;
+        display: block;
+        margin-bottom: 8rpx;
+      }
+      
+      .log-time {
+        font-size: 22rpx;
+        color: #86909c;
+      }
+    }
+  }
+  
+  .empty-logs {
+    padding: 60rpx 24rpx;
+    text-align: center;
+    color: #86909c;
+    font-size: 26rpx;
+  }
+}
+
+.selection-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+  
+  .summary-text {
+    font-size: 26rpx;
+    color: #4e5969;
+  }
+  
+  .selection-actions {
+    display: flex;
+    gap: 24rpx;
+    
+    .action-link {
+      font-size: 26rpx;
+      color: #165dff;
+      
+      &:active {
+        opacity: 0.7;
+      }
+    }
   }
 }
 </style>
