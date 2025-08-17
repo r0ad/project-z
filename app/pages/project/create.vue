@@ -76,9 +76,9 @@ export default {
   data() {
     return {
       formData: {
-        name: '减肥',
-        goal: '高效减肥10kg',
-        description: '高效减肥10kg'
+        name: '',
+        goal: '',
+        description: ''
       },
       creating: false
     }
@@ -235,8 +235,8 @@ export default {
 }
 
 .page-content {
-  padding: calc(var(--status-bar-height) + 136rpx) 32rpx 32rpx;
-  min-height: calc(100vh - 88rpx);
+  padding: calc(var(--status-bar-height) + 146rpx) 32rpx 32rpx;
+  min-height: calc(100vh - 200rpx);
   display: flex;
   flex-direction: column;
 }

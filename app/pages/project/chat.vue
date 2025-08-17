@@ -1977,13 +1977,13 @@ export default {
     cursor: pointer;
     
     &:last-child {
-       border-bottom: none;
-     }
-     
-     &.selected {
-       background-color: #f0f7ff;
-       border-left: 4rpx solid #165dff;
-     }
+      border-bottom: none;
+    }
+    
+    &.selected {
+      background-color: #f0f7ff;
+      border-left: 4rpx solid #165dff;
+    }
     
     &:active {
       background-color: #f8f9fa;
@@ -2028,70 +2028,6 @@ export default {
   padding: 24rpx;
   background-color: #f8f9fa;
   border-radius: 12rpx;
-  margin-bottom: 24rpx;
-  
-  .summary-text {
-    font-size: 26rpx;
-    color: #4e5969;
-  }
-  
-  .selection-actions {
-    display: flex;
-    gap: 24rpx;
-    
-    .action-link {
-      font-size: 26rpx;
-      color: #165dff;
-      
-      &:active {
-        opacity: 0.7;
-      }
-    }
-  }
-    
-    &.selected {
-      background-color: #f0f7ff;
-    }
-    
-    &:active {
-      background-color: #e8f4ff;
-    }
-    
-    .log-checkbox {
-      margin-right: 16rpx;
-      margin-top: 4rpx;
-    }
-    
-    .log-content {
-      flex: 1;
-      
-      .log-text {
-        font-size: 26rpx;
-        color: #1d2129;
-        line-height: 1.5;
-        display: block;
-        margin-bottom: 8rpx;
-      }
-      
-      .log-time {
-        font-size: 22rpx;
-        color: #86909c;
-      }
-    }
-  }
-  
-  .empty-logs {
-    padding: 60rpx 24rpx;
-    text-align: center;
-    color: #86909c;
-    font-size: 26rpx;
-  }
-}
-
-.selection-summary {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 24rpx;
   
   .summary-text {
