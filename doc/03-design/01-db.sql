@@ -122,17 +122,18 @@ CREATE INDEX idx_projects_status ON projects(status);
 
 -- ai_analyses definition
 
-CREATE TABLE ai_analyses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_id INTEGER NOT NULL,
-        content TEXT,
-        suggestions TEXT,
-        analysis_type TEXT DEFAULT 'general',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (project_id) REFERENCES projects(id)
-      );
+CREATE TABLE ai_analyses (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, analysis_type TEXT NOT NULL, content TEXT, suggestions TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (project_id) REFERENCES projects(id));
 
+CREATE INDEX idx_ai_analyses_project_updated ON ai_analyses(project_id, updated_at);
 CREATE INDEX idx_ai_analyses_project_id ON ai_analyses(project_id);
+
+
+-- ai_summaries definition
+
+CREATE TABLE ai_summaries (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, summary_type TEXT DEFAULT 'summary', content TEXT, suggestions TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (project_id) REFERENCES projects(id));
+
+CREATE INDEX idx_ai_summaries_project_updated ON ai_summaries(project_id, updated_at);
+CREATE INDEX idx_ai_summaries_project_id ON ai_summaries(project_id);
 
 
 -- chat_conversations definition
@@ -192,7 +193,7 @@ CREATE TABLE project_milestones (
         deadline DATE,
         sequence INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, summary_type TEXT DEFAULT "summary",
         FOREIGN KEY (project_id) REFERENCES projects(id)
       );
 
