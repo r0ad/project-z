@@ -62,7 +62,8 @@
                     @click="handleAction(action)"
                     class="action-btn"
                   >
-                    {{ action.text }}
+                    <nut-icon v-if="action.icon" :name="action.icon" size="14" style="margin-right: 4px;"></nut-icon>
+                    {{ action.label || action.text }}
                   </nut-button>
                 </slot>
               </view>
@@ -179,6 +180,11 @@ export default {
       type: Boolean,
       default: true
     },
+    // 系统提示词
+    systemPrompt: {
+      type: String,
+      default: ''
+    },
     // 默认欢迎消息
     defaultWelcomeMessage: {
       type: String,
@@ -203,6 +209,16 @@ export default {
     customAiCall: {
       type: Function,
       default: null
+    },
+    // 当前对话ID
+    currentConversationId: {
+      type: String,
+      default: null
+    },
+    // 自定义操作按钮处理函数
+    handleActionClicked: {
+      type: Function,
+      default: null
     }
   },
   
@@ -212,7 +228,11 @@ export default {
     'action-clicked',
     'context-toggle',
     'menu-show',
-    'menu-hide'
+    'menu-hide',
+    'chat-init',
+    'conversation-created',
+    'conversation-loaded',
+    'message-saved'
   ],
   
   data() {
@@ -254,8 +274,104 @@ export default {
       // 触发初始化事件，让父组件处理具体的初始化逻辑
       this.$emit('chat-init', {
         chatType: this.chatType,
-        relatedId: this.relatedId
+        relatedId: this.relatedId,
+        currentConversationId: this.currentConversationId
       })
+    },
+    
+    // 消息会话处理方法
+    async saveMessageToHistory(role, content, actions = []) {
+      if (!this.currentConversationId) return
+      
+      try {
+        const chatApi = (await import('@/api/chatApi.js')).default
+        await chatApi.saveMessage(this.currentConversationId, role, content, actions)
+        
+        this.$emit('message-saved', {
+          conversationId: this.currentConversationId,
+          role,
+          content,
+          actions
+        })
+      } catch (error) {
+        console.error('保存消息失败:', error)
+      }
+    },
+    
+    async loadChatHistory(conversationId) {
+      if (!conversationId) return
+      
+      try {
+        const chatApi = (await import('@/api/chatApi.js')).default
+        const messages = await chatApi.getConversationMessages(conversationId)
+        
+        this.setMessages(messages.map(msg => ({
+          type: msg.role === 'user' ? 'user' : 'ai',
+          content: msg.content,
+          timestamp: msg.timestamp,
+          actions: msg.actions || []
+        })))
+        
+        this.$emit('conversation-loaded', {
+          conversationId,
+          messages: this.messages
+        })
+      } catch (error) {
+        console.error('加载聊天历史失败:', error)
+      }
+    },
+    
+    async createOrLoadConversation() {
+      try {
+        const chatApi = (await import('@/api/chatApi.js')).default
+        
+        // 尝试获取该类型和ID的最新对话
+        const conversations = await chatApi.getConversationsByTypeAndId(this.chatType, this.relatedId)
+        
+        if (conversations.length > 0) {
+          // 使用最新的对话
+          const latestConversation = conversations[0]
+          await this.loadChatHistory(latestConversation.id)
+          return latestConversation.id
+        } else {
+          // 创建新对话
+          const conversation = await chatApi.createConversation({
+            type: this.chatType,
+            relatedId: this.relatedId,
+            title: this.getDefaultConversationTitle(),
+            createdAt: new Date().toISOString()
+          })
+          
+          this.$emit('conversation-created', {
+            conversation,
+            chatType: this.chatType,
+            relatedId: this.relatedId
+          })
+          
+          return conversation.id
+        }
+      } catch (error) {
+        console.error('创建或加载对话失败:', error)
+        return null
+      }
+    },
+    
+    getDefaultConversationTitle() {
+      const now = new Date()
+      const timeStr = now.toLocaleString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+      
+      if (this.chatType === 'project') {
+        return `项目聊天 - ${timeStr}`
+      } else if (this.chatType === 'knowledge') {
+        return `知识库聊天 - ${timeStr}`
+      } else {
+        return `聊天记录 - ${timeStr}`
+      }
     },
     
     // 公共方法：添加消息
@@ -293,6 +409,9 @@ export default {
         timestamp: new Date().toISOString()
       }
       this.addMessage(userMessage)
+      
+      // 保存用户消息到历史记录
+      await this.saveMessageToHistory('user', text)
       
       // 触发消息发送事件
       this.$emit('message-sent', {
@@ -335,6 +454,9 @@ export default {
             }
             this.addMessage(aiMessage)
             
+            // 保存AI消息到历史记录
+            await this.saveMessageToHistory('assistant', finalContent, aiResponse.actions || [])
+            
             // 触发消息接收事件
             this.$emit('message-received', {
               message: aiMessage,
@@ -355,6 +477,9 @@ export default {
           }
           this.addMessage(aiMessage)
           
+          // 保存AI消息到历史记录
+          await this.saveMessageToHistory('assistant', aiResponse.content, aiResponse.actions || [])
+          
           // 触发消息接收事件
           this.$emit('message-received', {
             message: aiMessage,
@@ -371,7 +496,8 @@ export default {
         const errorMessage = {
           type: 'ai',
           content: '抱歉，我暂时无法回答你的问题，请稍后再试。',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          actions: []
         }
         this.addMessage(errorMessage)
       } finally {
@@ -385,10 +511,35 @@ export default {
     async callDefaultAI(userInput) {
       // 默认的AI调用逻辑
       try {
+        // 构建聊天历史，包含系统提示词
+        const chatHistory = []
+        
+        // 添加系统提示词（如果有）
+        if (this.systemPrompt) {
+          chatHistory.push({
+            role: 'system',
+            content: this.systemPrompt
+          })
+        }
+        
+        // 添加历史消息
+        chatHistory.push(...this.messages.map(msg => ({
+          role: msg.type === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        })))
+        
+        // 添加当前用户输入
+        chatHistory.push({
+          role: 'user',
+          content: userInput
+        })
+        
         const response = await aiApi.sendAIRequest(userInput, {
           type: this.chatType,
           relatedId: this.relatedId,
-          context: this.contextData
+          context: this.contextData,
+          messages: chatHistory,
+          systemPrompt: this.systemPrompt
         })
         
         return {
@@ -405,12 +556,17 @@ export default {
     },
     
     handleAction(action) {
-      // 触发动作点击事件，让父组件处理具体逻辑
-      this.$emit('action-clicked', {
-        action,
-        chatType: this.chatType,
-        relatedId: this.relatedId
-      })
+      // 优先使用自定义的操作处理函数
+      if (this.handleActionClicked && typeof this.handleActionClicked === 'function') {
+        this.handleActionClicked(action)
+      } else {
+        // 触发动作点击事件，让父组件处理具体逻辑
+        this.$emit('action-clicked', {
+          action,
+          chatType: this.chatType,
+          relatedId: this.relatedId
+        })
+      }
     },
     
     toggleContext() {

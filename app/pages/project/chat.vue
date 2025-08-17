@@ -43,6 +43,28 @@
         </view>
       </template>
 
+      <!-- 项目特定的消息操作按钮 -->
+      <template #messageActions="{ actions, handleAction }">
+        <view class="project-message-actions">
+          <nut-button 
+            v-for="action in actions" 
+            :key="action.type"
+            size="small"
+            :type="getActionButtonType(action.type)"
+            plain
+            @click="handleProjectAction(action)"
+            class="project-action-btn"
+          >
+            <nut-icon 
+              :name="getActionIcon(action.type)" 
+              size="12" 
+              class="action-icon"
+            ></nut-icon>
+            {{ action.text }}
+          </nut-button>
+        </view>
+      </template>
+
       <!-- 项目特定的上下文菜单 -->
       <template #contextMenu="{ hideMenu }">
         <view class="menu-item" @click="showConversationHistory">
@@ -380,6 +402,49 @@ export default {
     async handleActionClicked(action) {
       // 处理AI消息中的操作按钮点击
       await this.handleAIAction(action)
+    },
+    
+    // 处理项目特定的操作按钮点击
+    async handleProjectAction(action) {
+      try {
+        await this.handleAIAction(action)
+      } catch (error) {
+        console.error('处理项目操作失败:', error)
+        uni.showToast({
+          title: '操作失败，请重试',
+          icon: 'error'
+        })
+      }
+    },
+    
+    // 获取操作按钮的类型样式
+    getActionButtonType(actionType) {
+      const typeMap = {
+        'manage_milestone': 'primary',
+        'create_milestone': 'success', 
+        'complete_milestone': 'warning',
+        'update_progress': 'info',
+        'update_plan': 'info',
+        'save_solution': 'success',
+        'get_suggestions': 'default',
+        'retry': 'default'
+      }
+      return typeMap[actionType] || 'default'
+    },
+    
+    // 获取操作按钮的图标
+    getActionIcon(actionType) {
+      const iconMap = {
+        'manage_milestone': 'location',
+        'create_milestone': 'plus',
+        'complete_milestone': 'checked',
+        'update_progress': 'refresh',
+        'update_plan': 'edit',
+        'save_solution': 'star-fill',
+        'get_suggestions': 'tips',
+        'retry': 'refresh'
+      }
+      return iconMap[actionType] || 'more'
     },
     
     async handleAICall(message, systemPrompt) {
@@ -1288,6 +1353,61 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* 项目消息操作按钮样式 */
+.project-message-actions {
+  margin-top: 16rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.project-action-btn {
+  font-size: 24rpx !important;
+  padding: 8rpx 16rpx !important;
+  height: auto !important;
+  min-height: 56rpx;
+  border-radius: 28rpx !important;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  transition: all 0.3s ease;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.project-action-btn:hover {
+  transform: translateY(-2rpx);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+}
+
+.project-action-btn .action-icon {
+  margin-right: 4rpx;
+}
+
+/* 不同类型按钮的特殊样式 */
+.project-action-btn[type="primary"] {
+  background: linear-gradient(135deg, #165DFF 0%, #4080FF 100%);
+  border: none;
+  color: #ffffff;
+}
+
+.project-action-btn[type="success"] {
+  background: linear-gradient(135deg, #00B42A 0%, #52C41A 100%);
+  border: none;
+  color: #ffffff;
+}
+
+.project-action-btn[type="warning"] {
+  background: linear-gradient(135deg, #FF7D00 0%, #FFA940 100%);
+  border: none;
+  color: #ffffff;
+}
+
+.project-action-btn[type="info"] {
+  background: linear-gradient(135deg, #00B2FF 0%, #40C9FF 100%);
+  border: none;
+  color: #ffffff;
+}
+
 .chat-page {
   height: 100vh;
   background-color: #f5f5f5;
