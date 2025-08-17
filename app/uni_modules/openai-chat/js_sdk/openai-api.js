@@ -228,8 +228,9 @@ class OpenAIAPI {
 			requestData.function_call = 'auto'
 			console.log('[OpenAI API] 启用函数调用，可用函数:', requestData.functions)
 		}
+		console.log('[OpenAI API] 流式模拟 - 请求完整报文:', requestData)
 		
-		// 使用非流式API获取完整响应，然后模拟流式发送
+		// 使用uni.request进行流式请求（模拟实现）
 		uni.request({
 			url: `${this.config.baseUrl}/chat/completions`,
 			method: 'POST',
@@ -240,34 +241,33 @@ class OpenAIAPI {
 			data: requestData,
 			timeout: this.config.timeout,
 			success: (response) => {
-				// console.log('[OpenAI API] 流式模拟 - 收到完整响应:', response)
+				console.log('[OpenAI API] 流式响应 - 收到完整响应:', response)
 				
 				if (response.statusCode === 200 && response.data) {
 					const result = response.data
 					
 					if (result.choices && result.choices.length > 0) {
-					const choice = result.choices[0]
-					const message = choice.message
-					const content = message.content || ''
-					// console.log('[OpenAI API] 流式模拟 - 开始分块发送内容:', content)
-					
-					// 保存用户消息到历史
-					if (options.useHistory && this.currentConversationId) {
-						messages.forEach(msg => {
-							this.addMessageToHistory(msg.role, msg.content, msg.function_call)
-						})
-						// 保存助手回复到历史
-						this.addMessageToHistory('assistant', content, message.function_call)
-					}
-					
-					// 将内容按字符分割，模拟流式发送
-						const chars = content.split('')
+						const choice = result.choices[0]
+						const message = choice.message
+						const content = message.content || ''
+						console.log('[OpenAI API] 流式模拟 - 开始分块发送内容:', content)
+						
+						// 保存用户消息到历史
+						if (options.useHistory && this.currentConversationId) {
+							messages.forEach(msg => {
+								this.addMessageToHistory(msg.role, msg.content, msg.function_call)
+							})
+							// 保存助手回复到历史
+							this.addMessageToHistory('assistant', content, message.function_call)
+						}
+						
+						// 将内容按词分割，模拟流式发送
+						const words = content.split('')
 						let index = 0
 						
 						const sendNextChunk = () => {
-							if (index < chars.length) {
-								const chunk = chars[index]
-								// console.log(`[OpenAI API] 流式模拟 - 发送字符 ${index + 1}/${chars.length}:`, chunk)
+							if (index < words.length) {
+								const chunk = words[index]
 								
 								try {
 									if (typeof onData === 'function') {
@@ -278,7 +278,7 @@ class OpenAIAPI {
 								}
 								
 								index++
-								setTimeout(sendNextChunk, 100) // 100ms间隔
+								setTimeout(sendNextChunk, 20) // 20ms间隔，更快的流式效果
 							} else {
 								console.log('[OpenAI API] 流式模拟 - 发送完成')
 								

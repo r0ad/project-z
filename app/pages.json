@@ -64,6 +64,13 @@
       }
     },
     {
+      "path": "pages/knowledge/chat",
+      "style": {
+        "navigationBarTitleText": "聊知识",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/profile/index",
       "style": {
         "navigationBarTitleText": "我的",

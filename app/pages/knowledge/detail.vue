@@ -201,9 +201,8 @@ export default {
 		}
 	},
 		chatKnowledge() {
-			uni.showToast({
-				title: '聊知识',
-				icon: 'none'
+			uni.navigateTo({
+				url: `/pages/knowledge/chat?id=${this.knowledgeId}`
 			})
 		},
 		viewRelated(item) {

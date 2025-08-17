@@ -645,7 +645,7 @@ export default {
 				progress: 0
 			},
 			showDatePicker: false,
-			selectedDate: new Date(),
+			selectedDate: new Date().toISOString().split('T')[0],
 			minDate: '2020-01-01',
 			maxDate: '2030-12-31'
 		}

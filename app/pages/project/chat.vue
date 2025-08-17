@@ -10,148 +10,41 @@
       @right-click="showContextMenu"
     />
 
-    <!-- 项目上下文信息 -->
-    <view class="context-info" v-if="showContext">
-      <view class="context-compact">
-        <nut-icon name="tips" size="14" color="#165DFF"></nut-icon>
-        <text class="context-text">{{ projectName }} · {{ projectProgress }}% · {{ recentLogCount }}条日志</text>
-        <view class="context-toggle" @click="toggleContext">
-          <nut-icon name="close" size="12" color="#86909C"></nut-icon>
-        </view>
-      </view>
-    </view>
-
-    <!-- 聊天消息列表 -->
-    <scroll-view 
-      id="messageScrollView"
-      class="chat-messages" 
-      scroll-y
-      :scroll-top="scrollTop"
-      scroll-with-animation
-      @scroll="onScroll"
+    <!-- 使用公共聊天组件 -->
+    <ChatComponent
+      ref="chatComponent"
+      chat-type="project"
+      :related-id="projectId"
+      :context-data="contextData"
+      :show-context="showContext"
+      :default-welcome-message="welcomeMessage"
+      input-placeholder="输入你的问题..."
+      :enable-voice="true"
+      :enable-stream="enableStream"
+      :custom-ai-call="handleProjectAiCall"
+      @message-sent="handleMessageSent"
+      @message-received="handleMessageReceived"
+      @action-clicked="handleActionClicked"
+      @context-toggle="toggleContext"
+      @menu-show="showMenu = true"
+      @menu-hide="showMenu = false"
+      @chat-init="initChat"
     >
-      <view class="message-list">
-        <!-- 欢迎消息 -->
-        <view class="message-item ai-message" v-if="messages.length === 0">
-          <view class="message-avatar">
-            <nut-icon name="service" size="20" color="#165DFF"></nut-icon>
-          </view>
-          <view class="message-content">
-            <view class="message-bubble ai-bubble">
-              <text class="message-text">你好！我是你的AI项目助手。我已经了解了你的项目「{{ projectName }}」的基本情况，有什么问题可以随时问我。</text>
-            </view>
-            <view class="message-time">{{ formatTime(new Date()) }}</view>
-          </view>
-        </view>
-
-        <!-- 消息列表 -->
-        <view 
-          class="message-item" 
-          :class="message.type === 'user' ? 'user-message' : 'ai-message'"
-          v-for="(message, index) in messages" 
-          :key="index"
-        >
-          <view class="message-avatar" v-if="message.type === 'ai'">
-            <nut-icon name="service" size="20" color="#165DFF"></nut-icon>
-          </view>
-          
-          <view class="message-content">
-            <view class="message-bubble" :class="message.type === 'user' ? 'user-bubble' : 'ai-bubble'">
-              <text class="message-text">{{ message.content }}</text>
-              
-              <!-- 流式输出指示器 -->
-              <view v-if="message.isStreaming" class="streaming-indicator">
-                <text class="cursor">|</text>
-              </view>
-              
-              <!-- AI消息的操作按钮 -->
-              <view class="message-actions" v-if="message.type === 'ai' && message.actions">
-                <nut-button 
-                  v-for="action in message.actions" 
-                  :key="action.type"
-                  size="small"
-                  type="primary"
-                  plain
-                  @click="handleAction(action)"
-                  class="action-btn"
-                >
-                  {{ action.text }}
-                </nut-button>
-              </view>
-            </view>
-            <view class="message-time">{{ formatTime(new Date(message.timestamp)) }}</view>
-          </view>
-          
-          <view class="message-avatar" v-if="message.type === 'user'">
-            <nut-icon name="my" size="20" color="#FFFFFF"></nut-icon>
-          </view>
-        </view>
-
-        <!-- AI思考中 -->
-        <view class="message-item ai-message" v-if="isThinking">
-          <view class="message-avatar">
-            <nut-icon name="service" size="20" color="#165DFF"></nut-icon>
-          </view>
-          <view class="message-content">
-            <view class="message-bubble ai-bubble thinking">
-              <view class="thinking-animation">
-                <view class="dot"></view>
-                <view class="dot"></view>
-                <view class="dot"></view>
-              </view>
-              <text class="thinking-text">AI正在思考中...</text>
+      <!-- 项目上下文信息插槽 -->
+      <template #contextInfo="{ contextData, toggleContext }">
+        <view class="context-info">
+          <view class="context-compact">
+            <nut-icon name="tips" size="14" color="#165DFF"></nut-icon>
+            <text class="context-text">{{ projectName }} · {{ projectProgress }}% · {{ recentLogCount }}条日志</text>
+            <view class="context-toggle" @click="toggleContext">
+              <nut-icon name="close" size="12" color="#86909C"></nut-icon>
             </view>
           </view>
         </view>
-      </view>
-    </scroll-view>
+      </template>
 
-    <!-- 输入区域 -->
-    <view class="input-area">
-      <!-- 配置选项 -->
-      <!-- <view class="config-options">
-        <view class="option-item">
-          <text class="option-label">流式输出</text>
-          <switch 
-            :checked="enableStream" 
-            @change="onStreamToggle"
-            color="#165dff"
-          />
-        </view>
-      </view> -->
-      
-      <view class="input-container">
-        <nut-input
-          v-model="inputText"
-          placeholder="输入你的问题..."
-          :border="false"
-          class="chat-input"
-          @confirm="sendMessage"
-        />
-        <view class="input-actions">
-          <view class="voice-btn" @click="toggleVoiceInput">
-            <nut-icon name="voice" size="20" color="#86909C"></nut-icon>
-          </view>
-          <nut-button 
-            type="primary"
-            size="small"
-            :disabled="!inputText.trim() || isThinking || isStreaming"
-            @click="sendMessage"
-            class="send-btn"
-          >
-            {{ isStreaming ? '生成中...' : '发送' }}
-          </nut-button>
-        </view>
-      </view>
-    </view>
-
-    <!-- 上下文菜单 -->
-    <nut-popup 
-      v-model:visible="showMenu" 
-      position="top"
-      :style="{ height: '300rpx' }"
-    >
-      <view class="context-menu">
+      <!-- 项目特定的上下文菜单 -->
+      <template #contextMenu="{ hideMenu }">
         <view class="menu-item" @click="showConversationHistory">
           <nut-icon name="message" size="16" color="#165DFF"></nut-icon>
           <text>历史会话</text>
@@ -161,7 +54,7 @@
           <text>新建会话</text>
         </view>
         <view class="menu-item" @click="showLogCountConfig">
-          <nut-icon name="setting" size="16" color="#FF7D00"></nut-icon>
+          <nut-icon name="setting" size="16" color="FF7D00"></nut-icon>
           <text>设置日志数量</text>
         </view>
         <view class="menu-item" @click="clearContext">
@@ -172,41 +65,98 @@
           <nut-icon name="download" size="16" color="#00B42A"></nut-icon>
           <text>导出对话</text>
         </view>
-      </view>
-    </nut-popup>
+      </template>
+    </ChatComponent>
+
+
+
 
     <!-- 会话列表弹窗 -->
     <nut-popup 
       v-model:visible="showConversationList" 
       position="bottom"
-      :style="{ height: '60%' }"
+      :style="{ height: '70%' }"
+      round
     >
       <view class="conversation-list">
         <view class="popup-header">
-          <text class="popup-title">历史会话</text>
-          <nut-icon name="close" size="20" @click="showConversationList = false"></nut-icon>
+          <view class="header-content">
+            <nut-icon name="message" size="20" color="#165DFF"></nut-icon>
+            <text class="popup-title">历史会话</text>
+            <view class="conversation-count">{{ conversations.length }}条</view>
+          </view>
+          <nut-icon name="close" size="20" color="#86909C" @click="showConversationList = false"></nut-icon>
         </view>
+        
+        <view class="conversation-actions">
+          <nut-button 
+            type="primary" 
+            size="small" 
+            @click="createNewConversation"
+            class="new-conversation-btn"
+          >
+            <nut-icon name="plus" size="14"></nut-icon>
+            新建会话
+          </nut-button>
+        </view>
+        
         <scroll-view class="conversation-scroll" scroll-y>
           <view 
             class="conversation-item" 
             v-for="conversation in conversations" 
             :key="conversation.id"
-            @click="selectConversation(conversation.id)"
+            @click="selectConversation(conversation)"
             :class="{ active: conversation.id === currentConversationId }"
           >
-            <view class="conversation-info">
-              <text class="conversation-title">{{ conversation.title || '未命名会话' }}</text>
-              <text class="conversation-time">{{ formatTime(conversation.updated_at) }}</text>
+            <view class="conversation-main">
+              <view class="conversation-header">
+                <view class="conversation-title-wrapper">
+                  <nut-icon 
+                    name="message" 
+                    size="16" 
+                    :color="conversation.id === currentConversationId ? '#165DFF' : '#86909C'"
+                  ></nut-icon>
+                  <text class="conversation-title">{{ conversation.title || '未命名会话' }}</text>
+                  <view 
+                    v-if="conversation.id === currentConversationId" 
+                    class="current-badge"
+                  >
+                    当前
+                  </view>
+                </view>
+                <view class="conversation-meta">
+                  <text class="conversation-time">{{ formatConversationTime(conversation.updated_at) }}</text>
+                </view>
+              </view>
+              
+              <view class="conversation-preview">
+                <text class="preview-text">{{ getConversationPreview(conversation) }}</text>
+              </view>
             </view>
-            <nut-icon 
-              name="delete" 
-              size="16" 
-              color="#F53F3F" 
-              @click.stop="deleteConversation(conversation.id)"
-            ></nut-icon>
+            
+            <view class="conversation-actions-btn">
+              <nut-icon 
+                name="delete" 
+                size="18" 
+                color="#F53F3F" 
+                @click.stop="deleteConversation(conversation)"
+                class="delete-btn"
+              ></nut-icon>
+            </view>
           </view>
+          
           <view v-if="conversations.length === 0" class="empty-state">
-            <text>暂无历史会话</text>
+            <nut-icon name="message" size="48" color="#C9CDD4"></nut-icon>
+            <text class="empty-title">暂无历史会话</text>
+            <text class="empty-desc">开始新的对话，创建你的第一个会话</text>
+            <nut-button 
+              type="primary" 
+              size="small" 
+              @click="createNewConversation"
+              class="empty-action-btn"
+            >
+              立即开始
+            </nut-button>
           </view>
         </scroll-view>
       </view>
@@ -353,10 +303,12 @@ import logApi from '@/api/logApi.js'
 import chatApi from '@/api/chatApi.js'
 import projectApi from '@/api/projectApi.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import ChatComponent from '@/components/ChatComponent.vue'
 
 export default {
 	components: {
-		CustomNavbar
+		CustomNavbar,
+		ChatComponent
 	},
   data() {
     return {
@@ -366,36 +318,16 @@ export default {
       recentLogCount: 0,
       showContext: true,
       showMenu: false,
-      inputText: '',
-      isThinking: false,
+      loading: false,
       
-      // 智能滚动控制系统
-      scrollTop: 0, // 当前滚动位置
-      scrollState: 'AUTO_FOLLOW', // AUTO_FOLLOW | USER_BROWSING | RETURNING_TO_BOTTOM
-      lastScrollTop: 0, // 上次滚动位置
-      lastScrollTime: 0, // 上次滚动时间戳
-      scrollDirection: 0, // 滚动方向：1向下，-1向上，0无变化
-      isAutoScrolling: false, // 是否正在执行自动滚动
-      userScrollThreshold: 30, // 用户主动滚动的阈值（像素）
-      nearBottomThreshold: 50, // 接近底部的阈值（像素）
-      scrollDebounceTimer: null, // 滚动防抖定时器
-      autoScrollTimer: null, // 自动滚动定时器
-      scrollThrottleTimer: null, // 滚动节流定时器
-      lastThrottleTime: 0, // 上次节流时间
-      lastContentHeight: 0, // 上次内容高度
-      
-      messages: [],
       contextData: {
         recentLogs: [],
         currentGoals: [],
         problems: []
       },
-      loading: false,
 
       currentConversationId: null,
       enableStream: true,
-      streamContent: '',
-      isStreaming: false,
       
       // 会话管理
       conversations: [],
@@ -412,6 +344,12 @@ export default {
     }
   },
   
+  computed: {
+    welcomeMessage() {
+      return `你好！我是你的AI项目助手。我已经了解了你的项目「${this.projectName}」的基本情况，有什么问题可以随时问我。`
+    }
+  },
+  
   onLoad(options) {
     this.projectId = options.projectId || ''
     this.projectName = options.projectName || '项目名称'
@@ -420,25 +358,39 @@ export default {
   },
   
   onUnload() {
-    // 清理所有滚动相关定时器
-    if (this.scrollDebounceTimer) {
-      clearTimeout(this.scrollDebounceTimer)
-      this.scrollDebounceTimer = null
-    }
-    if (this.autoScrollTimer) {
-      clearTimeout(this.autoScrollTimer)
-      this.autoScrollTimer = null
-    }
-    if (this.scrollThrottleTimer) {
-      clearTimeout(this.scrollThrottleTimer)
-      this.scrollThrottleTimer = null
-    }
-    console.log('智能滚动系统已清理')
+    // 清理资源
   },
   
   methods: {
     goBack() {
       uni.navigateBack()
+    },
+    
+    // ChatComponent事件处理
+    async handleMessageSent(eventData) {
+      // 保存用户消息到数据库
+      await this.saveMessageToHistory('user', eventData.message.content)
+    },
+    
+    async handleMessageReceived(eventData) {
+      // 保存AI消息到数据库
+      await this.saveMessageToHistory('assistant', eventData.message.content)
+    },
+    
+    async handleActionClicked(action) {
+      // 处理AI消息中的操作按钮点击
+      await this.handleAIAction(action)
+    },
+    
+    async handleAICall(message, systemPrompt) {
+      // 自定义AI调用逻辑
+      return await this.callAI(message, systemPrompt)
+    },
+    
+    async handleProjectAiCall(userInput, messages, contextData, options = {}) {
+      // 项目特定的AI调用逻辑，包含上下文信息
+      const systemPrompt = this.buildSystemPrompt()
+      return await this.callAI(userInput, systemPrompt, options)
     },
     
     async initChat() {
@@ -525,17 +477,19 @@ export default {
         
         const messages = await chatApi.getMessagesByConversation(this.currentConversationId)
         
-        // 转换数据库消息格式为UI消息格式
-        this.messages = messages.map(msg => ({
+        // 转换数据库消息格式为UI消息格式并通过ChatComponent更新
+        const formattedMessages = messages.map(msg => ({
           type: msg.role === 'user' ? 'user' : 'ai',
           content: msg.content,
           timestamp: msg.timestamp,
           actions: msg.role === 'assistant' ? this.extractActions(msg.content) : undefined
         }))
         
-        this.$nextTick(() => {
-          this.scrollToBottom()
-        })
+        // 通过ChatComponent更新消息列表
+        if (this.$refs.chatComponent) {
+          this.$refs.chatComponent.messages = formattedMessages
+        }
+
       } catch (error) {
         console.error('加载聊天历史失败:', error)
         uni.showToast({
@@ -567,7 +521,7 @@ export default {
     },
     
     showContextMenu() {
-      this.showMenu = true
+      this.$refs.chatComponent.showContextMenu()
     },
     
     formatTime(date) {
@@ -584,105 +538,77 @@ export default {
       return `${hours}:${minutes}`
     },
     
-    async sendMessage() {
-      const text = this.inputText.trim()
-      if (!text || this.isThinking) return
+    formatConversationTime(date) {
+      const dateObj = date instanceof Date ? date : new Date(date)
       
-      // 添加用户消息
-      const userMessage = {
-        type: 'user',
-        content: text,
-        timestamp: new Date().toISOString()
+      if (isNaN(dateObj.getTime())) {
+        return '未知时间'
       }
-      this.messages.push(userMessage)
       
-      // 保存用户消息到数据库
-      await this.saveMessageToHistory('user', text)
+      const now = new Date()
+      const diffMs = now - dateObj
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
       
-      this.inputText = ''
-      
-      // 强制滚动到底部（用户发送消息）
-      this.$nextTick(() => {
-        this.scrollState = 'AUTO_FOLLOW'
-        this.scrollToBottom(true)
-      })
-      
-      // AI思考
-      this.isThinking = true
-      this.streamContent = ''
-      
-      // 先添加一个空的AI消息用于流式更新
-      const aiMessage = {
-        type: 'ai',
-        content: '',
-        timestamp: new Date().toISOString(),
-        actions: []
-      }
-      this.messages.push(aiMessage)
-      
-      try {
-        // 调用AI接口（流式输出）
-        const aiResponse = await this.callAIWithStream(text)
-        
-        // 更新AI消息的最终内容和动作
-        const messageIndex = this.messages.length - 1
-        this.messages[messageIndex].content = aiResponse.content
-        this.messages[messageIndex].actions = aiResponse.actions
-        
-        // 保存AI消息到数据库
-        await this.saveMessageToHistory('assistant', aiResponse.content)
-        
-      } catch (error) {
-        console.error('AI回复失败:', error)
-        const errorMessage = {
-          type: 'ai',
-          content: '抱歉，我暂时无法回答你的问题，请稍后再试。',
-          timestamp: new Date().toISOString()
-        }
-        this.messages.push(errorMessage)
-        
-        // 保存错误消息到数据库
-        await this.saveMessageToHistory('assistant', errorMessage.content)
-      } finally {
-        this.isThinking = false
-        this.$nextTick(() => {
-          this.scrollToBottom(true)
-        })
+      if (diffDays === 0) {
+        // 今天
+        const hours = String(dateObj.getHours()).padStart(2, '0')
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0')
+        return `今天 ${hours}:${minutes}`
+      } else if (diffDays === 1) {
+        // 昨天
+        const hours = String(dateObj.getHours()).padStart(2, '0')
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0')
+        return `昨天 ${hours}:${minutes}`
+      } else if (diffDays < 7) {
+        // 一周内
+        const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+        const weekday = weekdays[dateObj.getDay()]
+        const hours = String(dateObj.getHours()).padStart(2, '0')
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0')
+        return `${weekday} ${hours}:${minutes}`
+      } else {
+        // 超过一周
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+        const day = String(dateObj.getDate()).padStart(2, '0')
+        return `${month}-${day}`
       }
     },
     
-    async callAIWithStream(userInput) {
+    getConversationPreview(conversation) {
+      // 这里可以根据实际需求获取会话的最后一条消息作为预览
+      // 暂时使用会话标题或默认文本
+      if (conversation.title && conversation.title !== '新对话' && conversation.title !== '未命名会话') {
+        return conversation.title
+      }
+      return '点击查看会话详情...'
+    },
+    
+
+    
+    async callAI(userInput, systemPrompt, options = {}) {
       try {
         // 构建聊天历史
-        const chatHistory = this.messages.slice(-10).map(msg => ({
+        const chatHistory = this.$refs.chatComponent.messages.slice(-10).map(msg => ({
           role: msg.type === 'user' ? 'user' : 'assistant',
           content: msg.content
         }))
         
-        // 使用aiApi进行项目聊天（流式输出）
+        // 使用aiApi进行项目聊天（支持流式输出）
         let fullContent = ''
-        let currentMessageIndex = this.messages.length - 1 // AI回复消息的索引
-        
         const response = await aiApi.chatWithProject(this.projectId, userInput, chatHistory, {
           stream: true,
           onData: (chunk) => {
-            // 流式更新AI回复内容
             fullContent += chunk
-            if (this.messages[currentMessageIndex]) {
-              this.messages[currentMessageIndex].content = fullContent
-              // 触发界面更新
-              this.$forceUpdate()
-              // 使用节流滚动到底部（流式输出）
-              this.$nextTick(() => {
-                this.throttledScrollToBottom()
-              })
+            // 如果有流式回调，调用它
+            if (options.onStream) {
+              options.onStream(chunk)
             }
           }
         })
         
         return {
-          content: response.content,
-          actions: this.extractActions(response.content)
+          content: response.content || fullContent,
+          actions: this.extractActions(response.content || fullContent)
         }
         
       } catch (error) {
@@ -778,7 +704,7 @@ export default {
       return actions
     },
     
-    async handleAction(action) {
+    async handleAIAction(action) {
       switch (action.type) {
         case 'save_solution':
           await this.saveToKnowledge(action.data)
@@ -874,10 +800,7 @@ export default {
           actions: response.actions
         }
         this.messages.push(suggestion)
-        this.$nextTick(() => {
-          this.scrollToBottom()
-        })
-      } catch (error) {
+        } catch (error) {
         console.error('获取建议失败:', error)
         const suggestion = {
           type: 'ai',
@@ -947,9 +870,7 @@ export default {
               // 保存AI消息到数据库
               await this.saveMessageToHistory('assistant', confirmMessage.content)
               
-              this.$nextTick(() => {
-                this.scrollToBottom()
-              })
+              
               
               uni.showToast({
                 title: '里程碑创建成功',
@@ -1009,9 +930,7 @@ export default {
             // 刷新项目信息
             await this.loadProjectContext()
             
-            this.$nextTick(() => {
-              this.scrollToBottom()
-            })
+
             
             uni.showToast({
               title: '里程碑已完成',
@@ -1106,8 +1025,10 @@ export default {
                 await chatApi.clearMessages(this.currentConversationId)
               }
               
-              // 清空UI中的消息
-              this.messages = []
+              // 通过ChatComponent清空UI中的消息
+              if (this.$refs.chatComponent) {
+                this.$refs.chatComponent.messages = []
+              }
               
               uni.showToast({
                 title: '对话已清空',
@@ -1148,7 +1069,11 @@ export default {
           title: '新对话'
         })
         this.currentConversationId = newConversation.id
-        this.messages = []
+        
+        // 通过ChatComponent清空消息列表
+        if (this.$refs.chatComponent) {
+          this.$refs.chatComponent.messages = []
+        }
         
         // 重新加载会话列表
         this.conversations = await chatApi.getConversationsByProject(this.projectId)
@@ -1173,12 +1098,16 @@ export default {
         
         // 加载选中会话的消息
         const messages = await chatApi.getMessages(conversation.id)
-        this.messages = messages.map(msg => ({
-          type: msg.role === 'user' ? 'user' : 'ai',
-          content: msg.content,
-          timestamp: msg.timestamp || msg.created_at,
-          actions: msg.role === 'assistant' ? this.extractActions(msg.content) : undefined
-        }))
+        
+        // 通过ChatComponent更新消息列表
+        if (this.$refs.chatComponent) {
+          this.$refs.chatComponent.messages = messages.map(msg => ({
+            type: msg.role === 'user' ? 'user' : 'ai',
+            content: msg.content,
+            timestamp: msg.timestamp || msg.created_at,
+            actions: msg.role === 'assistant' ? this.extractActions(msg.content) : undefined
+          }))
+        }
         
         uni.showToast({
           title: '会话已切换',
@@ -1320,165 +1249,6 @@ export default {
     },
     
     // 智能滚动系统方法
-    
-    // 检查是否接近底部
-    checkNearBottom(scrollTop, scrollHeight, clientHeight) {
-      return scrollTop + clientHeight >= scrollHeight - this.nearBottomThreshold
-    },
-    
-    // 滚动到底部（智能滚动入口）
-    scrollToBottom(force = false) {
-      // 如果不是强制滚动且不在自动跟随状态，跳过
-      if (!force && this.scrollState !== 'AUTO_FOLLOW') {
-        console.log(`滚动状态为 ${this.scrollState}，跳过自动滚动`)
-        return
-      }
-      
-      // 如果不是强制滚动且正在自动滚动中，跳过
-      if (!force && this.isAutoScrolling) {
-        return
-      }
-      
-      // 执行自动滚动
-      this.performAutoScroll(force)
-    },
-    
-    // 执行自动滚动
-    performAutoScroll(forceScroll = false) {
-      console.log('开始执行智能滚动到底部', { forceScroll })
-      this.isAutoScrolling = true
-      
-      // 清除之前的自动滚动定时器
-      if (this.autoScrollTimer) {
-        clearTimeout(this.autoScrollTimer)
-      }
-      
-      const query = uni.createSelectorQuery().in(this)
-      query.select('#messageScrollView').boundingClientRect()
-      query.select('.message-list').boundingClientRect()
-      query.exec((res) => {
-        if (res && res[0] && res[1]) {
-          const scrollViewHeight = res[0].height
-          const contentHeight = res[1].height
-          const currentScrollTop = this.scrollTop
-          
-          // 如果内容高度大于滚动视图高度，需要滚动
-          if (contentHeight > scrollViewHeight) {
-            const targetScrollTop = Math.max(0, contentHeight - scrollViewHeight)
-            const scrollDifference = Math.abs(currentScrollTop - targetScrollTop)
-            
-            console.log('滚动计算:', {
-              contentHeight,
-              scrollViewHeight,
-              currentScrollTop,
-              targetScrollTop,
-              scrollDifference,
-              forceScroll
-            })
-            
-            // 如果不是强制滚动且滚动差异很小，不需要滚动
-            if (!forceScroll && scrollDifference < 10) {
-              console.log('滚动差异很小，跳过滚动')
-              this.finishAutoScroll()
-              return
-            }
-            
-            // 执行平滑滚动
-            this.smoothScrollTo(targetScrollTop)
-          } else {
-            this.finishAutoScroll()
-          }
-        } else {
-          this.finishAutoScroll()
-        }
-      })
-    },
-    
-    // 平滑滚动到指定位置
-    smoothScrollTo(targetScrollTop) {
-      console.log('设置滚动位置:', targetScrollTop)
-      this.scrollTop = targetScrollTop
-      
-      // 设置自动滚动完成定时器
-      this.autoScrollTimer = setTimeout(() => {
-        this.finishAutoScroll()
-      }, 300) // 等待滚动动画完成
-    },
-    
-    // 完成自动滚动
-    finishAutoScroll() {
-      this.isAutoScrolling = false
-      if (this.autoScrollTimer) {
-        clearTimeout(this.autoScrollTimer)
-        this.autoScrollTimer = null
-      }
-      console.log('自动滚动完成')
-    },
-    
-    // 节流滚动到底部（用于流式回复）
-    throttledScrollToBottom() {
-      // 如果不在自动跟随状态，不执行滚动
-      if (this.scrollState !== 'AUTO_FOLLOW') {
-        return
-      }
-      
-      const now = Date.now()
-      
-      // 节流控制：200ms内最多执行一次
-      if (now - this.lastThrottleTime < 200) {
-        return
-      }
-      
-      // 检查内容高度是否显著增加
-      const query = uni.createSelectorQuery().in(this)
-      query.select('.message-list').boundingClientRect()
-      query.exec((res) => {
-        if (res && res[0]) {
-          const currentHeight = res[0].height
-          
-          // 如果高度增加少于30px，不滚动
-          if (this.lastContentHeight && currentHeight - this.lastContentHeight < 30) {
-            return
-          }
-          
-          this.lastContentHeight = currentHeight
-          this.lastThrottleTime = now
-          
-          // 执行非强制滚动
-          this.scrollToBottom(false)
-        }
-      })
-    },
-    
-    // 滚动事件处理
-    onScroll(e) {
-      const { scrollTop, scrollHeight, scrollLeft } = e.detail
-      const now = Date.now()
-      
-      // 防抖处理：清除之前的防抖定时器
-      if (this.scrollDebounceTimer) {
-        clearTimeout(this.scrollDebounceTimer)
-      }
-      
-      // 如果正在自动滚动，不处理用户滚动
-      if (this.isAutoScrolling) {
-        return
-      }
-      
-      // 计算滚动方向
-      const direction = scrollTop > this.lastScrollTop ? 'down' : 'up'
-      this.scrollDirection = direction
-      
-      // 更新滚动位置和时间
-      this.lastScrollTop = scrollTop
-      this.lastScrollTime = now
-      
-      // 防抖处理滚动状态变化
-      this.scrollDebounceTimer = setTimeout(() => {
-        this.handleScrollStateChange(scrollTop, scrollHeight)
-      }, 150)
-    },
-    
     // 处理滚动状态变化
     handleScrollStateChange(scrollTop, scrollHeight) {
       const query = uni.createSelectorQuery().in(this)
@@ -2048,5 +1818,278 @@ export default {
       }
     }
   }
+}
+
+/* 历史会话弹窗样式 */
+.history-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.history-content {
+  background: white;
+  border-radius: 20rpx;
+  width: 90%;
+  max-width: 700rpx;
+  max-height: 85%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(50rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.history-header {
+  padding: 40rpx 30rpx 30rpx;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+  color: white;
+}
+
+.history-title-section {
+  display: flex;
+  align-items: center;
+  gap: 15rpx;
+}
+
+.history-icon {
+  font-size: 40rpx;
+}
+
+.history-title {
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.conversation-count {
+  font-size: 24rpx;
+  opacity: 0.8;
+  margin-top: 5rpx;
+}
+
+.close-btn {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 32rpx;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.new-conversation-btn {
+  margin: 20rpx;
+  padding: 25rpx;
+  background: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+  color: white;
+  border: none;
+  border-radius: 15rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15rpx;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(22, 93, 255, 0.3);
+}
+
+.new-conversation-btn:hover {
+  transform: translateY(-2rpx);
+  box-shadow: 0 6px 20px rgba(22, 93, 255, 0.4);
+}
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 20rpx 20rpx;
+}
+
+.conversation-item {
+  padding: 30rpx 25rpx;
+  margin-bottom: 15rpx;
+  background: white;
+  border-radius: 15rpx;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.conversation-item:hover {
+  transform: translateY(-2rpx);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border-color: #165dff;
+}
+
+.conversation-item.current {
+  border-color: #165dff;
+  background: linear-gradient(135deg, rgba(22, 93, 255, 0.05) 0%, rgba(114, 46, 209, 0.05) 100%);
+}
+
+.conversation-item.current::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6rpx;
+  background: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+  border-radius: 0 3rpx 3rpx 0;
+}
+
+.conversation-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 32rpx;
+  flex-shrink: 0;
+}
+
+.conversation-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.conversation-header {
+  display: flex;
+  align-items: center;
+  gap: 15rpx;
+  margin-bottom: 10rpx;
+}
+
+.conversation-title {
+  font-size: 32rpx;
+  color: #333;
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current-badge {
+  background: #165dff;
+  color: white;
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+  font-weight: 500;
+}
+
+.conversation-preview {
+  font-size: 26rpx;
+  color: #666;
+  margin-bottom: 10rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.conversation-actions {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.delete-btn {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  background: #ff4757;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  transition: all 0.3s ease;
+  opacity: 0.8;
+}
+
+.delete-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 100rpx 40rpx;
+  color: #999;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 30rpx;
+  opacity: 0.3;
+  color: #165dff;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  margin-bottom: 40rpx;
+  line-height: 1.5;
+}
+
+.create-btn {
+  background: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+  color: white;
+  border: none;
+  padding: 25rpx 50rpx;
+  border-radius: 25rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(22, 93, 255, 0.3);
+}
+
+.create-btn:hover {
+  transform: translateY(-2rpx);
+  box-shadow: 0 6px 20px rgba(22, 93, 255, 0.4);
 }
 </style>

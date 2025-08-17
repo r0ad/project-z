@@ -4,8 +4,8 @@
  */
 
 const dbUpgradeConfig = {
-  current_version: '2.11.0',
-  upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.3.0', '2.4.0', '2.5.0', '2.6.0', '2.7.0', '2.8.0', '2.9.0', '2.10.0', '2.11.0'],
+  current_version: '2.12.0',
+  upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.3.0', '2.4.0', '2.5.0', '2.6.0', '2.7.0', '2.8.0', '2.9.0', '2.10.0', '2.11.0', '2.12.0'],
   versions: {
     '1.0.0': {
       description: '初始化数据库',
@@ -297,24 +297,6 @@ const dbUpgradeConfig = {
         }
       ]
     },
-    '2.10.0': {
-      description: '验证AI表字段处理结果',
-      dependencies: ['2.9.0'],
-      scripts: [
-        {
-          type: 'check_table',
-          name: 'ai_analyses_check_updated_at',
-          sql: 'SELECT updated_at FROM ai_analyses LIMIT 1',
-          ignore_error: true
-        },
-        {
-          type: 'check_table',
-          name: 'ai_summaries_check_updated_at',
-          sql: 'SELECT updated_at FROM ai_summaries LIMIT 1',
-          ignore_error: true
-        }
-      ]
-    },
     '2.11.0': {
       description: '最终确认AI表结构完整性',
       dependencies: ['2.10.0'],
@@ -329,6 +311,55 @@ const dbUpgradeConfig = {
           type: 'create_index',
           name: 'idx_ai_summaries_project_updated',
           sql: 'CREATE INDEX IF NOT EXISTS idx_ai_summaries_project_updated ON ai_summaries(project_id, updated_at)',
+          ignore_error: true
+        }
+      ]
+    },
+    
+    '2.12.0': {
+      description: '修改聊天表结构支持不同类型聊天',
+      dependencies: ['2.11.0'],
+      scripts: [
+        {
+          type: 'recreate_table',
+          name: 'chat_conversations_backup',
+          sql: 'CREATE TEMPORARY TABLE chat_conversations_backup AS SELECT * FROM chat_conversations',
+          ignore_error: true
+        },
+        {
+          type: 'drop_table',
+          name: 'chat_conversations_drop',
+          sql: 'DROP TABLE IF EXISTS chat_conversations',
+          ignore_error: true
+        },
+        {
+          type: 'create_table',
+          name: 'chat_conversations_recreate',
+          sql: 'CREATE TABLE chat_conversations (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER, title TEXT, chat_type TEXT DEFAULT "project", related_id INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)',
+          ignore_error: false
+        },
+        {
+          type: 'restore_data',
+          name: 'chat_conversations_restore',
+          sql: 'INSERT INTO chat_conversations (id, project_id, title, chat_type, related_id, created_at, updated_at) SELECT id, project_id, title, "project", project_id, created_at, updated_at FROM chat_conversations_backup',
+          ignore_error: true
+        },
+        {
+          type: 'drop_table',
+          name: 'chat_conversations_cleanup',
+          sql: 'DROP TABLE IF EXISTS chat_conversations_backup',
+          ignore_error: true
+        },
+        {
+          type: 'create_index',
+          name: 'idx_chat_conversations_project_id',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_chat_conversations_project_id ON chat_conversations(project_id)',
+          ignore_error: true
+        },
+        {
+          type: 'create_index',
+          name: 'idx_chat_conversations_type_related',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_chat_conversations_type_related ON chat_conversations(chat_type, related_id)',
           ignore_error: true
         }
       ]
