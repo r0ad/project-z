@@ -9,7 +9,7 @@ class DBService {
     this.dbName = 'ai_project_manage.db'
     this.dbPath = '_doc/ai_project_manage.db'
     this.isInitialized = false
-    this.currentVersion = '2.2.0' // 当前数据库版本
+    this.currentVersion = '2.6.0' // 当前数据库版本
   }
 
   /**
@@ -346,6 +346,57 @@ class DBService {
       
       console.log('项目相关表创建完成')
     }
+
+    /**
+     * 创建AI相关表
+     */
+    async createAITables() {
+      console.log('创建AI相关表...')
+      
+      // AI分析表
+      await this.executeSql(`
+        CREATE TABLE IF NOT EXISTS ai_analyses (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id INTEGER NOT NULL,
+          content TEXT NOT NULL,
+          suggestions TEXT,
+          analysis_type TEXT DEFAULT 'analysis',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (project_id) REFERENCES projects(id)
+        )
+      `)
+      
+      // AI总结表
+      await this.executeSql(`
+        CREATE TABLE IF NOT EXISTS ai_summaries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id INTEGER NOT NULL,
+          content TEXT NOT NULL,
+          suggestions TEXT,
+          summary_type TEXT DEFAULT 'summary',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (project_id) REFERENCES projects(id)
+        )
+      `)
+      
+      // AI配置表
+      await this.executeSql(`
+        CREATE TABLE IF NOT EXISTS ai_config (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          api_key TEXT NOT NULL,
+          base_url TEXT,
+          model TEXT DEFAULT 'gpt-3.5-turbo',
+          is_active INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `)
+      
+      console.log('AI相关表创建完成')
+    }
    
    /**
     * 创建数据库索引
@@ -361,6 +412,7 @@ class DBService {
        'CREATE INDEX IF NOT EXISTS idx_logs_created_at ON project_logs(created_at)',
        'CREATE INDEX IF NOT EXISTS idx_knowledge_title ON knowledge_base(title)',
        'CREATE INDEX IF NOT EXISTS idx_ai_analyses_project_id ON ai_analyses(project_id)',
+       'CREATE INDEX IF NOT EXISTS idx_ai_summaries_project_id ON ai_summaries(project_id)',
        'CREATE INDEX IF NOT EXISTS idx_settings_category_key ON settings(category, key)',
        'CREATE INDEX IF NOT EXISTS idx_ai_config_is_active ON ai_config(is_active)'
      ]
@@ -399,7 +451,7 @@ class DBService {
     const tablesToDrop = [
       'projects', 'project_milestones', 'project_logs', 
       'knowledge_base', 'knowledge_tags', 'knowledge_tag_mappings',
-      'ai_analyses', 'favorites', 'settings', 'ai_config', 'users'
+      'ai_analyses', 'ai_summaries', 'favorites', 'settings', 'ai_config', 'users'
     ]
     
     for (const table of tablesToDrop) {

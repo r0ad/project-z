@@ -194,10 +194,78 @@
 				<view v-if="activeTab === 2" class="tab-panel">
 					<view class="card">
 						<view class="card-header">
-							<nut-icon name="chart-pie" color="#165DFF" size="16"></nut-icon>
-							<text class="card-title">项目分析</text>
+							<view class="card-header-left">
+								<nut-icon name="chart-pie" color="#165DFF" size="16"></nut-icon>
+								<text class="card-title">AI分析</text>
+							</view>
+							<view class="card-actions">
+								<nut-button 
+									type="primary" 
+									size="small" 
+									plain
+									@click="generateAIAnalysis"
+									:loading="generatingAnalysis"
+								>
+									<nut-icon name="magic" size="12"></nut-icon>
+									AI分析
+								</nut-button>
+								<nut-button 
+									type="default" 
+									size="small" 
+									plain
+									@click="showAddAnalysis"
+									style="margin-left: 16rpx;"
+								>
+									<nut-icon name="plus" size="12"></nut-icon>
+									手动添加
+								</nut-button>
+							</view>
 						</view>
-						<text class="analysis-text">基于当前进度和历史数据，AI分析显示项目整体进展良好，预计可按时完成。建议重点关注API性能优化环节。</text>
+						
+						<view class="analysis-list">
+							<view 
+								v-for="(analysis, index) in analysisList" 
+								:key="analysis.id"
+								class="analysis-item"
+							>
+								<view class="analysis-header">
+									<view class="analysis-meta">
+										<text class="analysis-time">{{ analysis.formattedTime }}</text>
+										<view class="analysis-type" v-if="analysis.analysisType !== 'general'">
+											{{ getAnalysisTypeText(analysis.analysisType) }}
+										</view>
+									</view>
+									<view class="analysis-actions">
+										<nut-icon 
+											name="edit" 
+											size="14" 
+											color="#86909C"
+											@click="editAnalysis(analysis)"
+										></nut-icon>
+										<nut-icon 
+											name="del" 
+											size="14" 
+											color="#F53F3F"
+											@click="deleteAnalysis(analysis)"
+											style="margin-left: 16rpx;"
+										></nut-icon>
+									</view>
+								</view>
+								<view class="analysis-content">
+									<text class="analysis-text">{{ analysis.content }}</text>
+									<view v-if="analysis.suggestions" class="analysis-suggestions">
+										<text class="suggestions-label">建议：</text>
+										<text class="suggestions-text">{{ analysis.suggestions }}</text>
+									</view>
+								</view>
+							</view>
+							
+							<!-- 空状态 -->
+							<view v-if="analysisList.length === 0" class="empty-analysis">
+								<nut-icon name="chart-pie" size="32" color="#C9CDD4"></nut-icon>
+								<text class="empty-text">暂无分析记录，点击AI分析或手动添加</text>
+							</view>
+						</view>
 					</view>
 				</view>
 
@@ -205,10 +273,75 @@
 				<view v-if="activeTab === 3" class="tab-panel">
 					<view class="card">
 						<view class="card-header">
-							<nut-icon name="file-text" color="#165DFF" size="16"></nut-icon>
-							<text class="card-title">项目总结</text>
+							<view class="card-header-left">
+								<nut-icon name="file-text" color="#165DFF" size="16"></nut-icon>
+								<text class="card-title">项目总结</text>
+							</view>
+							<view class="card-actions">
+								<nut-button 
+									type="primary" 
+									size="small" 
+									plain
+									@click="generateAISummary"
+									:loading="generatingSummary"
+								>
+									<nut-icon name="magic" size="12"></nut-icon>
+									AI总结
+								</nut-button>
+								<nut-button 
+									type="default" 
+									size="small" 
+									plain
+									@click="showAddSummary"
+									style="margin-left: 16rpx;"
+								>
+									<nut-icon name="plus" size="12"></nut-icon>
+									手动添加
+								</nut-button>
+							</view>
 						</view>
-						<text class="summary-text">项目进展顺利，已完成需求确认阶段，核心开发阶段进度良好。团队协作效率高，技术难点逐步攻克。</text>
+						
+						<view class="summary-list">
+							<view 
+								v-for="(summary, index) in summaryList" 
+								:key="summary.id"
+								class="summary-item"
+							>
+								<view class="summary-header">
+									<view class="summary-meta">
+										<text class="summary-time">{{ summary.formattedTime }}</text>
+									</view>
+									<view class="summary-actions">
+										<nut-icon 
+											name="edit" 
+											size="14" 
+											color="#86909C"
+											@click="editSummary(summary)"
+										></nut-icon>
+										<nut-icon 
+											name="del" 
+											size="14" 
+											color="#F53F3F"
+											@click="deleteSummary(summary)"
+											style="margin-left: 16rpx;"
+										></nut-icon>
+									</view>
+								</view>
+								<view class="summary-content">
+									<text class="summary-text">{{ summary.content }}</text>
+									<view v-if="summary.suggestions" class="summary-suggestions">
+										<text class="suggestions-label">建议：</text>
+										<text class="suggestions-text">{{ summary.suggestions }}</text>
+									</view>
+								</view>
+							</view>
+							
+							<!-- 空状态 -->
+							<view v-if="summaryList.length === 0" class="empty-summary">
+								<nut-icon name="file-text" size="32" color="#C9CDD4"></nut-icon>
+								<text class="empty-text">暂无总结记录，点击AI总结或手动添加</text>
+							</view>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -280,6 +413,61 @@
 							type="primary" 
 							size="large" 
 							@click="saveEdit"
+							:loading="saving"
+						>
+							保存
+						</nut-button>
+					</view>
+				</view>
+			</nut-popup>
+			
+			<!-- AI分析/总结编辑弹窗 -->
+			<nut-popup 
+				v-model:visible="showAnalysisModal" 
+				position="bottom" 
+				:style="{ height: '80%' }"
+				round
+				closeable
+			>
+				<view class="analysis-modal">
+					<view class="modal-header">
+						<text class="modal-title">{{ editingAnalysis ? '编辑' : '添加' }}{{ analysisModalType === 'analysis' ? 'AI分析' : '项目总结' }}</text>
+					</view>
+					<view class="modal-form">
+						<view class="form-item">
+							<view class="form-label">{{ analysisModalType === 'analysis' ? '分析内容' : '总结内容' }}</view>
+							<nut-textarea 
+								v-model="analysisForm.content"
+								:placeholder="'请输入' + (analysisModalType === 'analysis' ? '分析内容' : '总结内容')"
+								:rows="6"
+								maxlength="2000"
+								show-word-limit
+							/>
+						</view>
+						<view class="form-item">
+							<view class="form-label">建议和改进</view>
+							<nut-textarea 
+								v-model="analysisForm.suggestions"
+								placeholder="请输入建议和改进措施（可选）"
+								:rows="4"
+								maxlength="1000"
+								show-word-limit
+							/>
+						</view>
+					</view>
+					<view class="modal-actions">
+						<nut-button 
+							type="default" 
+							size="large" 
+							@click="cancelAnalysisEdit"
+							style="margin-right: 16rpx;"
+						>
+							取消
+						</nut-button>
+						<nut-button 
+							type="primary" 
+							size="large" 
+							@click="saveAnalysis"
 							:loading="saving"
 						>
 							保存
@@ -397,6 +585,7 @@
 <script>
 import projectApi from '@/api/projectApi.js'
 import logApi from '@/api/logApi.js'
+import aiApi from '@/api/aiApi.js'
 import DateUtils from '@/utils/dateUtils.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 
@@ -421,6 +610,9 @@ export default {
 			milestones: [],
 			projectLogs: [],
 			project: {},
+			// AI分析和总结数据
+			analysisList: [],
+			summaryList: [],
 			// 编辑日志相关
 			editingLog: null,
 			showEditModal: false,
@@ -431,6 +623,17 @@ export default {
 				problemText: '',
 				planText: ''
 			},
+			// AI分析/总结编辑相关
+			showAnalysisModal: false,
+			editingAnalysis: null,
+			analysisModalType: 'analysis', // 'analysis' 或 'summary'
+			analysisForm: {
+				content: '',
+				suggestions: ''
+			},
+			generatingAnalysis: false,
+			generatingSummary: false,
+			savingAnalysis: false,
 			// 里程碑管理相关
 			showMilestoneModal: false,
 			editingMilestone: null,
@@ -471,20 +674,25 @@ export default {
 			
 			this.loading = true
 			try {
-				// 并行加载项目详情、里程碑和最近日志
-				const [projectResult, milestonesResult, logsResult] = await Promise.all([
+				// 并行加载项目详情、里程碑、最近日志、AI分析和总结
+				const [projectResult, milestonesResult, logsResult, analysisResult, summaryResult] = await Promise.all([
 					projectApi.getProjectDetail(this.projectId),
 					projectApi.getProjectMilestones(this.projectId),
-					logApi.getRecentLogs(this.projectId, 10)
+					logApi.getRecentLogs(this.projectId, 10),
+					aiApi.getAnalysesList(this.projectId, { analysisType: 'general', limit: 10 }),
+					aiApi.getSummariesList(this.projectId, { limit: 10 })
 				])
 				
 				this.project = projectResult || {}
-			this.milestones = milestonesResult || []
-			// 处理日志数据，添加格式化时间
-			this.projectLogs = (logsResult || []).map(log => ({
-				...log,
-				time: DateUtils.formatDateTime(log.createdAt)
-			}))
+				this.milestones = milestonesResult || []
+				// 处理日志数据，添加格式化时间
+				this.projectLogs = (logsResult || []).map(log => ({
+					...log,
+					time: DateUtils.formatDateTime(log.createdAt)
+				}))
+				// 处理AI分析和总结数据
+				this.analysisList = analysisResult || []
+				this.summaryList = summaryResult || []
 				
 				// 更新项目标题和目标
 			if (this.project.title) {
@@ -694,7 +902,7 @@ export default {
 			
 			if (this.saving) return
 			
-			this.saving = true
+			this.savingAnalysis = true
 			
 			try {
 				const updateData = {
@@ -729,7 +937,7 @@ export default {
 					icon: 'none'
 				})
 			} finally {
-				this.saving = false
+				this.savingAnalysis = false
 			}
 		},
 		
@@ -961,6 +1169,297 @@ export default {
 			} catch (error) {
 				console.error('更新项目进度失败:', error)
 			}
+		},
+		
+		// ==================== AI分析相关方法 ====================
+		
+		// 生成AI分析
+		async generateAIAnalysis() {
+			if (this.generatingAnalysis) return
+			
+			this.generatingAnalysis = true
+			try {
+				const result = await aiApi.generateAIAnalysis(this.projectId, 'general')
+				
+				// 添加到分析列表
+				this.analysisList.unshift({
+					id: result.id,
+					content: result.content,
+					suggestions: result.suggestions,
+					analysisType: result.analysisType,
+					formattedTime: '刚刚'
+				})
+				
+				uni.showToast({
+					title: 'AI分析生成成功',
+					icon: 'success'
+				})
+			} catch (error) {
+				console.error('生成AI分析失败:', error)
+				uni.showToast({
+					title: error.message || '生成失败，请重试',
+					icon: 'none'
+				})
+			} finally {
+				this.generatingAnalysis = false
+			}
+		},
+		
+		// 显示添加分析弹窗
+		showAddAnalysis() {
+			this.analysisModalType = 'analysis'
+			this.editingAnalysis = null
+			this.analysisForm = {
+				content: '',
+				suggestions: ''
+			}
+			this.showAnalysisModal = true
+		},
+		
+		// 编辑分析
+		editAnalysis(analysis) {
+			this.analysisModalType = 'analysis'
+			this.editingAnalysis = analysis
+			this.analysisForm = {
+				content: analysis.content || '',
+				suggestions: analysis.suggestions || ''
+			}
+			this.showAnalysisModal = true
+		},
+		
+		// 删除分析
+		async deleteAnalysis(analysis) {
+			uni.showModal({
+				title: '确认删除',
+				content: '确定要删除这条分析记录吗？',
+				success: async (res) => {
+					if (res.confirm) {
+						try {
+							await aiApi.deleteAnalysis(analysis.id)
+							
+							// 从本地数据中移除
+							const index = this.analysisList.findIndex(a => a.id === analysis.id)
+							if (index !== -1) {
+								this.analysisList.splice(index, 1)
+							}
+							
+							uni.showToast({
+								title: '删除成功',
+								icon: 'success'
+							})
+						} catch (error) {
+							console.error('删除分析失败:', error)
+							uni.showToast({
+								title: '删除失败，请重试',
+								icon: 'none'
+							})
+						}
+					}
+				}
+			})
+		},
+		
+		// ==================== AI总结相关方法 ====================
+		
+		// 生成AI总结
+		async generateAISummary() {
+			if (this.generatingSummary) return
+			
+			this.generatingSummary = true
+			try {
+				const result = await aiApi.generateAISummary(this.projectId, 'week')
+				
+				// 添加到总结列表
+				this.summaryList.unshift({
+					id: result.id,
+					content: result.content,
+					suggestions: result.suggestions,
+					period: result.period,
+					formattedTime: '刚刚'
+				})
+				
+				uni.showToast({
+					title: 'AI总结生成成功',
+					icon: 'success'
+				})
+			} catch (error) {
+				console.error('生成AI总结失败:', error)
+				uni.showToast({
+					title: error.message || '生成失败，请重试',
+					icon: 'none'
+				})
+			} finally {
+				this.generatingSummary = false
+			}
+		},
+		
+		// 显示添加总结弹窗
+		showAddSummary() {
+			this.analysisModalType = 'summary'
+			this.editingAnalysis = null
+			this.analysisForm = {
+				content: '',
+				suggestions: ''
+			}
+			this.showAnalysisModal = true
+		},
+		
+		// 编辑总结
+		editSummary(summary) {
+			this.analysisModalType = 'summary'
+			this.editingAnalysis = summary
+			this.analysisForm = {
+				content: summary.content || '',
+				suggestions: summary.suggestions || ''
+			}
+			this.showAnalysisModal = true
+		},
+		
+		// 删除总结
+		async deleteSummary(summary) {
+			uni.showModal({
+				title: '确认删除',
+				content: '确定要删除这条总结记录吗？',
+				success: async (res) => {
+					if (res.confirm) {
+						try {
+							await aiApi.deleteSummary(summary.id)
+							
+							// 从本地数据中移除
+							const index = this.summaryList.findIndex(s => s.id === summary.id)
+							if (index !== -1) {
+								this.summaryList.splice(index, 1)
+							}
+							
+							uni.showToast({
+								title: '删除成功',
+								icon: 'success'
+							})
+						} catch (error) {
+							console.error('删除总结失败:', error)
+							uni.showToast({
+								title: '删除失败，请重试',
+								icon: 'none'
+							})
+						}
+					}
+				}
+			})
+		},
+		
+		// ==================== 通用编辑方法 ====================
+		
+		// 保存分析/总结
+		async saveAnalysis() {
+			if (this.savingAnalysis) return
+			
+			if (!this.analysisForm.content.trim()) {
+				uni.showToast({
+					title: '请输入内容',
+					icon: 'none'
+				})
+				return
+			}
+			
+			this.saving = true
+			try {
+				const data = {
+					content: this.analysisForm.content.trim(),
+					suggestions: this.analysisForm.suggestions.trim()
+				}
+				
+				if (this.editingAnalysis) {
+					// 更新现有记录
+					if (this.analysisModalType === 'analysis') {
+						await aiApi.updateAnalysis(this.editingAnalysis.id, data)
+						
+						// 更新本地数据
+						const index = this.analysisList.findIndex(a => a.id === this.editingAnalysis.id)
+						if (index !== -1) {
+							this.analysisList[index] = {
+								...this.analysisList[index],
+								...data
+							}
+						}
+					} else {
+						await aiApi.updateSummary(this.editingAnalysis.id, data)
+						
+						// 更新本地数据
+						const index = this.summaryList.findIndex(s => s.id === this.editingAnalysis.id)
+						if (index !== -1) {
+							this.summaryList[index] = {
+								...this.summaryList[index],
+								...data
+							}
+						}
+					}
+					
+					uni.showToast({
+						title: '更新成功',
+						icon: 'success'
+					})
+				} else {
+					// 创建新记录
+					let newId
+					if (this.analysisModalType === 'analysis') {
+						newId = await aiApi.createAnalysis(this.projectId, data)
+						
+						// 添加到本地数据
+						this.analysisList.unshift({
+							id: newId,
+							...data,
+							analysisType: 'general',
+							formattedTime: '刚刚'
+						})
+					} else {
+						newId = await aiApi.createSummary(this.projectId, data)
+						
+						// 添加到本地数据
+						this.summaryList.unshift({
+							id: newId,
+							...data,
+							formattedTime: '刚刚'
+						})
+					}
+					
+					uni.showToast({
+						title: '添加成功',
+						icon: 'success'
+					})
+				}
+				
+				this.cancelAnalysisEdit()
+				
+			} catch (error) {
+				console.error('保存失败:', error)
+				uni.showToast({
+					title: error.message || '保存失败，请重试',
+					icon: 'none'
+				})
+			} finally {
+				this.saving = false
+			}
+		},
+		
+		// 取消编辑
+		cancelAnalysisEdit() {
+			this.showAnalysisModal = false
+			this.editingAnalysis = null
+			this.analysisForm = {
+				content: '',
+				suggestions: ''
+			}
+		},
+		
+		// 获取分析类型文本
+		getAnalysisTypeText(type) {
+			const typeMap = {
+				general: '综合分析',
+				progress: '进度分析',
+				risk: '风险分析',
+				quality: '质量分析'
+			}
+			return typeMap[type] || '其他'
 		}
 	}
 }
@@ -1391,6 +1890,30 @@ export default {
 	overflow-y: auto;
 }
 
+.analysis-modal {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+}
+
+.modal-header {
+	padding: 32rpx 32rpx 16rpx 32rpx;
+	border-bottom: 2rpx solid #E5E6EB;
+}
+
+.modal-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #1D2129;
+}
+
+.modal-form {
+	flex: 1;
+	padding: 32rpx;
+	overflow-y: auto;
+}
+
 .modal-actions {
 	display: flex;
 	justify-content: space-between;
@@ -1402,6 +1925,12 @@ export default {
 	bottom: 0;
 	z-index: 10;
 	margin-top: auto;
+}
+
+.modal-actions .nut-button {
+	flex: 1;
+	max-width: 300rpx;
+	min-width: 120rpx;
 }
 
 .edit-modal {

@@ -4,8 +4,8 @@
  */
 
 const dbUpgradeConfig = {
-  current_version: '2.5.0',
-  upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.4.0', '2.5.0'],
+  current_version: '2.8.0',
+  upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.4.0', '2.5.0', '2.6.0', '2.7.0', '2.8.0'],
   versions: {
     '1.0.0': {
       description: '初始化数据库',
@@ -154,6 +154,80 @@ const dbUpgradeConfig = {
           type: 'create_index',
           name: 'idx_chat_messages_timestamp',
           sql: 'CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)'
+        }
+      ]
+    },
+    '2.6.0': {
+      description: '添加AI分析和总结功能表',
+      dependencies: ['2.5.0'],
+      scripts: [
+        {
+          type: 'alter_table',
+          name: 'ai_analyses',
+          sql: 'ALTER TABLE ai_analyses ADD COLUMN content TEXT',
+          ignore_error: true
+        },
+        {
+          type: 'alter_table',
+          name: 'ai_analyses',
+          sql: 'ALTER TABLE ai_analyses ADD COLUMN suggestions TEXT',
+          ignore_error: true
+        },
+        {
+          type: 'create_table',
+          name: 'ai_summaries',
+          sql: 'CREATE TABLE IF NOT EXISTS ai_summaries (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, content TEXT NOT NULL, suggestions TEXT, summary_type TEXT DEFAULT "summary", created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (project_id) REFERENCES projects(id))'
+        },
+        {
+          type: 'create_index',
+          name: 'idx_ai_summaries_project_id',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_ai_summaries_project_id ON ai_summaries(project_id)'
+        },
+        {
+          type: 'alter_table',
+          name: 'projects',
+          sql: 'ALTER TABLE projects ADD COLUMN goal TEXT',
+          ignore_error: true
+        },
+        {
+          type: 'alter_table',
+          name: 'projects',
+          sql: 'ALTER TABLE projects ADD COLUMN progress INTEGER DEFAULT 0',
+          ignore_error: true
+        },
+        {
+          type: 'alter_table',
+          name: 'projects',
+          sql: 'ALTER TABLE projects ADD COLUMN start_date DATE',
+          ignore_error: true
+        },
+        {
+          type: 'alter_table',
+          name: 'projects',
+          sql: 'ALTER TABLE projects ADD COLUMN end_date DATE',
+          ignore_error: true
+        },
+        {
+          type: 'create_table',
+          name: 'project_milestones',
+          sql: 'CREATE TABLE IF NOT EXISTS project_milestones (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, title TEXT NOT NULL, description TEXT, status TEXT DEFAULT "pending", progress INTEGER DEFAULT 0, deadline DATE, sequence INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (project_id) REFERENCES projects(id))',
+          ignore_error: true
+        },
+        {
+          type: 'create_index',
+          name: 'idx_milestones_project_id',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_milestones_project_id ON project_milestones(project_id)'
+        }
+      ]
+    },
+    '2.8.0': {
+      description: '添加项目里程碑功能补充字段',
+      dependencies: ['2.6.0'],
+      scripts: [
+        {
+          type: 'add_column',
+          name: 'ai_summaries',
+          sql: 'ALTER TABLE ai_summaries ADD COLUMN summary_type TEXT DEFAULT "summary"'
         }
       ]
     }

@@ -788,6 +788,492 @@ class AiApi {
       duration: Math.ceil(text.length / 10) // 模拟音频时长
     }
   }
+
+  // ==================== AI分析管理 ====================
+  
+  /**
+   * 获取项目AI分析列表
+   * @param {number} projectId - 项目ID
+   * @param {Object} options - 查询选项
+   */
+  async getAnalysesList(projectId, options = {}) {
+    await this.ensureDBInit()
+    
+    const { analysisType, limit = 20, offset = 0 } = options
+    
+    let where = 'project_id = ?'
+    let params = [projectId]
+    
+    if (analysisType) {
+      where += ' AND analysis_type = ?'
+      params.push(analysisType)
+    }
+    
+    const orderBy = 'created_at DESC'
+    const limitClause = `${limit} OFFSET ${offset}`
+    
+    const analyses = await dbService.findMany('ai_analyses', where, params, orderBy, limitClause)
+    
+    return analyses.map(analysis => ({
+      id: analysis.id,
+      projectId: analysis.project_id,
+      content: analysis.content,
+      suggestions: analysis.suggestions,
+      analysisType: analysis.analysis_type,
+      createdAt: analysis.created_at,
+      formattedTime: this.formatTime(analysis.created_at)
+    }))
+  }
+  
+  /**
+   * 创建AI分析记录
+   * @param {number} projectId - 项目ID
+   * @param {Object} analysisData - 分析数据
+   */
+  async createAnalysis(projectId, analysisData) {
+    await this.ensureDBInit()
+    
+    const { content, suggestions, analysisType = 'general', isAIGenerated = false } = analysisData
+    
+    const data = {
+      project_id: projectId,
+      content: content || '',
+      suggestions: suggestions || '',
+      analysis_type: analysisType
+    }
+    
+    const analysisId = await dbService.insert('ai_analyses', data)
+    
+    // 如果是AI生成的，记录到日志
+    if (isAIGenerated) {
+      console.log(`AI分析已创建: ${analysisId}, 项目: ${projectId}`)
+    }
+    
+    return analysisId
+  }
+  
+  /**
+   * 更新AI分析记录
+   * @param {number} analysisId - 分析ID
+   * @param {Object} updateData - 更新数据
+   */
+  async updateAnalysis(analysisId, updateData) {
+    await this.ensureDBInit()
+    
+    const { content, suggestions, analysisType } = updateData
+    
+    const data = {}
+    if (content !== undefined) data.content = content
+    if (suggestions !== undefined) data.suggestions = suggestions
+    if (analysisType !== undefined) data.analysis_type = analysisType
+    
+    await dbService.update('ai_analyses', data, 'id = ?', [analysisId])
+    
+    return true
+  }
+  
+  /**
+   * 删除AI分析记录
+   * @param {number} analysisId - 分析ID
+   */
+  async deleteAnalysis(analysisId) {
+    await this.ensureDBInit()
+    
+    await dbService.delete('ai_analyses', 'id = ?', [analysisId])
+    
+    return true
+  }
+  
+  /**
+   * 获取AI分析详情
+   * @param {number} analysisId - 分析ID
+   */
+  async getAnalysisDetail(analysisId) {
+    await this.ensureDBInit()
+    
+    const analysis = await dbService.findOne('ai_analyses', 'id = ?', [analysisId])
+    
+    if (!analysis) {
+      throw new Error('分析记录不存在')
+    }
+    
+    return {
+      id: analysis.id,
+      projectId: analysis.project_id,
+      content: analysis.content,
+      suggestions: analysis.suggestions,
+      analysisType: analysis.analysis_type,
+      createdAt: analysis.created_at,
+      formattedTime: this.formatTime(analysis.created_at)
+    }
+  }
+  
+  /**
+   * 智能生成AI分析
+   * @param {number} projectId - 项目ID
+   * @param {string} analysisType - 分析类型
+   */
+  async generateAIAnalysis(projectId, analysisType = 'general') {
+    await this.ensureDBInit()
+    
+    try {
+      // 获取项目信息
+      const project = await dbService.findOne('projects', 'id = ?', [projectId])
+      if (!project) {
+        throw new Error('项目不存在')
+      }
+      
+      // 获取最近的日志
+      const recentLogs = await dbService.findMany(
+        'project_logs',
+        'project_id = ?',
+        [projectId],
+        'created_at DESC',
+        '10'
+      )
+      
+      // 获取里程碑信息
+      const milestones = await dbService.findMany(
+        'project_milestones',
+        'project_id = ?',
+        [projectId],
+        'sequence ASC'
+      )
+      
+      // 构建分析提示词
+      const prompt = this.buildAnalysisPrompt(project, recentLogs, milestones, analysisType)
+      
+      // 调用AI进行分析
+      const aiResponse = await this.sendAIRequest(prompt)
+      
+      // 解析AI响应
+      const analysisResult = this.parseAnalysisResponse(aiResponse.content)
+      
+      // 保存分析结果
+      const analysisId = await this.createAnalysis(projectId, {
+        content: analysisResult.content,
+        suggestions: analysisResult.suggestions,
+        analysisType: analysisType,
+        isAIGenerated: true
+      })
+      
+      return {
+        id: analysisId,
+        content: analysisResult.content,
+        suggestions: analysisResult.suggestions,
+        analysisType: analysisType
+      }
+      
+    } catch (error) {
+      console.error('生成AI分析失败:', error)
+      throw error
+    }
+  }
+  
+  // ==================== AI总结管理 ====================
+  
+  /**
+   * 获取项目总结列表
+   * @param {number} projectId - 项目ID
+   * @param {Object} options - 查询选项
+   */
+  async getSummariesList(projectId, options = {}) {
+    await this.ensureDBInit()
+    
+    const { summaryType, limit = 20, offset = 0 } = options
+    
+    let where = 'project_id = ?'
+    let params = [projectId]
+    
+    if (summaryType) {
+      where += ' AND summary_type = ?'
+      params.push(summaryType)
+    }
+    
+    const orderBy = 'created_at DESC'
+    const limitClause = `${limit} OFFSET ${offset}`
+    
+    const summaries = await dbService.findMany('ai_summaries', where, params, orderBy, limitClause)
+    
+    return summaries.map(summary => ({
+      id: summary.id,
+      projectId: summary.project_id,
+      content: summary.content,
+      suggestions: summary.suggestions,
+      summaryType: summary.summary_type,
+      createdAt: summary.created_at,
+      formattedTime: this.formatTime(summary.created_at)
+    }))
+  }
+  
+  /**
+   * 创建项目总结
+   * @param {number} projectId - 项目ID
+   * @param {Object} summaryData - 总结数据
+   */
+  async createSummary(projectId, summaryData) {
+    await this.ensureDBInit()
+    
+    const { content, suggestions, summaryType = 'general', isAIGenerated = false } = summaryData
+    
+    const data = {
+      project_id: projectId,
+      content: content || '',
+      suggestions: suggestions || '',
+      summary_type: summaryType
+    }
+    
+    const summaryId = await dbService.insert('ai_summaries', data)
+    
+    // 如果是AI生成的，记录到日志
+    if (isAIGenerated) {
+      console.log(`AI总结已创建: ${summaryId}, 项目: ${projectId}`)
+    }
+    
+    return summaryId
+  }
+  
+  /**
+   * 更新项目总结
+   * @param {number} summaryId - 总结ID
+   * @param {Object} updateData - 更新数据
+   */
+  async updateSummary(summaryId, updateData) {
+    await this.ensureDBInit()
+    
+    const { content, suggestions, summaryType } = updateData
+    
+    const data = {}
+    if (content !== undefined) data.content = content
+    if (suggestions !== undefined) data.suggestions = suggestions
+    if (summaryType !== undefined) data.summary_type = summaryType
+    
+    await dbService.update('ai_summaries', data, 'id = ?', [summaryId])
+    
+    return true
+  }
+  
+  /**
+   * 删除项目总结
+   * @param {number} summaryId - 总结ID
+   */
+  async deleteSummary(summaryId) {
+    await this.ensureDBInit()
+    
+    await dbService.delete('ai_summaries', 'id = ?', [summaryId])
+    
+    return true
+  }
+  
+  /**
+   * 智能生成项目总结
+   * @param {number} projectId - 项目ID
+   * @param {string} period - 总结周期 (week/month/all)
+   */
+  async generateAISummary(projectId, period = 'week') {
+    await this.ensureDBInit()
+    
+    try {
+      // 获取项目信息
+      const project = await dbService.findOne('projects', 'id = ?', [projectId])
+      if (!project) {
+        throw new Error('项目不存在')
+      }
+      
+      // 根据周期获取日志
+      const logs = await this.getLogsByPeriod(projectId, period)
+      
+      // 获取里程碑完成情况
+      const milestones = await dbService.findMany(
+        'project_milestones',
+        'project_id = ?',
+        [projectId],
+        'sequence ASC'
+      )
+      
+      // 构建总结提示词
+      const prompt = this.buildSummaryPrompt(project, logs, milestones, period)
+      
+      // 调用AI进行总结
+      const aiResponse = await this.sendAIRequest(prompt)
+      
+      // 解析AI响应
+      const summaryResult = this.parseAnalysisResponse(aiResponse.content)
+      
+      // 保存总结结果
+      const summaryId = await this.createSummary(projectId, {
+        content: summaryResult.content,
+        suggestions: summaryResult.suggestions,
+        isAIGenerated: true
+      })
+      
+      return {
+        id: summaryId,
+        content: summaryResult.content,
+        suggestions: summaryResult.suggestions,
+        period: period
+      }
+      
+    } catch (error) {
+      console.error('生成AI总结失败:', error)
+      throw error
+    }
+  }
+  
+  // ==================== 辅助方法 ====================
+  
+  /**
+   * 构建分析提示词
+   */
+  buildAnalysisPrompt(project, logs, milestones, analysisType) {
+    const logsSummary = logs.map(log => `${log.created_at}: ${log.content || ''} ${log.progress_text || ''} ${log.problem_text || ''} ${log.plan_text || ''}`).join('\n')
+    const milestonesSummary = milestones.map(m => `${m.title}: ${m.status} (${m.progress || 0}%)`).join('\n')
+    
+    return `请分析以下项目的当前状况：
+
+项目名称：${project.name}
+项目目标：${project.goal || '未设定'}
+当前进度：${project.progress || 0}%
+项目状态：${project.status}
+
+最近日志：
+${logsSummary}
+
+里程碑情况：
+${milestonesSummary}
+
+请从以下角度进行分析：
+1. 项目进展情况
+2. 存在的问题和风险
+3. 改进建议
+4. 下一步行动计划
+
+**重要：请严格按照以下JSON格式返回，不要包含任何其他文本或说明：**
+
+{
+  "content": "详细的分析内容，包含项目进展、问题风险、改进建议等",
+  "suggestions": "具体的改进建议和下一步行动计划"
+}
+
+请确保返回的是有效的JSON格式，不要添加任何前缀或后缀文本。`
+  }
+  
+  /**
+   * 构建总结提示词
+   */
+  buildSummaryPrompt(project, logs, milestones, period) {
+    const periodText = { week: '本周', month: '本月', all: '整个项目' }[period] || '最近'
+    const logsSummary = logs.map(log => `${log.created_at}: ${log.content || ''} ${log.progress_text || ''} ${log.problem_text || ''} ${log.plan_text || ''}`).join('\n')
+    const completedMilestones = milestones.filter(m => m.status === 'completed')
+
+    return `请总结以下项目${periodText}的情况：
+
+项目名称：${project.name}
+项目目标：${project.goal || '未设定'}
+当前进度：${project.progress || 0}%
+
+${periodText}日志：
+${logsSummary}
+
+已完成里程碑：
+${completedMilestones.map(m => `- ${m.title}`).join('\n')}
+
+请总结：
+1. 主要成果和进展
+2. 遇到的挑战
+3. 经验教训
+4. 下期计划
+
+**重要：请严格按照以下JSON格式返回，不要包含任何其他文本或说明：**
+
+{
+  "content": "详细的总结内容，包含主要成果、挑战、经验教训等",
+  "suggestions": "具体的建议和下期计划"
+}
+
+请确保返回的是有效的JSON格式，不要添加任何前缀或后缀文本。`
+  }
+  
+  /**
+   * 解析AI分析响应
+   */
+  parseAnalysisResponse(response) {
+    try {
+      // 清理响应文本，移除可能的前缀和后缀
+      let cleanResponse = response.trim()
+      
+      // 尝试提取JSON部分
+      const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        cleanResponse = jsonMatch[0]
+      }
+      
+      // 尝试解析JSON响应
+      const parsed = JSON.parse(cleanResponse)
+      return {
+        content: parsed.content || response,
+        suggestions: parsed.suggestions || ''
+      }
+    } catch (error) {
+      console.warn('JSON解析失败，使用原文本:', error)
+      // 如果不是JSON格式，尝试简单分割
+      const lines = response.split('\n').filter(line => line.trim())
+      const midPoint = Math.floor(lines.length / 2)
+      
+      return {
+        content: lines.slice(0, midPoint).join('\n') || response,
+        suggestions: lines.slice(midPoint).join('\n') || ''
+      }
+    }
+  }
+  
+  /**
+   * 根据周期获取日志
+   */
+  async getLogsByPeriod(projectId, period) {
+    const now = new Date()
+    let startDate
+    
+    switch (period) {
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        break
+      case 'month':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        break
+      default:
+        startDate = new Date('1970-01-01')
+    }
+    
+    return await dbService.findMany(
+      'project_logs',
+      'project_id = ? AND created_at >= ?',
+      [projectId, startDate.toISOString()],
+      'created_at DESC'
+    )
+  }
+  
+  /**
+   * 格式化时间显示
+   */
+  formatTime(time) {
+    if (!time) return ''
+    const date = new Date(time)
+    const now = new Date()
+    const diffMs = now - date
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) {
+      return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+    } else if (diffDays === 1) {
+      return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+    } else if (diffDays < 7) {
+      const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+      return `${weekdays[date.getDay()]} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+    } else {
+      return `${date.getMonth() + 1}-${date.getDate()}`
+    }
+  }
 }
 
 // 创建单例实例
