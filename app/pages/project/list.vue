@@ -1,15 +1,17 @@
 <template>
 	<view class="project-list-page">
 		<!-- 自定义导航栏 -->
-		<view class="custom-navbar">
-			<view class="navbar-content">
-				<text class="navbar-title">项目列表</text>
-				<nut-button type="primary" size="small" @click="createProject">
-					<nut-icon name="plus" size="14"></nut-icon>
-					新建项目
-				</nut-button>
-			</view>
-		</view>
+		<CustomNavbar 
+			title="项目列表"
+			:show-back="false"
+			:right-button="{
+				text: '新建项目',
+				icon: 'plus',
+				type: 'primary',
+				size: 'small'
+			}"
+			@right-button-click="createProject"
+		/>
 
 		<!-- 页面内容 -->
 		<view class="page-content">
@@ -73,12 +75,14 @@
 
 <script>
 import CustomTabBar from '@/custom-tab-bar/index.vue'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 import projectApi from '@/api/projectApi.js'
 import DateUtils from '@/utils/dateUtils.js'
 
 export default {
 	components: {
-		CustomTabBar
+		CustomTabBar,
+		CustomNavbar
 	},
 	data() {
 		return {
@@ -198,32 +202,8 @@ export default {
 	padding-bottom: 120rpx;
 }
 
-.custom-navbar {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	z-index: 1000;
-	background-color: #ffffff;
-	border-bottom: 2rpx solid #E5E6EB;
-	padding-top: var(--status-bar-height);
-}
-
-.navbar-content {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 24rpx 32rpx;
-}
-
-.navbar-title {
-	font-size: 36rpx;
-	font-weight: bold;
-	color: #1D2129;
-}
-
 .page-content {
-	padding: calc(var(--status-bar-height) + 120rpx) 32rpx 0;
+	padding: calc(var(--status-bar-height) + 146rpx) 32rpx 0;
 }
 
 .tip-card {

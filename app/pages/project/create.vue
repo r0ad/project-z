@@ -1,15 +1,10 @@
 <template>
   <view class="create-project-page">
     <!-- 自定义导航栏 -->
-    <view class="custom-navbar">
-      <view class="navbar-content">
-        <view class="navbar-left" @click="goBack">
-          <nut-icon name="left" size="20" color="#1D2129"></nut-icon>
-        </view>
-        <view class="navbar-title">新建项目</view>
-        <view class="navbar-right"></view>
-      </view>
-    </view>
+    <CustomNavbar 
+      title="新建项目"
+      @left-click="goBack"
+    />
 
     <!-- 页面内容 -->
     <view class="page-content">
@@ -72,8 +67,12 @@
 <script>
 import projectApi from '@/api/projectApi.js'
 import aiApi from '@/api/aiApi.js'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 
 export default {
+  components: {
+    CustomNavbar
+  },
   data() {
     return {
       formData: {
@@ -235,42 +234,8 @@ export default {
   background-color: #f5f5f5;
 }
 
-.custom-navbar {
-  background-color: #ffffff;
-  border-bottom: 1rpx solid #e5e6eb;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  
-  .navbar-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 88rpx;
-    padding: 0 32rpx;
-    
-    .navbar-left {
-      width: 60rpx;
-      height: 60rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .navbar-title {
-      font-size: 36rpx;
-      font-weight: 600;
-      color: #1d2129;
-    }
-    
-    .navbar-right {
-      width: 60rpx;
-    }
-  }
-}
-
 .page-content {
-  padding: 32rpx;
+  padding: calc(var(--status-bar-height) + 136rpx) 32rpx 32rpx;
   min-height: calc(100vh - 88rpx);
   display: flex;
   flex-direction: column;

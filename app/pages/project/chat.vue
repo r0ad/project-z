@@ -1,17 +1,14 @@
 <template>
   <view class="chat-page">
     <!-- 自定义导航栏 -->
-    <view class="custom-navbar">
-      <view class="navbar-content">
-        <view class="navbar-left" @click="goBack">
-          <nut-icon name="left" size="20" color="#1D2129"></nut-icon>
-        </view>
-        <view class="navbar-title">聊项目</view>
-        <view class="navbar-right" @click="showContextMenu">
-          <nut-icon name="more" size="20" color="#1D2129"></nut-icon>
-        </view>
-      </view>
-    </view>
+    <CustomNavbar 
+      title="聊项目"
+      right-icon="more"
+      left-icon-color="#1D2129"
+      right-icon-color="#1D2129"
+      @left-click="goBack"
+      @right-click="showContextMenu"
+    />
 
     <!-- 项目上下文信息 -->
     <view class="context-info" v-if="showContext">
@@ -258,10 +255,14 @@
 <script>
 import aiApi from '@/api/aiApi.js'
 import logApi from '@/api/logApi.js'
-import projectApi from '@/api/projectApi.js'
 import chatApi from '@/api/chatApi.js'
+import projectApi from '@/api/projectApi.js'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 
 export default {
+	components: {
+		CustomNavbar
+	},
   data() {
     return {
       projectId: '',
@@ -619,6 +620,19 @@ export default {
         actions.push({ type: 'save_knowledge', text: '保存到知识库' })
       }
       
+      // 里程碑相关操作
+      if (content.includes('里程碑') || content.includes('节点') || content.includes('阶段')) {
+        actions.push({ type: 'manage_milestone', text: '管理里程碑' })
+      }
+      
+      if (content.includes('创建') && (content.includes('里程碑') || content.includes('节点'))) {
+        actions.push({ type: 'create_milestone', text: '创建里程碑' })
+      }
+      
+      if (content.includes('完成') && (content.includes('里程碑') || content.includes('节点'))) {
+        actions.push({ type: 'complete_milestone', text: '标记完成' })
+      }
+      
       return actions
     },
     
@@ -635,6 +649,15 @@ export default {
           break
         case 'get_suggestions':
           await this.getMoreSuggestions()
+          break
+        case 'manage_milestone':
+          await this.manageMilestone()
+          break
+        case 'create_milestone':
+          await this.createMilestone()
+          break
+        case 'complete_milestone':
+          await this.completeMilestone()
           break
         case 'retry':
           // 重新发送最后一条用户消息
@@ -722,6 +745,134 @@ export default {
         this.messages.push(suggestion)
         this.$nextTick(() => {
           this.scrollToBottom()
+        })
+      }
+    },
+    
+    // 里程碑管理相关方法
+    async manageMilestone() {
+      try {
+        // 跳转到项目详情页面的里程碑管理
+        uni.navigateTo({
+          url: `/pages/project/detail?projectId=${this.projectId}&tab=milestones`
+        })
+      } catch (error) {
+        console.error('跳转失败:', error)
+        uni.showToast({
+          title: '跳转失败',
+          icon: 'error'
+        })
+      }
+    },
+    
+    async createMilestone() {
+      try {
+        // 显示创建里程碑的输入框
+        uni.showModal({
+          title: '创建里程碑',
+          editable: true,
+          placeholderText: '请输入里程碑标题',
+          success: async (res) => {
+            if (res.confirm && res.content) {
+              const milestoneData = {
+                title: res.content,
+                description: '',
+                status: 'pending',
+                progress: 0,
+                deadline: null
+              }
+              
+              await projectApi.createMilestone(this.projectId, milestoneData)
+              
+              // 添加AI回复确认创建成功
+              const confirmMessage = {
+                type: 'ai',
+                content: `已成功创建里程碑「${res.content}」。你可以在项目详情页面查看和管理所有里程碑。`,
+                timestamp: new Date().toISOString(),
+                actions: [{ type: 'manage_milestone', text: '查看里程碑' }]
+              }
+              this.messages.push(confirmMessage)
+              
+              // 保存AI消息到数据库
+              await this.saveMessageToHistory('assistant', confirmMessage.content)
+              
+              this.$nextTick(() => {
+                this.scrollToBottom()
+              })
+              
+              uni.showToast({
+                title: '里程碑创建成功',
+                icon: 'success'
+              })
+            }
+          }
+        })
+      } catch (error) {
+        console.error('创建里程碑失败:', error)
+        uni.showToast({
+          title: '创建失败',
+          icon: 'error'
+        })
+      }
+    },
+    
+    async completeMilestone() {
+      try {
+        // 获取项目的里程碑列表
+        const milestones = await projectApi.getProjectMilestones(this.projectId)
+        const pendingMilestones = milestones.filter(m => m.status !== 'completed')
+        
+        if (pendingMilestones.length === 0) {
+          uni.showToast({
+            title: '暂无待完成的里程碑',
+            icon: 'none'
+          })
+          return
+        }
+        
+        // 显示里程碑选择列表
+        const itemList = pendingMilestones.map(m => m.title)
+        uni.showActionSheet({
+          itemList: itemList,
+          success: async (res) => {
+            const selectedMilestone = pendingMilestones[res.tapIndex]
+            
+            // 标记里程碑为完成
+            await projectApi.updateMilestone(selectedMilestone.id, {
+              status: 'completed',
+              progress: 100
+            })
+            
+            // 添加AI回复确认完成
+            const confirmMessage = {
+              type: 'ai',
+              content: `恭喜！已将里程碑「${selectedMilestone.title}」标记为完成。项目进度已自动更新。`,
+              timestamp: new Date().toISOString(),
+              actions: [{ type: 'manage_milestone', text: '查看进度' }]
+            }
+            this.messages.push(confirmMessage)
+            
+            // 保存AI消息到数据库
+            await this.saveMessageToHistory('assistant', confirmMessage.content)
+            
+            // 刷新项目信息
+            await this.loadProjectContext()
+            
+            this.$nextTick(() => {
+              this.scrollToBottom()
+            })
+            
+            uni.showToast({
+              title: '里程碑已完成',
+              icon: 'success'
+            })
+          }
+        })
+      } catch (error) {
+        console.error('完成里程碑失败:', error)
+        uni.showToast({
+          title: '操作失败',
+          icon: 'error'
         })
       }
     },
@@ -971,35 +1122,7 @@ export default {
   background-color: #f5f5f5;
   display: flex;
   flex-direction: column;
-}
-
-.custom-navbar {
-  background-color: #ffffff;
-  border-bottom: 1rpx solid #e5e6eb;
-  padding-top: var(--status-bar-height);
-  
-  .navbar-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 88rpx;
-    padding: 0 32rpx;
-    
-    .navbar-left,
-    .navbar-right {
-      width: 60rpx;
-      height: 60rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .navbar-title {
-      font-size: 36rpx;
-      font-weight: 600;
-      color: #1d2129;
-    }
-  }
+  padding-top: calc(var(--status-bar-height) + 120rpx);
 }
 
 .context-info {
@@ -1053,7 +1176,7 @@ export default {
 .message-list {
   .message-item {
     display: flex;
-    margin-bottom: 32rpx;
+    // margin-bottom: 32rpx;
     
     &.user-message {
       flex-direction: row-reverse;

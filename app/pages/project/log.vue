@@ -1,19 +1,14 @@
 <template>
   <view class="log-page">
     <!-- 自定义导航栏 -->
-    <view class="custom-navbar">
-      <view class="navbar-content">
-        <view class="navbar-left" @click="goBack">
-          <nut-icon name="left" size="20" color="#1D2129"></nut-icon>
-        </view>
-        <view class="navbar-title">{{ projectName || '记录日志' }}</view>
-        <view class="navbar-right">
-          <view class="save-btn" @click="saveLog" v-if="logContent.trim()">
-            <text class="save-text">保存</text>
-          </view>
-        </view>
-      </view>
-    </view>
+    <CustomNavbar 
+       :title="projectName || '记录日志'"
+       :right-text="logContent.trim() ? '保存' : ''"
+       left-icon-color="#1D2129"
+       right-text-color="#165DFF"
+       @left-click="goBack"
+       @right-click="saveLog"
+     />
 
     <!-- 页面内容 -->
     <view class="page-content">
@@ -175,8 +170,12 @@
 import logApi from '@/api/logApi.js'
 import aiApi from '@/api/aiApi.js'
 import DateUtils from '@/utils/dateUtils.js'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 
 export default {
+  components: {
+    CustomNavbar
+  },
   data() {
     return {
       projectId: '',
@@ -454,53 +453,8 @@ export default {
   background-color: #f5f5f5;
 }
 
-.custom-navbar {
-  background-color: #ffffff;
-  border-bottom: 1rpx solid #e5e6eb;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  
-  .navbar-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 88rpx;
-    padding: 0 32rpx;
-    
-    .navbar-left {
-      width: 60rpx;
-      height: 60rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .navbar-title {
-      font-size: 36rpx;
-      font-weight: 600;
-      color: #1d2129;
-    }
-    
-    .navbar-right {
-      width: 60rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      
-      .save-btn {
-        .save-text {
-          font-size: 28rpx;
-          color: #165dff;
-          font-weight: 500;
-        }
-      }
-    }
-  }
-}
-
 .page-content {
-  padding: 32rpx;
+  padding: calc(var(--status-bar-height) + 146rpx) 32rpx 32rpx;
 }
 
 .project-info {

@@ -1,13 +1,14 @@
 <template>
 	<view class="project-detail-page">
 		<!-- 自定义导航栏 -->
-		<view class="custom-navbar">
-			<view class="navbar-content">
-				<nut-icon name="left" size="20" color="#86909C" @click="goBack"></nut-icon>
-				<text class="navbar-title">{{ projectTitle }}</text>
-				<nut-icon name="more-x" size="20" color="#86909C" @click="showMoreActions"></nut-icon>
-			</view>
-		</view>
+		<CustomNavbar 
+			:title="projectTitle"
+			right-icon="more-x"
+			left-icon-color="#86909C"
+			right-icon-color="#86909C"
+			@left-click="goBack"
+			@right-click="showMoreActions"
+		/>
 
 		<!-- 页面内容 -->
 		<view class="page-content">
@@ -43,22 +44,53 @@
 					<!-- 关键节点 -->
 					<view class="card">
 						<view class="card-header">
-							<nut-icon name="list" color="#165DFF" size="16"></nut-icon>
-							<text class="card-title">关键节点</text>
+							<view class="card-header-left">
+								<nut-icon name="list" color="#165DFF" size="16"></nut-icon>
+								<text class="card-title">关键节点</text>
+							</view>
+							<view class="card-actions">
+								<nut-button 
+									type="primary" 
+									size="small" 
+									plain
+									@click="showAddMilestone"
+								>
+									<nut-icon name="plus" size="12"></nut-icon>
+									添加
+								</nut-button>
+							</view>
 						</view>
 						
 						<view class="milestone-list">
 							<view 
 								v-for="(milestone, index) in milestones" 
-								:key="index"
+								:key="milestone.id"
 								class="milestone-item"
 							>
 								<view class="milestone-number" :class="getMilestoneClass(milestone.status)">
 									{{ index + 1 }}
 								</view>
 								<view class="milestone-content">
-									<text class="milestone-title">{{ milestone.title }}</text>
-									<text class="milestone-deadline">截止：{{ milestone.deadline }}</text>
+									<view class="milestone-header">
+										<text class="milestone-title">{{ milestone.title }}</text>
+										<view class="milestone-actions">
+											<nut-icon 
+												name="edit" 
+												size="14" 
+												color="#86909C"
+												@click="editMilestone(milestone)"
+											></nut-icon>
+											<nut-icon 
+												name="del" 
+												size="14" 
+												color="#F53F3F"
+												@click="deleteMilestone(milestone)"
+												style="margin-left: 16rpx;"
+											></nut-icon>
+										</view>
+									</view>
+									<text class="milestone-description" v-if="milestone.description">{{ milestone.description }}</text>
+									<text class="milestone-deadline" v-if="milestone.deadline">截止：{{ milestone.deadline }}</text>
 									<view v-if="milestone.status === 'completed'" class="milestone-status completed">
 										已完成
 									</view>
@@ -66,6 +98,15 @@
 										<view class="progress-header">
 											<text class="progress-label">进度</text>
 											<text class="progress-value">{{ milestone.progress }}%</text>
+											<nut-button 
+												type="primary" 
+												size="mini" 
+												plain
+												@click="updateMilestoneStatus(milestone, 'completed')"
+												style="margin-left: 16rpx;"
+											>
+												标记完成
+											</nut-button>
 										</view>
 										<nut-progress 
 											:percentage="milestone.progress" 
@@ -75,17 +116,32 @@
 										></nut-progress>
 									</view>
 									<view v-else class="milestone-status pending">
-										未开始
+										<text>未开始</text>
+										<nut-button 
+											type="primary" 
+											size="mini" 
+											plain
+											@click="updateMilestoneStatus(milestone, 'progress')"
+											style="margin-left: 16rpx;"
+										>
+											开始
+										</nut-button>
 									</view>
 								</view>
+							</view>
+							
+							<!-- 空状态 -->
+							<view v-if="milestones.length === 0" class="empty-milestone">
+								<nut-icon name="list" size="32" color="#C9CDD4"></nut-icon>
+								<text class="empty-text">暂无里程碑，点击添加按钮创建第一个里程碑</text>
 							</view>
 						</view>
 					</view>
 
 					<!-- AI提醒 -->
-					<view class="warning-card">
+					<view class="warning-card" v-if="project.ai_suggestions">
 						<nut-icon name="notice" color="#FF7D00" size="16"></nut-icon>
-						<text class="warning-text">AI提醒：核心开发节点按当前进度，可能提前2天完成，建议提前准备测试计划</text>
+						<text class="warning-text">{{ project.ai_suggestions }}</text>
 					</view>
 				</view>
 
@@ -164,25 +220,27 @@
 				:style="{ height: '70%' }"
 				round
 				closeable
-				title="编辑日志分析"
 			>
-				<view class="edit-modal-content">
-					<view class="edit-form">
-					<view class="form-item">
-						<view class="form-label">原始内容</view>
-						<nut-textarea 
-							v-model="editForm.content"
-							placeholder="请输入日志内容"
-							:rows="4"
-							maxlength="1000"
-							show-word-limit
-						/>
+				<view class="edit-modal">
+					<view class="edit-header">
+						<text class="edit-title">编辑日志</text>
 					</view>
-					<view class="form-item">
-						<view class="form-label">进展情况</view>
+					<view class="edit-form">
+						<view class="form-item">
+							<view class="form-label">日志内容</view>
+							<nut-textarea 
+								v-model="editForm.content"
+								placeholder="请输入日志内容"
+								:rows="3"
+								maxlength="500"
+								show-word-limit
+							/>
+						</view>
+						<view class="form-item">
+							<view class="form-label">进展情况</view>
 							<nut-textarea 
 								v-model="editForm.progressText"
-								placeholder="请输入项目进展情况"
+								placeholder="请输入进展情况"
 								:rows="3"
 								maxlength="500"
 								show-word-limit
@@ -230,6 +288,97 @@
 				</view>
 			</nut-popup>
 			
+			<!-- 添加/编辑里程碑弹窗 -->
+			<nut-popup 
+				v-model:visible="showMilestoneModal" 
+				position="bottom" 
+				:style="{ height: '70%' }"
+				round
+				closeable
+			>
+				<view class="milestone-modal">
+					<view class="modal-header">
+						<text class="modal-title">{{ editingMilestone ? '编辑里程碑' : '添加里程碑' }}</text>
+					</view>
+					<scroll-view class="modal-form" scroll-y>
+						<view class="form-item">
+							<view class="form-label">标题 *</view>
+							<nut-input 
+								v-model="milestoneForm.title"
+								placeholder="请输入里程碑标题"
+								maxlength="50"
+							/>
+						</view>
+						<view class="form-item">
+							<view class="form-label">描述</view>
+							<nut-textarea 
+								v-model="milestoneForm.description"
+								placeholder="请输入里程碑描述"
+								:rows="3"
+								maxlength="200"
+								show-word-limit
+							/>
+						</view>
+						<view class="form-item">
+							<view class="form-label">截止日期</view>
+							<nut-cell
+								:showIcon="true"
+								title="选择截止日期"
+								:desc="milestoneForm.deadline || '请选择日期'"
+								@click="openDatePicker"
+							/>
+						</view>
+						<view class="form-item" v-if="editingMilestone">
+							<view class="form-label">状态</view>
+							<nut-radio-group v-model="milestoneForm.status" direction="horizontal">
+								<nut-radio label="pending">未开始</nut-radio>
+								<nut-radio label="progress">进行中</nut-radio>
+								<nut-radio label="completed">已完成</nut-radio>
+							</nut-radio-group>
+						</view>
+						<view class="form-item" v-if="editingMilestone && milestoneForm.status === 'progress'">
+							<view class="form-label">进度</view>
+							<nut-input-number 
+								v-model="milestoneForm.progress"
+								:min="0"
+								:max="100"
+								:step="10"
+							/>
+							<text style="margin-left: 16rpx; color: #86909C;">%</text>
+						</view>
+					</scroll-view>
+					<view class="modal-actions">
+						<nut-button 
+							type="default" 
+							size="large" 
+							@click="cancelMilestone"
+							style="margin-right: 16rpx; flex: 1;"
+						>
+							取消
+						</nut-button>
+						<nut-button 
+							type="primary" 
+							size="large" 
+							@click="saveMilestone"
+							:loading="saving"
+							style="flex: 1;"
+						>
+							保存
+						</nut-button>
+					</view>
+				</view>
+			</nut-popup>
+			
+			<!-- 日期选择器 -->
+			<nut-calendar
+				v-model:visible="showDatePicker"
+				:default-value="selectedDate"
+				:start-date="minDate"
+				:end-date="maxDate"
+				@close="closeDatePicker"
+				@choose="onDateConfirm"
+			/>
+			
 			<!-- 底部操作区 -->
 			<view class="bottom-actions">
 				<nut-button type="primary" size="large" block @click="addLog">
@@ -249,8 +398,12 @@
 import projectApi from '@/api/projectApi.js'
 import logApi from '@/api/logApi.js'
 import DateUtils from '@/utils/dateUtils.js'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 
 export default {
+	components: {
+		CustomNavbar
+	},
 	data() {
 		return {
 			projectId: '',
@@ -277,7 +430,21 @@ export default {
 				progressText: '',
 				problemText: '',
 				planText: ''
-			}
+			},
+			// 里程碑管理相关
+			showMilestoneModal: false,
+			editingMilestone: null,
+			milestoneForm: {
+				title: '',
+				description: '',
+				deadline: '',
+				status: 'pending',
+				progress: 0
+			},
+			showDatePicker: false,
+			selectedDate: new Date(),
+			minDate: '2020-01-01',
+			maxDate: '2030-12-31'
 		}
 	},
 	onLoad(options) {
@@ -564,6 +731,236 @@ export default {
 			} finally {
 				this.saving = false
 			}
+		},
+		
+		// 里程碑管理方法
+		// 显示添加里程碑弹窗
+		showAddMilestone() {
+			this.editingMilestone = null
+			this.milestoneForm = {
+				title: '',
+				description: '',
+				deadline: '',
+				status: 'pending',
+				progress: 0
+			}
+			this.showMilestoneModal = true
+		},
+		
+		// 编辑里程碑
+		editMilestone(milestone) {
+			this.editingMilestone = milestone
+			this.milestoneForm = {
+				title: milestone.title || '',
+				description: milestone.description || '',
+				deadline: milestone.deadline || '',
+				status: milestone.status || 'pending',
+				progress: milestone.progress || 0
+			}
+			this.showMilestoneModal = true
+		},
+		
+		// 取消里程碑编辑
+		cancelMilestone() {
+			this.showMilestoneModal = false
+			this.editingMilestone = null
+			this.milestoneForm = {
+				title: '',
+				description: '',
+				deadline: '',
+				status: 'pending',
+				progress: 0
+			}
+		},
+		
+		// 保存里程碑
+		async saveMilestone() {
+			if (!this.milestoneForm.title.trim()) {
+				uni.showToast({
+					title: '请输入里程碑标题',
+					icon: 'none'
+				})
+				return
+			}
+			
+			if (this.saving) return
+			
+			this.saving = true
+			
+			try {
+				const milestoneData = {
+					title: this.milestoneForm.title.trim(),
+					description: this.milestoneForm.description.trim(),
+					deadline: this.milestoneForm.deadline || null,
+					status: this.milestoneForm.status,
+					progress: this.milestoneForm.progress
+				}
+				
+				if (this.editingMilestone) {
+					// 更新里程碑
+					const updatedMilestone = await projectApi.updateMilestone(this.editingMilestone.id, milestoneData)
+					
+					// 更新本地数据
+					const index = this.milestones.findIndex(m => m.id === this.editingMilestone.id)
+					if (index !== -1) {
+						this.milestones[index] = updatedMilestone
+					}
+					
+					uni.showToast({
+						title: '更新成功',
+						icon: 'success'
+					})
+				} else {
+					// 创建新里程碑
+					const newMilestone = await projectApi.createMilestone(this.projectId, milestoneData)
+					
+					// 添加到本地数据
+					this.milestones.push(newMilestone)
+					
+					uni.showToast({
+						title: '添加成功',
+						icon: 'success'
+					})
+				}
+				
+				// 重新计算项目进度
+				await this.updateProjectProgress()
+				
+				this.cancelMilestone()
+				
+			} catch (error) {
+				console.error('保存里程碑失败:', error)
+				uni.showToast({
+					title: error.message || '保存失败，请重试',
+					icon: 'none'
+				})
+			} finally {
+				this.saving = false
+			}
+		},
+		
+		// 删除里程碑
+		async deleteMilestone(milestone) {
+			uni.showModal({
+				title: '确认删除',
+				content: `确定要删除里程碑「${milestone.title}」吗？`,
+				success: async (res) => {
+					if (res.confirm) {
+						try {
+							await projectApi.deleteMilestone(milestone.id)
+							
+							// 从本地数据中移除
+							const index = this.milestones.findIndex(m => m.id === milestone.id)
+							if (index !== -1) {
+								this.milestones.splice(index, 1)
+							}
+							
+							// 重新计算项目进度
+							await this.updateProjectProgress()
+							
+							uni.showToast({
+								title: '删除成功',
+								icon: 'success'
+							})
+						} catch (error) {
+							console.error('删除里程碑失败:', error)
+							uni.showToast({
+								title: '删除失败，请重试',
+								icon: 'none'
+							})
+						}
+					}
+				}
+			})
+		},
+		
+		// 更新里程碑状态
+		async updateMilestoneStatus(milestone, newStatus) {
+			try {
+				const updateData = {
+					status: newStatus
+				}
+				
+				// 如果标记为完成，设置进度为100%
+				if (newStatus === 'completed') {
+					updateData.progress = 100
+				} else if (newStatus === 'progress' && milestone.progress === 0) {
+					// 如果开始进行，设置初始进度为10%
+					updateData.progress = 10
+				}
+				
+				const updatedMilestone = await projectApi.updateMilestone(milestone.id, updateData)
+				
+				// 更新本地数据
+				const index = this.milestones.findIndex(m => m.id === milestone.id)
+				if (index !== -1) {
+					this.milestones[index] = updatedMilestone
+				}
+				
+				// 重新计算项目进度
+				await this.updateProjectProgress()
+				
+				uni.showToast({
+					title: '状态更新成功',
+					icon: 'success'
+				})
+			} catch (error) {
+				console.error('更新里程碑状态失败:', error)
+				uni.showToast({
+					title: '更新失败，请重试',
+					icon: 'none'
+				})
+			}
+		},
+		
+		// 打开日期选择器
+		openDatePicker() {
+			// 如果已有日期，设置为选中状态
+			if (this.milestoneForm.deadline) {
+				// 确保日期格式正确
+				this.selectedDate = this.milestoneForm.deadline
+			} else {
+				// 设置默认日期为今天
+				const today = new Date()
+				const year = today.getFullYear()
+				const month = String(today.getMonth() + 1).padStart(2, '0')
+				const day = String(today.getDate()).padStart(2, '0')
+				this.selectedDate = `${year}-${month}-${day}`
+			}
+			this.showDatePicker = true
+		},
+		
+		// 关闭日期选择器
+		closeDatePicker() {
+			this.showDatePicker = false
+		},
+		
+		// 日期选择确认
+		onDateConfirm(param) {
+			// 根据官方文档，param[3]是选中的日期字符串
+			this.selectedDate = param[3]
+			this.milestoneForm.deadline = param[3]
+			this.showDatePicker = false
+		},
+		
+		// 更新项目整体进度（基于里程碑完成情况）
+		async updateProjectProgress() {
+			if (this.milestones.length === 0) {
+				return
+			}
+			
+			try {
+				// 调用API更新项目进度
+				await projectApi.updateProjectProgress(this.projectId)
+				
+				// 重新加载项目详情以获取最新进度
+				const updatedProject = await projectApi.getProjectDetail(this.projectId)
+				if (updatedProject) {
+					this.project = updatedProject
+				}
+			} catch (error) {
+				console.error('更新项目进度失败:', error)
+			}
 		}
 	}
 }
@@ -575,35 +972,8 @@ export default {
 	background-color: #F2F3F5;
 }
 
-.custom-navbar {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	z-index: 1000;
-	background-color: #ffffff;
-	border-bottom: 2rpx solid #E5E6EB;
-	padding-top: var(--status-bar-height);
-}
-
-.navbar-content {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 24rpx 32rpx;
-}
-
-.navbar-title {
-	font-size: 36rpx;
-	font-weight: bold;
-	color: #1D2129;
-	flex: 1;
-	text-align: center;
-	margin: 0 32rpx;
-}
-
 .page-content {
-	padding: calc(var(--status-bar-height) + 120rpx) 32rpx 240rpx;
+	padding: calc(var(--status-bar-height) + 136rpx) 32rpx 240rpx;
 }
 
 .tab-nav {
@@ -659,8 +1029,14 @@ export default {
 .card-header {
 	display: flex;
 	align-items: center;
-	gap: 12rpx;
+	justify-content: space-between;
 	margin-bottom: 24rpx;
+}
+
+.card-header-left {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
 }
 
 .card-title {
@@ -808,8 +1184,9 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 32rpx;
-	max-height: 500rpx;
+	max-height: calc(100vh - var(--status-bar-height) - 88rpx - 200rpx - 120rpx);
 	overflow-y: auto;
+	padding-bottom: 120rpx;
 }
 
 .log-item {
@@ -944,6 +1321,104 @@ export default {
 	padding-top: 32rpx;
 	border-top: 2rpx solid #E5E6EB;
 	margin-top: 32rpx;
+}
+
+/* 里程碑管理样式 */
+.card-actions {
+	display: flex;
+	align-items: center;
+}
+
+.milestone-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 8rpx;
+}
+
+.milestone-actions {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+}
+
+.milestone-description {
+	font-size: 24rpx;
+	color: #86909C;
+	margin-bottom: 8rpx;
+	line-height: 1.4;
+}
+
+.empty-milestone {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 80rpx 32rpx;
+	text-align: center;
+}
+
+.empty-text {
+	font-size: 24rpx;
+	color: #86909C;
+	margin-top: 16rpx;
+	line-height: 1.4;
+}
+
+/* 里程碑弹窗样式 */
+.milestone-modal {
+	padding: 32rpx;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	background-color: #ffffff;
+	overflow: hidden;
+}
+
+.modal-header {
+	margin-bottom: 32rpx;
+}
+
+.modal-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #1D2129;
+}
+
+.modal-form {
+	padding: 32rpx;
+	flex: 1;
+	overflow-y: auto;
+}
+
+.modal-actions {
+	display: flex;
+	justify-content: space-between;
+	padding: 32rpx;
+	gap: 16rpx;
+	background-color: #ffffff;
+	border-top: 2rpx solid #E5E6EB;
+	position: sticky;
+	bottom: 0;
+	z-index: 10;
+	margin-top: auto;
+}
+
+.edit-modal {
+	padding: 32rpx;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.edit-header {
+	margin-bottom: 32rpx;
+}
+
+.edit-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #1D2129;
 }
 
 .bottom-actions {

@@ -47,7 +47,11 @@ class ProjectApi {
       project.completedMilestones = project.milestones.filter(m => m.status === 'completed').length
       
       // 字段映射：将数据库字段转换为前端期望的字段
+      project.title = project.name // 数据库字段name映射到前端title
       project.updateTime = this.formatUpdateTime(project.updated_at)
+      
+      // 状态映射：将数据库状态转换为前端期望的状态
+      project.status = this.mapDatabaseStatus(project.status)
       project.statusText = this.getStatusText(project.status)
       
       // 确保进度字段存在
@@ -82,6 +86,19 @@ class ProjectApi {
       'created_at DESC', 
       '5'
     )
+    
+    // 字段映射：将数据库字段转换为前端期望的字段
+    project.title = project.name // 数据库字段name映射到前端title
+    project.updateTime = this.formatUpdateTime(project.updated_at)
+    
+    // 状态映射：将数据库状态转换为前端期望的状态
+    project.status = this.mapDatabaseStatus(project.status)
+    project.statusText = this.getStatusText(project.status)
+    
+    // 确保进度字段存在
+    if (project.progress === null || project.progress === undefined) {
+      project.progress = 0
+    }
     
     return project
   }
@@ -418,6 +435,20 @@ class ProjectApi {
       console.error('更新项目计划失败:', error)
       throw error
     }
+  }
+
+  /**
+   * 映射数据库状态到前端状态
+   * @param {string} dbStatus - 数据库状态值
+   */
+  mapDatabaseStatus(dbStatus) {
+    const statusMap = {
+      'active': 'progress',
+      'completed': 'completed',
+      'pending': 'pending',
+      'paused': 'warning'
+    }
+    return statusMap[dbStatus] || 'progress'
   }
 
   /**
