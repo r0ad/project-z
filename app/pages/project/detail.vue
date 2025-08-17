@@ -226,7 +226,7 @@
 							<view 
 								v-for="(analysis, index) in analysisList" 
 								:key="analysis.id"
-								class="analysis-item"
+								class="analysis-item-card"
 							>
 								<view class="analysis-header">
 									<view class="analysis-meta">
@@ -305,7 +305,7 @@
 							<view 
 								v-for="(summary, index) in summaryList" 
 								:key="summary.id"
-								class="summary-item"
+								class="summary-item-card"
 							>
 								<view class="summary-header">
 									<view class="summary-meta">
@@ -651,12 +651,19 @@ export default {
 		}
 	},
 	onLoad(options) {
-		if (options.id) {
+		if (options.projectId) {
+			this.projectId = options.projectId
+			this.loadProjectDetail()
+		} else if (options.id) {
 			this.projectId = options.id
 			this.loadProjectDetail()
 		}
 		if (options.title) {
 			this.projectTitle = decodeURIComponent(options.title)
+		}
+		// 处理从聊天页面跳转过来的tab参数
+		if (options.tab === 'milestones') {
+			this.activeTab = 0 // 切换到目标与节点标签页（里程碑管理）
 		}
 	},
 	onShow() {
@@ -1774,6 +1781,116 @@ export default {
 	color: #4E5969;
 	line-height: 1.6;
 	display: block;
+}
+
+/* AI分析和总结卡片样式 */
+.analysis-list,
+.summary-list {
+	display: flex;
+	flex-direction: column;
+	gap: 24rpx;
+	margin-top: 24rpx;
+}
+
+.analysis-item-card,
+.summary-item-card {
+	background-color: #ffffff;
+	border-radius: 16rpx;
+	padding: 24rpx;
+	box-shadow: 0 2rpx 12rpx 0 rgba(0, 0, 0, 0.06);
+	border: 2rpx solid #F2F3F5;
+	transition: all 0.3s ease;
+}
+
+.analysis-item-card:hover,
+.summary-item-card:hover {
+	box-shadow: 0 4rpx 20rpx 0 rgba(0, 0, 0, 0.1);
+	border-color: #E5E6EB;
+}
+
+.analysis-header,
+.summary-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 16rpx;
+	padding-bottom: 12rpx;
+	border-bottom: 2rpx solid #F7F8FA;
+}
+
+.analysis-meta,
+.summary-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+}
+
+.analysis-time,
+.summary-time {
+	font-size: 24rpx;
+	color: #86909C;
+	font-weight: 500;
+}
+
+.analysis-type {
+	font-size: 20rpx;
+	color: #165DFF;
+	background-color: #165DFF10;
+	padding: 4rpx 12rpx;
+	border-radius: 8rpx;
+	display: inline-block;
+}
+
+.analysis-actions,
+.summary-actions {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.analysis-content,
+.summary-content {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.analysis-suggestions,
+.summary-suggestions {
+	background-color: #F7F8FA;
+	border-radius: 12rpx;
+	padding: 16rpx;
+	margin-top: 12rpx;
+	border-left: 4rpx solid #165DFF;
+}
+
+.suggestions-label {
+	font-size: 24rpx;
+	font-weight: 600;
+	color: #165DFF;
+	margin-bottom: 8rpx;
+	display: block;
+}
+
+.suggestions-text {
+	font-size: 26rpx;
+	color: #4E5969;
+	line-height: 1.5;
+	display: block;
+}
+
+.empty-analysis,
+.empty-summary {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 80rpx 32rpx;
+	text-align: center;
+	background-color: #FAFBFC;
+	border-radius: 16rpx;
+	border: 2rpx dashed #E5E6EB;
+	margin-top: 24rpx;
 }
 
 .log-header {

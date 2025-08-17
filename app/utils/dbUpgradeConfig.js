@@ -4,8 +4,8 @@
  */
 
 const dbUpgradeConfig = {
-  current_version: '2.8.0',
-  upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.4.0', '2.5.0', '2.6.0', '2.7.0', '2.8.0'],
+  current_version: '2.11.0',
+  upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.3.0', '2.4.0', '2.5.0', '2.6.0', '2.7.0', '2.8.0', '2.9.0', '2.10.0', '2.11.0'],
   versions: {
     '1.0.0': {
       description: '初始化数据库',
@@ -228,6 +228,108 @@ const dbUpgradeConfig = {
           type: 'add_column',
           name: 'ai_summaries',
           sql: 'ALTER TABLE ai_summaries ADD COLUMN summary_type TEXT DEFAULT "summary"'
+        }
+      ]
+    },
+    '2.9.0': {
+      description: '修复AI分析表缺少updated_at字段的问题 - 使用表重建方式',
+      dependencies: ['2.8.0'],
+      scripts: [
+        {
+          type: 'recreate_table',
+          name: 'ai_analyses_backup',
+          sql: 'CREATE TEMPORARY TABLE ai_analyses_backup AS SELECT * FROM ai_analyses',
+          ignore_error: true
+        },
+        {
+          type: 'drop_table',
+          name: 'ai_analyses_drop',
+          sql: 'DROP TABLE IF EXISTS ai_analyses',
+          ignore_error: true
+        },
+        {
+          type: 'create_table',
+          name: 'ai_analyses_recreate',
+          sql: "CREATE TABLE ai_analyses (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, analysis_type TEXT NOT NULL, content TEXT, suggestions TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (project_id) REFERENCES projects(id))",
+          ignore_error: false
+        },
+        {
+          type: 'restore_data',
+          name: 'ai_analyses_restore',
+          sql: "INSERT INTO ai_analyses (id, project_id, analysis_type, content, suggestions, created_at, updated_at) SELECT id, project_id, analysis_type, COALESCE(content, ''), COALESCE(suggestions, ''), created_at, COALESCE(created_at, datetime('now')) FROM ai_analyses_backup",
+          ignore_error: true
+        },
+        {
+          type: 'drop_table',
+          name: 'ai_analyses_cleanup',
+          sql: 'DROP TABLE IF EXISTS ai_analyses_backup',
+          ignore_error: true
+        },
+        {
+          type: 'recreate_table',
+          name: 'ai_summaries_backup',
+          sql: 'CREATE TEMPORARY TABLE ai_summaries_backup AS SELECT * FROM ai_summaries',
+          ignore_error: true
+        },
+        {
+          type: 'drop_table',
+          name: 'ai_summaries_drop',
+          sql: 'DROP TABLE IF EXISTS ai_summaries',
+          ignore_error: true
+        },
+        {
+          type: 'create_table',
+          name: 'ai_summaries_recreate',
+          sql: "CREATE TABLE ai_summaries (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, summary_type TEXT DEFAULT 'summary', content TEXT, suggestions TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (project_id) REFERENCES projects(id))",
+          ignore_error: false
+        },
+        {
+          type: 'restore_data',
+          name: 'ai_summaries_restore',
+          sql: "INSERT INTO ai_summaries (id, project_id, summary_type, content, suggestions, created_at, updated_at) SELECT id, project_id, COALESCE(summary_type, 'summary'), COALESCE(content, ''), COALESCE(suggestions, ''), created_at, COALESCE(created_at, datetime('now')) FROM ai_summaries_backup",
+          ignore_error: true
+        },
+        {
+          type: 'drop_table',
+          name: 'ai_summaries_cleanup',
+          sql: 'DROP TABLE IF EXISTS ai_summaries_backup',
+          ignore_error: true
+        }
+      ]
+    },
+    '2.10.0': {
+      description: '验证AI表字段处理结果',
+      dependencies: ['2.9.0'],
+      scripts: [
+        {
+          type: 'check_table',
+          name: 'ai_analyses_check_updated_at',
+          sql: 'SELECT updated_at FROM ai_analyses LIMIT 1',
+          ignore_error: true
+        },
+        {
+          type: 'check_table',
+          name: 'ai_summaries_check_updated_at',
+          sql: 'SELECT updated_at FROM ai_summaries LIMIT 1',
+          ignore_error: true
+        }
+      ]
+    },
+    '2.11.0': {
+      description: '最终确认AI表结构完整性',
+      dependencies: ['2.10.0'],
+      scripts: [
+        {
+          type: 'create_index',
+          name: 'idx_ai_analyses_project_updated',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_ai_analyses_project_updated ON ai_analyses(project_id, updated_at)',
+          ignore_error: true
+        },
+        {
+          type: 'create_index',
+          name: 'idx_ai_summaries_project_updated',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_ai_summaries_project_updated ON ai_summaries(project_id, updated_at)',
+          ignore_error: true
         }
       ]
     }

@@ -48,7 +48,7 @@
 			<view class="ai-assistant-card">
 				<view class="ai-header">
 					<view class="ai-icon">
-						<nut-icon name="robot" size="20" color="#165DFF"></nut-icon>
+						<nut-icon name="JIMI40" size="20" color="#165DFF"></nut-icon>
 					</view>
 					<view class="ai-info">
 						<text class="ai-title">AI助手</text>
@@ -123,6 +123,7 @@
 
 <script>
 import CustomTabBar from '@/custom-tab-bar/index.vue'
+import dbService from '@/utils/dbService.js'
 
 export default {
 	components: {
@@ -145,11 +146,18 @@ export default {
 			},
 			menuItems: [
 				{
-					icon: 'robot',
+					icon: 'JIMI40',
 					iconColor: '#165DFF',
 					iconBg: '#165DFF20',
 					title: 'AI设置',
 					action: 'ai-settings'
+				},
+				{
+					icon: 'refresh',
+					iconColor: '#00B42A',
+					iconBg: '#00B42A20',
+					title: '数据库升级重试',
+					action: 'db-upgrade-retry'
 				},
 				{
 					icon: 'star',
@@ -158,20 +166,6 @@ export default {
 					title: '我的收藏',
 					badge: '3',
 					action: 'favorites'
-				},
-				{
-					icon: 'download',
-					iconColor: '#00B42A',
-					iconBg: '#00B42A20',
-					title: '离线下载',
-					action: 'downloads'
-				},
-				{
-					icon: 'clock',
-					iconColor: '#165DFF',
-					iconBg: '#165DFF20',
-					title: '浏览历史',
-					action: 'history'
 				},
 				{
 					icon: 'notice',
@@ -250,6 +244,9 @@ export default {
 						url: '/pages/settings/ai-settings'
 					})
 					break
+				case 'db-upgrade-retry':
+					this.retryDatabaseUpgrade()
+					break
 				case 'favorites':
 					uni.showToast({ title: '我的收藏', icon: 'none' })
 					break
@@ -271,6 +268,54 @@ export default {
 				default:
 					break
 			}
+		},
+		
+		async retryDatabaseUpgrade() {
+			uni.showModal({
+				title: '数据库升级重试',
+				content: '确定要强制重新执行数据库升级脚本吗？这将忽略版本控制，重新执行最近的升级脚本来修复数据库问题。',
+				success: async (res) => {
+					if (res.confirm) {
+						uni.showLoading({
+							title: '强制升级中...'
+						})
+						
+						try {
+							// 初始化数据库服务
+							// await dbService.init()
+							
+							// 强制重新执行数据库升级
+							await dbService.forceRetryUpgrade()
+							
+							uni.hideLoading()
+							uni.showToast({
+								title: '数据库升级成功',
+								icon: 'success',
+								duration: 3000
+							})
+							
+							// 提示用户重启应用
+							setTimeout(() => {
+								uni.showModal({
+									title: '升级完成',
+									content: '数据库升级已完成，建议重启应用以确保所有功能正常工作。',
+									showCancel: false,
+									confirmText: '知道了'
+								})
+							}, 3000)
+							
+						} catch (error) {
+							console.error('数据库升级失败:', error)
+							uni.hideLoading()
+							uni.showModal({
+								title: '升级失败',
+								content: `数据库升级失败：${error.message || '未知错误'}\n\n请检查控制台日志获取详细信息。`,
+								showCancel: false
+							})
+						}
+					}
+				}
+			})
 		}
 	}
 }

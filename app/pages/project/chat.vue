@@ -752,9 +752,18 @@ export default {
     // 里程碑管理相关方法
     async manageMilestone() {
       try {
-        // 跳转到项目详情页面的里程碑管理
+        // 确保projectId存在
+        if (!this.projectId) {
+          uni.showToast({
+            title: '项目信息缺失',
+            icon: 'error'
+          })
+          return
+        }
+        
+        // 跳转到项目详情页面的里程碑管理，传递当前项目ID
         uni.navigateTo({
-          url: `/pages/project/detail?projectId=${this.projectId}&tab=milestones`
+          url: `/pages/project/detail?projectId=${this.projectId}&tab=milestones&from=chat`
         })
       } catch (error) {
         console.error('跳转失败:', error)
@@ -1176,17 +1185,22 @@ export default {
 .message-list {
   .message-item {
     display: flex;
-    // margin-bottom: 32rpx;
+    margin-bottom: 32rpx;
     
     &.user-message {
       flex-direction: row-reverse;
       
       .message-content {
         align-items: flex-end;
+        
+        .message-time {
+          text-align: right;
+        }
       }
       
       .message-avatar {
         background-color: #165dff;
+        margin: 0 16rpx 0 0; /* 用户头像右边距 */
       }
     }
     
@@ -1225,6 +1239,7 @@ export default {
           background-color: #165dff;
           color: #ffffff;
           border-bottom-right-radius: 8rpx;
+          border: 1rpx solid #165dff;
         }
         
         &.ai-bubble {

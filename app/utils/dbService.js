@@ -442,6 +442,67 @@ class DBService {
   }
 
   /**
+   * 强制重新执行数据库升级（用于重试失败的升级）
+   */
+  async forceRetryUpgrade() {
+    console.log('开始强制重新执行数据库升级...')
+    
+    try {
+      // 加载升级配置
+      const upgradeConfig = await this.loadUpgradeConfig()
+      const targetVersion = upgradeConfig.current_version
+      
+      // 获取当前数据库版本
+      let currentVersion = '0.0.0'
+      try {
+        const versionResult = await this.query('SELECT value FROM settings WHERE category = ? AND key = ?', ['system', 'db_version'])
+        if (versionResult.length > 0) {
+          currentVersion = versionResult[0].value
+        }
+      } catch (error) {
+        console.log('获取当前版本失败，使用默认版本:', error)
+      }
+      
+      console.log(`强制升级: 当前版本 ${currentVersion} -> 目标版本 ${targetVersion}`)
+      
+      // 强制执行最新版本的升级脚本（忽略版本检查）
+      const latestVersions = upgradeConfig.upgrade_order.slice(-3) // 执行最近3个版本的脚本
+      
+      for (const version of latestVersions) {
+        console.log(`强制执行版本 ${version} 的升级脚本...`)
+        const versionConfig = upgradeConfig.versions[version]
+        
+        if (!versionConfig) {
+          console.warn(`版本 ${version} 的配置不存在，跳过`)
+          continue
+        }
+        
+        // 执行该版本的所有脚本，忽略错误
+        for (const script of versionConfig.scripts) {
+          try {
+            console.log(`强制执行脚本: ${script.type} - ${script.name || 'unnamed'}`)
+            await this.executeSql(script.sql)
+            console.log(`脚本执行成功: ${script.name || 'unnamed'}`)
+          } catch (error) {
+            console.log(`脚本执行失败但继续: ${script.name || 'unnamed'}`, error)
+            // 强制重试时忽略所有错误，继续执行下一个脚本
+          }
+        }
+      }
+      
+      // 更新版本信息
+      await this.updateDatabaseVersion(targetVersion)
+      
+      console.log('强制数据库升级完成')
+      return true
+      
+    } catch (error) {
+      console.error('强制数据库升级失败:', error)
+      throw error
+    }
+  }
+
+  /**
    * 创建所有数据库表（全量初始化用）
    */
   async createAllTables() {
