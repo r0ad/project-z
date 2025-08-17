@@ -44,45 +44,18 @@
 				<nut-icon name="right" size="16" color="#C9CDD4" @click="editProfile"></nut-icon>
 			</view>
 
-			<!-- AI助手卡片 -->
-			<view class="ai-assistant-card">
-				<view class="ai-header">
-					<view class="ai-icon">
-						<nut-icon name="JIMI40" size="20" color="#165DFF"></nut-icon>
-					</view>
-					<view class="ai-info">
-						<text class="ai-title">AI助手</text>
-						<text class="ai-subtitle">智能分析，高效决策</text>
-					</view>
-					<nut-button type="primary" size="small" @click="chatWithAI">
-						对话
-					</nut-button>
-				</view>
-				<view class="ai-stats">
-					<view class="ai-stat-item">
-						<text class="ai-stat-label">今日对话</text>
-						<text class="ai-stat-value">{{ aiStats.todayChats }}</text>
-					</view>
-					<view class="ai-stat-item">
-						<text class="ai-stat-label">总计分析</text>
-						<text class="ai-stat-value">{{ aiStats.totalAnalysis }}</text>
-					</view>
-				</view>
-			</view>
-
 			<!-- 功能菜单 -->
 			<view class="menu-section">
 				<view class="menu-group">
-					<view 
-						v-for="(item, index) in menuItems" 
-						:key="index"
-						class="menu-item"
-						@click="handleMenuClick(item)"
-					>
+					<view v-for="(item, index) in menuItems" :key="index" class="menu-item"
+						:class="{ disabled: item.disabled }" @click="handleMenuClick(item)">
 						<view class="menu-icon" :style="{ backgroundColor: item.iconBg }">
 							<nut-icon :name="item.icon" size="16" :color="item.iconColor"></nut-icon>
 						</view>
-						<text class="menu-title">{{ item.title }}</text>
+						<view class="menu-content">
+							<text class="menu-title">{{ item.title }}</text>
+							<text v-if="item.subtitle" class="menu-subtitle">{{ item.subtitle }}</text>
+						</view>
 						<view class="menu-extra">
 							<text v-if="item.badge" class="menu-badge">{{ item.badge }}</text>
 							<nut-icon name="right" size="14" color="#C9CDD4"></nut-icon>
@@ -91,28 +64,9 @@
 				</view>
 			</view>
 
-			<!-- 数据统计 -->
-			<view class="stats-section">
-				<view class="stats-title">数据统计</view>
-				<view class="stats-grid">
-					<view 
-						v-for="(stat, index) in statsData" 
-						:key="index"
-						class="stats-item"
-					>
-						<text class="stats-number">{{ stat.value }}</text>
-						<text class="stats-label">{{ stat.label }}</text>
-						<view class="stats-trend" :class="stat.trend">
-							<nut-icon :name="stat.trend === 'up' ? 'arrow-up' : 'arrow-down'" size="10"></nut-icon>
-							<text class="trend-text">{{ stat.change }}</text>
-						</view>
-					</view>
-				</view>
-			</view>
-
 			<!-- 版本信息 -->
 			<view class="version-info">
-				<text class="version-text">版本 v1.0.0</text>
+				<text class="version-text">版本 v{{ version }}</text>
 			</view>
 		</view>
 
@@ -122,8 +76,14 @@
 </template>
 
 <script>
+import projectApi from '@/api/projectApi.js'
+import knowledgeApi from '@/api/knowledgeApi.js'
+import chatApi from '@/api/chatApi.js'
+import favoriteApi from '@/api/favoriteApi.js'
+import CustomNavbar from '@/components/CustomNavbar.vue'
 import CustomTabBar from '@/custom-tab-bar/index.vue'
 import dbService from '@/utils/dbService.js'
+import { version } from 'vue'
 
 export default {
 	components: {
@@ -141,8 +101,8 @@ export default {
 				days: 365
 			},
 			aiStats: {
-				todayChats: 8,
-				totalAnalysis: 156
+				todayChats: 0,
+				totalAnalysis: 0
 			},
 			menuItems: [
 				{
@@ -150,75 +110,82 @@ export default {
 					iconColor: '#165DFF',
 					iconBg: '#165DFF20',
 					title: 'AI设置',
-					action: 'ai-settings'
+					type: 'navigate',
+					path: '/pages/profile/ai-settings'
 				},
 				{
 					icon: 'refresh',
 					iconColor: '#00B42A',
 					iconBg: '#00B42A20',
 					title: '数据库升级重试',
-					action: 'db-upgrade-retry'
+					type: 'action',
+					handler: 'retryDatabaseUpgrade'
 				},
 				{
 					icon: 'star',
 					iconColor: '#FFD700',
 					iconBg: '#FFD70020',
 					title: '我的收藏',
-					badge: '3',
-					action: 'favorites'
+					badge: '0',
+					type: 'navigate',
+					path: '/pages/profile/favorites'
 				},
 				{
 					icon: 'notice',
-					iconColor: '#FF7D00',
-					iconBg: '#FF7D0020',
+					iconColor: '#86909C',
+					iconBg: '#86909C20',
 					title: '消息通知',
-					badge: '2',
-					action: 'notifications'
+					subtitle: '待开发',
+					type: 'disabled',
+					disabled: true
+				},
+				{
+					icon: 'horizontal',
+					iconColor: '#165DFF',
+					iconBg: '#165DFF20',
+					title: '数据统计',
+					type: 'navigate',
+					path: '/pages/profile/stats'
 				},
 				{
 					icon: 'tips',
 					iconColor: '#86909C',
 					iconBg: '#86909C20',
 					title: '帮助中心',
-					action: 'help'
+					type: 'navigate',
+					path: '/pages/profile/help'
 				},
 				{
 					icon: 'service',
 					iconColor: '#F53F3F',
 					iconBg: '#F53F3F20',
 					title: '意见反馈',
-					action: 'feedback'
+					subtitle: '待开发',
+					type: 'disabled',
+					type: 'navigate',
+					path: '/pages/profile/feedback'
 				}
 			],
-			statsData: [
-				{
-					label: '本周完成',
-					value: '8',
-					change: '+12%',
-					trend: 'up'
-				},
-				{
-					label: '学习时长',
-					value: '24h',
-					change: '+8%',
-					trend: 'up'
-				},
-				{
-					label: '效率提升',
-					value: '35%',
-					change: '+5%',
-					trend: 'up'
-				},
-				{
-					label: '目标达成',
-					value: '92%',
-					change: '-2%',
-					trend: 'down'
-				}
-			]
+			version: '1.0.0'
 		}
 	},
+	async mounted() {
+		await this.loadUserData()
+		await this.loadStatsData()
+		await this.loadAIStats()
+		await this.loadFavoriteCount()
+		this.getCurrentVersion()
+	},
 	methods: {
+		// 获取当前应用版本
+  		getCurrentVersion() {
+			// #ifdef APP-PLUS
+			return plus.runtime.version
+			// #endif
+			// #ifndef APP-PLUS
+			return '1.0.0'
+			// #endif
+		},
 		openSettings() {
 			uni.showToast({
 				title: '设置',
@@ -238,38 +205,68 @@ export default {
 			})
 		},
 		handleMenuClick(item) {
-			switch (item.action) {
-				case 'ai-settings':
-					uni.navigateTo({
-						url: '/pages/settings/ai-settings'
+			// 统一的菜单交互逻辑处理
+			switch (item.type) {
+				case 'navigate':
+					// 页面跳转
+					if (item.path) {
+						uni.navigateTo({
+							url: item.path
+						})
+					} else {
+						console.error('导航类型菜单缺少path参数:', item)
+						uni.showToast({
+							title: '页面路径配置错误',
+							icon: 'none'
+						})
+					}
+					break
+					
+				case 'action':
+					// 功能调用
+					if (item.handler && typeof this[item.handler] === 'function') {
+						this[item.handler]()
+					} else {
+						console.error('功能类型菜单缺少有效的handler:', item)
+						uni.showToast({
+							title: '功能配置错误',
+							icon: 'none'
+						})
+					}
+					break
+					
+				case 'disabled':
+					// 禁用状态
+					uni.showToast({
+						title: item.subtitle || '功能待开发',
+						icon: 'none'
 					})
 					break
-				case 'db-upgrade-retry':
-					this.retryDatabaseUpgrade()
-					break
-				case 'favorites':
-					uni.showToast({ title: '我的收藏', icon: 'none' })
-					break
-				case 'downloads':
-					uni.showToast({ title: '离线下载', icon: 'none' })
-					break
-				case 'history':
-					uni.showToast({ title: '浏览历史', icon: 'none' })
-					break
-				case 'notifications':
-					uni.showToast({ title: '消息通知', icon: 'none' })
-					break
-				case 'help':
-					uni.showToast({ title: '帮助中心', icon: 'none' })
-					break
-				case 'feedback':
-					uni.showToast({ title: '意见反馈', icon: 'none' })
-					break
+					
 				default:
-					break
+					// 未知类型
+					console.error('未知的菜单类型:', item)
+					uni.showToast({
+						title: '菜单类型配置错误',
+						icon: 'none'
+					})
 			}
 		},
 		
+		/**
+		 * 打开AI设置
+		 */
+		openAISettings() {
+			uni.showToast({
+				title: 'AI设置功能开发中',
+				icon: 'none'
+			})
+			// TODO: 实现AI设置页面跳转
+			// uni.navigateTo({
+			//     url: '/pages/settings/ai'
+			// })
+		},
+
 		async retryDatabaseUpgrade() {
 			uni.showModal({
 				title: '数据库升级重试',
@@ -279,21 +276,21 @@ export default {
 						uni.showLoading({
 							title: '强制升级中...'
 						})
-						
+
 						try {
 							// 初始化数据库服务
 							// await dbService.init()
-							
+
 							// 强制重新执行数据库升级
 							await dbService.forceRetryUpgrade()
-							
+
 							uni.hideLoading()
 							uni.showToast({
 								title: '数据库升级成功',
 								icon: 'success',
 								duration: 3000
 							})
-							
+
 							// 提示用户重启应用
 							setTimeout(() => {
 								uni.showModal({
@@ -303,7 +300,7 @@ export default {
 									confirmText: '知道了'
 								})
 							}, 3000)
-							
+
 						} catch (error) {
 							console.error('数据库升级失败:', error)
 							uni.hideLoading()
@@ -316,6 +313,63 @@ export default {
 					}
 				}
 			})
+		},
+		async loadUserData() {
+			try {
+				// 获取用户项目和知识统计
+				const projects = await projectApi.getAllProjects()
+				const knowledge = await knowledgeApi.getAllKnowledge()
+
+				this.userInfo.projectCount = projects.length
+				this.userInfo.knowledgeCount = knowledge.length
+			} catch (error) {
+				console.error('加载用户数据失败:', error)
+			}
+		},
+		async loadStatsData() {
+			try {
+				// 获取项目统计
+				const projects = await projectApi.getAllProjects()
+				this.statsData[0].value = projects.length
+
+				// 获取知识统计
+				const knowledge = await knowledgeApi.getAllKnowledge()
+				this.statsData[1].value = knowledge.length
+
+				// 计算完成率（示例逻辑）
+				const completedProjects = projects.filter(p => p.status === 'completed')
+				const completionRate = projects.length > 0 ? Math.round((completedProjects.length / projects.length) * 100) : 0
+				this.statsData[2].value = `${completionRate}%`
+
+			} catch (error) {
+				console.error('加载统计数据失败:', error)
+			}
+		},
+		async loadAIStats() {
+			try {
+				// 获取AI助手统计数据
+				const stats = await chatApi.getAIStats()
+				this.aiStats.todayChats = stats.todayChats || 0
+				this.aiStats.totalAnalysis = stats.totalAnalysis || 0
+			} catch (error) {
+				console.error('加载AI统计数据失败:', error)
+			}
+		},
+		
+		/**
+		 * 加载收藏数量
+		 */
+		async loadFavoriteCount() {
+			try {
+				const stats = await favoriteApi.getFavoritesStats()
+				// 更新收藏菜单项的badge
+				const favoriteMenuItem = this.menuItems.find(item => item.title === '我的收藏')
+				if (favoriteMenuItem) {
+					favoriteMenuItem.badge = String(stats.total || 0)
+				}
+			} catch (error) {
+				console.error('加载收藏统计失败:', error)
+			}
 		}
 	}
 }
@@ -545,6 +599,14 @@ export default {
 	background-color: #F2F3F5;
 }
 
+.menu-item.disabled {
+	opacity: 0.5;
+}
+
+.menu-item.disabled:active {
+	background-color: #ffffff;
+}
+
 .menu-icon {
 	width: 48rpx;
 	height: 48rpx;
@@ -555,10 +617,23 @@ export default {
 	margin-right: 24rpx;
 }
 
+.menu-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 4rpx;
+}
+
 .menu-title {
 	font-size: 28rpx;
 	color: #1D2129;
-	flex: 1;
+	display: block;
+}
+
+.menu-subtitle {
+	font-size: 24rpx;
+	color: #86909C;
+	display: block;
 }
 
 .menu-extra {

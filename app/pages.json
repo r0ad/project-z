@@ -85,9 +85,34 @@
       }
     },
     {
-      "path": "pages/settings/ai-settings",
+      "path": "pages/profile/ai-settings",
       "style": {
         "navigationBarTitleText": "AI设置",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/favorites",
+      "style": {
+        "navigationBarTitleText": "我的收藏",
+        "navigationStyle": "custom"
+      }
+    },{
+      "path": "pages/profile/help",
+      "style": {
+        "navigationBarTitleText": "帮助中心",
+        "navigationStyle": "custom"
+      }
+    },{
+      "path": "pages/profile/feedback",
+      "style": {
+        "navigationBarTitleText": "反馈建议",
+        "navigationStyle": "custom"
+      }
+    },{
+      "path": "pages/profile/stats",
+      "style": {
+        "navigationBarTitleText": "数据统计",
         "navigationStyle": "custom"
       }
     }

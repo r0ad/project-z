@@ -368,6 +368,42 @@ class ChatApi {
       return []
     }
   }
+
+  /**
+   * 获取AI助手统计数据
+   * @returns {Promise<Object>} 统计数据
+   */
+  async getAIStats() {
+    try {
+      await dbService.initDB()
+      
+      // 获取今日对话数量
+      const today = new Date().toISOString().split('T')[0]
+      const todayChatsResult = await dbService.query(`
+        SELECT COUNT(*) as count 
+        FROM chat_messages 
+        WHERE DATE(timestamp) = ? AND role = 'user'
+      `, [today])
+      
+      // 获取总分析数量（AI回复数量）
+      const totalAnalysisResult = await dbService.query(`
+        SELECT COUNT(*) as count 
+        FROM chat_messages 
+        WHERE role = 'assistant'
+      `)
+      
+      return {
+        todayChats: todayChatsResult[0]?.count || 0,
+        totalAnalysis: totalAnalysisResult[0]?.count || 0
+      }
+    } catch (error) {
+      console.error('获取AI统计数据失败:', error)
+      return {
+        todayChats: 0,
+        totalAnalysis: 0
+      }
+    }
+  }
 }
 
 // 创建单例实例
