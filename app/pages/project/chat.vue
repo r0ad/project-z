@@ -75,8 +75,12 @@
           <nut-icon name="plus" size="16" color="#00B42A"></nut-icon>
           <text>新建会话</text>
         </view>
+        <view class="menu-item" @click="convertToKnowledge">
+          <nut-icon name="star" size="16" color="#FF7D00"></nut-icon>
+          <text>转为知识</text>
+        </view>
         <view class="menu-item" @click="showLogCountConfig">
-          <nut-icon name="setting" size="16" color="FF7D00"></nut-icon>
+          <nut-icon name="setting" size="16" color="#86909C"></nut-icon>
           <text>设置日志数量</text>
         </view>
         <view class="menu-item" @click="clearContext">
@@ -1347,6 +1351,115 @@ export default {
           }
         }
       })
+    },
+    
+    // 转为知识功能
+    async convertToKnowledge() {
+      this.showMenu = false
+      
+      try {
+        // 从ChatComponent获取消息并检查是否有对话内容
+        const messages = this.$refs.chatComponent ? this.$refs.chatComponent.messages : []
+        if (!messages || messages.length === 0) {
+          uni.showToast({
+            title: '暂无对话内容',
+            icon: 'none'
+          })
+          return
+        }
+        
+        uni.showLoading({
+          title: 'AI正在提取知识...'
+        })
+        
+        // 调用AI提取知识的方法
+        const knowledgeData = await this.extractKnowledgeFromChat()
+        
+        uni.hideLoading()
+        
+        if (knowledgeData) {
+          // 跳转到知识创建页面，并传递提取的参数
+          uni.navigateTo({
+            url: `/pages/knowledge/create?data=${encodeURIComponent(JSON.stringify(knowledgeData))}`
+          })
+        }
+      } catch (error) {
+        uni.hideLoading()
+        console.error('转换知识失败:', error)
+        uni.showToast({
+          title: '转换失败，请重试',
+          icon: 'error'
+        })
+      }
+    },
+    
+    // AI提取对话内容为知识库格式
+    async extractKnowledgeFromChat() {
+      try {
+        // 从ChatComponent获取消息
+        const messages = this.$refs.chatComponent ? this.$refs.chatComponent.messages : []
+        
+        if (!messages || messages.length === 0) {
+          throw new Error('暂无对话内容可提取')
+        }
+        
+        // 构建对话内容
+        const chatContent = messages.map(msg => {
+          return `${msg.type === 'user' ? '用户' : 'AI助手'}: ${msg.content}`
+        }).join('\n\n')
+        
+        // 构建AI提示词
+        const prompt = `请分析以下对话内容，提取出有价值的知识信息，并按照以下JSON格式返回：
+
+{
+  "title": "知识标题（简洁明了）",
+  "content": "知识内容（详细描述）",
+  "tags": ["标签1", "标签2"],
+  "category": "知识分类",
+  "summary": "知识摘要（一句话概括）"
+}
+
+对话内容：
+${chatContent}
+
+请确保返回的是有效的JSON格式，不要包含其他文字说明。`
+        
+        // 调用AI API
+        const aiResponse = await aiApi.sendAIRequest(prompt)
+        
+        // 获取AI回复内容
+        const aiContent = aiResponse.content || ''
+        
+        // 解析AI返回的JSON
+        let knowledgeData
+        try {
+          // 尝试从AI响应中提取JSON
+          const jsonMatch = aiContent.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            knowledgeData = JSON.parse(jsonMatch[0])
+          } else {
+            throw new Error('AI返回格式不正确')
+          }
+        } catch (parseError) {
+          console.error('解析AI返回数据失败:', parseError)
+          // 如果解析失败，使用默认格式
+          knowledgeData = {
+            title: '从对话中提取的知识',
+            content: aiContent,
+            tags: ['对话提取'],
+            category: '其他',
+            summary: '从项目对话中提取的知识内容'
+          }
+        }
+        
+        // 添加项目ID
+        knowledgeData.projectId = this.projectId
+        
+        return knowledgeData
+      } catch (error) {
+        console.error('AI提取知识失败:', error)
+        throw error
+      }
     }
   }
 }

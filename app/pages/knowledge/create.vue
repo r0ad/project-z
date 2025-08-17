@@ -316,6 +316,32 @@ export default {
     this.isEdit = !!options.id
     this.knowledgeId = options.id || ''
     
+    // 处理从聊天页面传递过来的数据
+    if (options.data) {
+      try {
+        const knowledgeData = JSON.parse(decodeURIComponent(options.data))
+        this.formData = {
+          title: knowledgeData.title || '',
+          summary: knowledgeData.summary || '',
+          tags: knowledgeData.tags || [],
+          content: knowledgeData.content || '',
+          relatedProject: knowledgeData.projectId ? this.getProjectNameById(knowledgeData.projectId) : ''
+        }
+        
+        // 显示提示信息
+        uni.showToast({
+          title: 'AI已提取知识内容',
+          icon: 'success'
+        })
+      } catch (error) {
+        console.error('解析传递的数据失败:', error)
+        uni.showToast({
+          title: '数据解析失败',
+          icon: 'error'
+        })
+      }
+    }
+    
     if (this.isEdit) {
       this.loadKnowledge()
     }
@@ -377,6 +403,12 @@ export default {
         console.error('加载项目列表失败:', error)
         this.projects = []
       }
+    },
+    
+    // 根据项目ID获取项目名称
+    getProjectNameById(projectId) {
+      const project = this.projects.find(p => p.id === projectId)
+      return project ? project.name : ''
     },
     
     async loadRelatedKnowledge() {
