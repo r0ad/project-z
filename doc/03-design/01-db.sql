@@ -1,22 +1,3 @@
--- ai_config definition
-
-CREATE TABLE ai_config (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        provider TEXT NOT NULL UNIQUE,
-        base_url TEXT NOT NULL,
-        api_key TEXT NOT NULL,
-        model TEXT NOT NULL,
-        timeout INTEGER DEFAULT 30,
-        max_tokens INTEGER DEFAULT 2000,
-        temperature REAL DEFAULT 0.7,
-        is_active INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-
-CREATE INDEX idx_ai_config_is_active ON ai_config(is_active);
-
-
 -- android_metadata definition
 
 CREATE TABLE android_metadata (locale TEXT);
@@ -28,21 +9,6 @@ CREATE TABLE chat_conversations (id INTEGER PRIMARY KEY AUTOINCREMENT, project_i
 
 CREATE INDEX idx_chat_conversations_project_id ON chat_conversations(project_id);
 CREATE INDEX idx_chat_conversations_type_related ON chat_conversations(chat_type, related_id);
-
-
--- knowledge_base definition
-
-CREATE TABLE knowledge_base (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        content TEXT,
-        summary TEXT,
-        view_count INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-
-CREATE INDEX idx_knowledge_title ON knowledge_base(title);
 
 
 -- knowledge_tags definition
@@ -82,6 +48,14 @@ CREATE TABLE users (
       );
 
 
+-- ai_config definition
+
+CREATE TABLE ai_config (id INTEGER PRIMARY KEY AUTOINCREMENT, provider TEXT NOT NULL, base_url TEXT NOT NULL, api_key TEXT NOT NULL, model TEXT NOT NULL, timeout INTEGER DEFAULT 30, max_tokens INTEGER DEFAULT 2000, temperature REAL DEFAULT 0.7, is_active INTEGER DEFAULT 0, user_id INTEGER DEFAULT 1 REFERENCES users(id), created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(provider, user_id));
+
+CREATE INDEX idx_ai_config_user_provider ON ai_config(user_id, provider);
+CREATE INDEX idx_ai_config_is_active ON ai_config(is_active);
+
+
 -- chat_messages definition
 
 CREATE TABLE chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id INTEGER NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, metadata TEXT, FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id));
@@ -100,6 +74,22 @@ CREATE TABLE favorites (
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
       );
+
+
+-- knowledge_base definition
+
+CREATE TABLE knowledge_base (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT,
+        summary TEXT,
+        view_count INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      , user_id INTEGER DEFAULT 1 REFERENCES users(id));
+
+CREATE INDEX idx_knowledge_title ON knowledge_base(title);
+CREATE INDEX idx_knowledge_base_user_id ON knowledge_base(user_id);
 
 
 -- knowledge_tag_mappings definition

@@ -9,7 +9,7 @@ class DBService {
     this.dbName = 'ai_project_manage.db'
     this.dbPath = '_doc/ai_project_manage.db'
     this.isInitialized = false
-    this.currentVersion = '2.6.0' // 当前数据库版本
+    this.currentVersion = '1.0.0' // 当前数据库版本
   }
 
   /**
@@ -145,8 +145,8 @@ class DBService {
    */
   getDefaultUpgradeConfig() {
     return {
-      current_version: '2.2.0',
-      upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0'],
+      current_version: '1.0.0',
+      upgrade_order: ['1.0.0'],
       versions: {}
     }
   }
@@ -737,6 +737,82 @@ class DBService {
     const sql = `SELECT COUNT(*) as count FROM ${table} WHERE ${where}`
     const result = await this.query(sql, whereParams)
     return result[0].count
+  }
+
+  /**
+   * 导出所有数据
+   */
+  async exportAllData() {
+    try {
+      const exportData = {}
+      
+      // 获取所有表名
+      const tables = await this.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+      
+      // 导出每个表的数据
+      for (const table of tables) {
+        const tableName = table.name
+        const tableData = await this.query(`SELECT * FROM ${tableName}`)
+        exportData[tableName] = tableData
+      }
+      
+      return exportData
+    } catch (error) {
+      console.error('导出数据失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 导入所有数据
+   */
+  async importAllData(importData) {
+    try {
+      // 开始事务
+      await this.executeSql('BEGIN TRANSACTION')
+      
+      // 清空所有表数据（保留表结构）
+      const tables = await this.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+      
+      for (const table of tables) {
+        const tableName = table.name
+        await this.executeSql(`DELETE FROM ${tableName}`)
+      }
+      
+      // 导入数据
+      for (const [tableName, tableData] of Object.entries(importData)) {
+        if (Array.isArray(tableData) && tableData.length > 0) {
+          // 获取表结构
+          const columns = Object.keys(tableData[0])
+          const placeholders = columns.map(() => '?').join(', ')
+          const columnNames = columns.join(', ')
+          
+          const insertSql = `INSERT INTO ${tableName} (${columnNames}) VALUES (${placeholders})`
+          
+          // 批量插入数据
+          for (const row of tableData) {
+            const values = columns.map(col => row[col])
+            await this.executeSql(insertSql, values)
+          }
+        }
+      }
+      
+      // 提交事务
+      await this.executeSql('COMMIT')
+      
+      console.log('数据导入成功')
+      return true
+    } catch (error) {
+      // 回滚事务
+      try {
+        await this.executeSql('ROLLBACK')
+      } catch (rollbackError) {
+        console.error('回滚事务失败:', rollbackError)
+      }
+      
+      console.error('导入数据失败:', error)
+      throw error
+    }
   }
 
   /**

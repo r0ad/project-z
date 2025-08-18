@@ -152,6 +152,66 @@
 			</view>
 		</nut-popup>
 
+		<!-- GitCode备份配置弹窗 -->
+		<nut-popup v-model:visible="showGitCodeModal" position="bottom" :style="{ height: '80%' }">
+			<view class="gitcode-modal">
+				<view class="modal-header">
+					<text class="modal-title">GitCode数据库备份</text>
+					<nut-icon name="close" size="20" color="#86909C" @click="closeGitCodeModal"></nut-icon>
+				</view>
+				
+				<!-- 配置区域 -->
+				<view class="gitcode-config-section">
+					<text class="section-title">配置信息</text>
+					<view class="form-item">
+						<text class="form-label">仓库URL</text>
+						<nut-input v-model="gitCodeConfig.repoUrl" placeholder="请输入GitCode仓库URL" />
+					</view>
+					<view class="form-item">
+						<text class="form-label">访问令牌</text>
+						<nut-input v-model="gitCodeConfig.accessToken" placeholder="请输入访问令牌" type="password" />
+					</view>
+					<view class="form-item">
+						<text class="form-label">分支名称</text>
+						<nut-input v-model="gitCodeConfig.branchName" placeholder="main" />
+					</view>
+					<nut-button type="primary" @click="testGitCodeConnection" size="large" block>
+						测试连接
+					</nut-button>
+				</view>
+				
+				<!-- 操作区域 -->
+				<view class="gitcode-operation-section">
+					<text class="section-title">备份操作</text>
+					<view class="btn-group">
+						<nut-button type="success" @click="backupDatabaseToGitCode" size="large" style="margin-right: 20rpx;">
+							<nut-icon name="upload" size="16" color="#ffffff"></nut-icon>
+							备份到云端
+						</nut-button>
+						<nut-button type="info" @click="restoreDatabaseFromGitCode" size="large">
+							<nut-icon name="download" size="16" color="#ffffff"></nut-icon>
+							从云端恢复
+						</nut-button>
+					</view>
+				</view>
+				
+				<!-- 结果显示区域 -->
+				<view class="gitcode-result-section">
+					<text class="section-title">操作结果</text>
+					<view class="result-box">
+						<text class="result-text">{{ gitCodeResultText }}</text>
+					</view>
+				</view>
+				
+				<!-- 加载状态 -->
+				<view v-if="gitCodeLoading" class="loading-overlay">
+					<view class="loading-content">
+						<text class="loading-text">{{ gitCodeLoadingText }}</text>
+					</view>
+				</view>
+			</view>
+		</nut-popup>
+
 		<!-- 自定义tabbar -->
 		<custom-tab-bar current="2"></custom-tab-bar>
 	</view>
@@ -167,6 +227,7 @@ import userStore from '@/utils/userStore.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 import CustomTabBar from '@/custom-tab-bar/index.vue'
 import dbService from '@/utils/dbService.js'
+import { GitCodeSync } from '@/uni_modules/gitcode-sync/js_sdk/index.js'
 import { version } from 'vue'
 
 export default {
@@ -195,6 +256,16 @@ export default {
 					avatar: '👤'
 				},
 				avatarOptions: [],
+			// GitCode备份相关
+			showGitCodeModal: false,
+			gitCodeConfig: {
+				repoUrl: 'https://gitcode.com/sunzroad/diary-demo',
+				accessToken: 'KfsQET8R8ydvpB46wBo8S_qs',
+				branchName: 'main'
+			},
+			gitCodeLoading: false,
+			gitCodeLoadingText: '',
+			gitCodeResultText: '等待操作...',
 			aiStats: {
 				todayChats: 0,
 				totalAnalysis: 0
@@ -212,6 +283,15 @@ export default {
 					title: 'AI设置',
 					type: 'navigate',
 					path: '/pages/profile/ai-settings'
+				},
+				{
+					icon: 'cloud',
+					iconColor: '#FF7D00',
+					iconBg: '#FF7D0020',
+					title: 'GitCode备份',
+					subtitle: '数据库云端同步',
+					type: 'action',
+					handler: 'showGitCodeBackup'
 				},
 				{
 					icon: 'refresh',
@@ -279,8 +359,9 @@ export default {
 			// await this.loadAIStats()
 			await this.loadFavoriteCount()
 			await this.loadAllUsers()
-			this.loadAvatarOptions()
-			this.getCurrentVersion()
+		this.loadAvatarOptions()
+		this.loadGitCodeConfig()
+		this.getCurrentVersion()
 		},
 
 	beforeDestroy() {
@@ -623,6 +704,237 @@ export default {
 					title: '创建失败',
 					icon: 'error'
 				})
+			}
+		},
+
+		/**
+		 * GitCode备份相关方法
+		 */
+		// 显示GitCode备份弹窗
+		showGitCodeBackup() {
+			this.showGitCodeModal = true
+		},
+
+		// 关闭GitCode备份弹窗
+		closeGitCodeModal() {
+			this.showGitCodeModal = false
+		},
+
+		// 加载GitCode配置
+		loadGitCodeConfig() {
+			try {
+				const savedConfig = uni.getStorageSync('gitcode_backup_config')
+				if (savedConfig) {
+					this.gitCodeConfig = { ...this.gitCodeConfig, ...savedConfig }
+				}
+			} catch (error) {
+				console.log('加载GitCode配置失败:', error)
+			}
+		},
+
+		// 保存GitCode配置
+		saveGitCodeConfig() {
+			try {
+				uni.setStorageSync('gitcode_backup_config', this.gitCodeConfig)
+			} catch (error) {
+				console.log('保存GitCode配置失败:', error)
+			}
+		},
+
+		// 创建GitCodeSync实例
+		createGitCodeSync() {
+			if (!this.gitCodeConfig.repoUrl || !this.gitCodeConfig.accessToken) {
+				uni.showToast({ title: '请先配置仓库URL和访问令牌', icon: 'none' })
+				return null
+			}
+
+			const syncConfig = {
+				repoUrl: this.gitCodeConfig.repoUrl,
+				accessToken: this.gitCodeConfig.accessToken,
+				branch: this.gitCodeConfig.branchName || 'main'
+			}
+
+			try {
+				return new GitCodeSync(syncConfig)
+			} catch (error) {
+				console.error('创建GitCodeSync失败:', error)
+				uni.showToast({ title: '配置错误: ' + error.message, icon: 'none' })
+				return null
+			}
+		},
+
+		// 测试GitCode连接
+		async testGitCodeConnection() {
+			const gitCodeSync = this.createGitCodeSync()
+			if (!gitCodeSync) return
+
+			this.gitCodeLoading = true
+			this.gitCodeLoadingText = '测试连接中...'
+
+			try {
+				const result = await gitCodeSync.testConnection()
+				if (result.success) {
+					this.gitCodeResultText = '连接成功！\n' + JSON.stringify(result, null, 2)
+					this.saveGitCodeConfig()
+					uni.showToast({ title: '连接成功', icon: 'success' })
+				} else {
+					this.gitCodeResultText = '连接失败：' + result.message
+					uni.showToast({ title: '连接失败', icon: 'none' })
+				}
+			} catch (error) {
+				this.gitCodeResultText = '连接异常：' + error.message
+				uni.showToast({ title: '连接异常', icon: 'none' })
+			} finally {
+				this.gitCodeLoading = false
+			}
+		},
+
+		// 备份数据库到GitCode
+		async backupDatabaseToGitCode() {
+			const gitCodeSync = this.createGitCodeSync()
+			if (!gitCodeSync) return
+
+			this.gitCodeLoading = true
+			this.gitCodeLoadingText = '备份数据库中...'
+
+			try {
+				// 导出数据库数据
+				const dbData = await dbService.exportAllData()
+				const backupData = {
+					timestamp: new Date().toISOString(),
+					version: '1.0.0',
+					data: dbData
+				}
+
+				const fileName = `database_backup_${new Date().toISOString().split('T')[0]}.json`
+				const result = await gitCodeSync.uploadData(
+					JSON.stringify(backupData, null, 2),
+					fileName,
+					`数据库备份 - ${new Date().toLocaleString()}`
+				)
+
+				if (result.success) {
+					this.gitCodeResultText = '备份成功！\n' + JSON.stringify(result, null, 2)
+					uni.showToast({ title: '备份成功', icon: 'success' })
+				} else {
+					this.gitCodeResultText = '备份失败：' + result.message
+					uni.showToast({ title: '备份失败', icon: 'none' })
+				}
+			} catch (error) {
+				this.gitCodeResultText = '备份异常：' + error.message
+				uni.showToast({ title: '备份异常', icon: 'none' })
+			} finally {
+				this.gitCodeLoading = false
+			}
+		},
+
+		// 从GitCode恢复数据库
+		async restoreDatabaseFromGitCode() {
+			uni.showModal({
+				title: '确认恢复',
+				content: '恢复数据库将覆盖当前所有数据，此操作不可逆，确定要继续吗？',
+				success: async (res) => {
+					if (res.confirm) {
+						await this.performDatabaseRestore()
+					}
+				}
+			})
+		},
+
+		// 执行数据库恢复
+		async performDatabaseRestore() {
+			const gitCodeSync = this.createGitCodeSync()
+			if (!gitCodeSync) return
+
+			this.gitCodeLoading = true
+			this.gitCodeLoadingText = '恢复数据库中...'
+
+			try {
+				// 获取最新的备份文件列表
+				const branches = await gitCodeSync.getBranches()
+				// 这里简化处理，实际应该列出所有备份文件让用户选择
+				const fileName = `database_backup_${new Date().toISOString().split('T')[0]}.json`
+				
+				const result = await gitCodeSync.downloadData(fileName)
+
+				if (result.success) {
+					// 验证下载的数据
+					let rawData = result.data
+					console.log('下载的原始数据类型:', typeof rawData)
+					console.log('下载的原始数据:', rawData)
+					
+					// 处理不同类型的数据
+					if (typeof rawData === 'object' && rawData !== null) {
+						// 如果已经是对象，直接使用
+						if (rawData.data) {
+							// 直接使用对象数据
+							const backupData = rawData
+							// 验证备份数据结构
+							if (!backupData || !backupData.data) {
+								throw new Error('备份数据格式不正确，缺少data字段')
+							}
+							// 恢复数据库
+							await dbService.importAllData(backupData.data)
+							
+							this.gitCodeResultText = '恢复成功！\n数据库已从云端恢复'
+							uni.showToast({ title: '恢复成功', icon: 'success' })
+							
+							// 重新加载用户数据
+							await this.loadUserInfo()
+							await this.loadUserData()
+							return
+						} else {
+							// 转换为字符串进行解析
+							rawData = JSON.stringify(rawData)
+						}
+					} else if (typeof rawData !== 'string') {
+						// 其他类型转换为字符串
+						rawData = String(rawData)
+					}
+					
+					// 确保rawData是字符串后再进行字符串操作
+					if (typeof rawData === 'string') {
+						console.log('字符串数据前100字符:', rawData.substring(0, 100))
+						// 清理可能的BOM或其他特殊字符
+						rawData = rawData.trim()
+						if (rawData.charCodeAt(0) === 0xFEFF) {
+							rawData = rawData.slice(1)
+						}
+					}
+					
+					let backupData
+					try {
+						backupData = JSON.parse(rawData)
+					} catch (parseError) {
+						console.error('JSON解析失败:', parseError)
+						console.error('解析失败的数据:', rawData.substring(0, 200))
+						throw new Error(`JSON解析失败: ${parseError.message}`)
+					}
+					
+					// 验证备份数据结构
+					if (!backupData || !backupData.data) {
+						throw new Error('备份数据格式不正确，缺少data字段')
+					}
+					
+					// 恢复数据库
+					await dbService.importAllData(backupData.data)
+					
+					this.gitCodeResultText = '恢复成功！\n数据库已从云端恢复'
+					uni.showToast({ title: '恢复成功', icon: 'success' })
+					
+					// 重新加载用户数据
+					await this.loadUserInfo()
+					await this.loadUserData()
+				} else {
+					this.gitCodeResultText = '恢复失败：' + result.message
+					uni.showToast({ title: '恢复失败', icon: 'none' })
+				}
+			} catch (error) {
+				console.error('数据库恢复详细错误:', error)
+				this.gitCodeResultText = '恢复异常：' + error.message
+				uni.showToast({ title: '恢复异常', icon: 'none' })
+			} finally {
+				this.gitCodeLoading = false
 			}
 		},
 
@@ -1000,6 +1312,87 @@ export default {
 .version-text {
 	font-size: 24rpx;
 	color: #C9CDD4;
+}
+
+/* GitCode备份弹窗样式 */
+.gitcode-modal {
+	padding: 32rpx;
+	height: 100%;
+	background-color: #F2F3F5;
+	display: flex;
+	flex-direction: column;
+}
+
+.gitcode-config-section,
+.gitcode-operation-section,
+.gitcode-result-section {
+	background-color: #ffffff;
+	border-radius: 16rpx;
+	padding: 24rpx;
+	margin-bottom: 24rpx;
+	box-shadow: 0 4rpx 16rpx 0 rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #1D2129;
+	margin-bottom: 24rpx;
+	display: block;
+}
+
+.btn-group {
+	display: flex;
+	gap: 20rpx;
+}
+
+.btn-group .nut-button {
+	flex: 1;
+}
+
+.result-box {
+	background-color: #F7F8FA;
+	border: 2rpx solid #E5E6EB;
+	border-radius: 12rpx;
+	padding: 20rpx;
+	min-height: 200rpx;
+	max-height: 300rpx;
+	overflow-y: auto;
+}
+
+.result-text {
+	font-size: 24rpx;
+	color: #4E5969;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.loading-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10000;
+}
+
+.loading-content {
+	background-color: #ffffff;
+	border-radius: 16rpx;
+	padding: 48rpx;
+	text-align: center;
+	box-shadow: 0 8rpx 32rpx 0 rgba(0, 0, 0, 0.16);
+}
+
+.loading-text {
+	font-size: 28rpx;
+	color: #1D2129;
+	font-weight: 500;
 }
 
 /* 用户切换相关样式 */
