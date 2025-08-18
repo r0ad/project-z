@@ -4,6 +4,7 @@
  */
 
 import dbService from '@/utils/dbService.js'
+import userStore from '@/utils/userStore.js'
 
 class ProjectApi {
   /**
@@ -21,14 +22,15 @@ class ProjectApi {
    * @param {string} options.status - 项目状态筛选
    * @param {number} options.limit - 限制数量
    * @param {number} options.offset - 偏移量
+   * @param {number} options.userId - 用户ID，如果不提供则使用当前用户
    */
   async getProjectList(options = {}) {
     await this.ensureDBInit()
     
-    const { status, limit = 50, offset = 0 } = options
+    const { status, limit = 50, offset = 0, userId = userStore.getCurrentUserId() } = options
     
     let where = 'user_id = ?'
-    let params = [1] // 默认用户ID
+    let params = [userId]
     
     if (status) {
       where += ' AND status = ?'
@@ -65,10 +67,13 @@ class ProjectApi {
 
   /**
    * 获取所有项目（用于统计和简单列表）
-   * @param {number} userId - 用户ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    * @returns {Promise<Array>} 项目列表
    */
-  async getAllProjects(userId = 1) {
+  async getAllProjects(userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     const projects = await dbService.findMany('projects', 'user_id = ?', [userId], 'updated_at DESC')
@@ -89,11 +94,15 @@ class ProjectApi {
   /**
    * 获取项目详情
    * @param {number} projectId - 项目ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async getProjectDetail(projectId) {
+  async getProjectDetail(projectId, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
-    const project = await dbService.findOne('projects', 'id = ?', [projectId])
+    const project = await dbService.findOne('projects', 'id = ? AND user_id = ?', [projectId, userId])
     if (!project) {
       throw new Error('项目不存在')
     }
@@ -136,8 +145,12 @@ class ProjectApi {
    * @param {string} aiAnalysis.smartGoal - AI优化的SMART目标
    * @param {Array} aiAnalysis.milestones - AI生成的里程碑
    * @param {string} aiAnalysis.suggestions - AI建议
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async createProject(projectData, aiAnalysis = null) {
+  async createProject(projectData, aiAnalysis = null, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     const { name, goal, description } = projectData
@@ -148,7 +161,7 @@ class ProjectApi {
     
     // 插入项目
     const projectId = await dbService.insert('projects', {
-      user_id: 1,
+      user_id: userId,
       name,
       goal,
       description: description || '',
@@ -185,40 +198,54 @@ class ProjectApi {
       }
     }
     
-    return await this.getProjectDetail(projectId)
+    return await this.getProjectDetail(projectId, userId)
   }
 
   /**
    * 更新项目
    * @param {number} projectId - 项目ID
    * @param {Object} updateData - 更新数据
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async updateProject(projectId, updateData) {
+  async updateProject(projectId, updateData, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
-    const project = await dbService.findOne('projects', 'id = ?', [projectId])
+    const project = await dbService.findOne('projects', 'id = ? AND user_id = ?', [projectId, userId])
     if (!project) {
       throw new Error('项目不存在')
     }
     
-    await dbService.update('projects', updateData, 'id = ?', [projectId])
+    await dbService.update('projects', updateData, 'id = ? AND user_id = ?', [projectId, userId])
     
-    return await this.getProjectDetail(projectId)
+    return await this.getProjectDetail(projectId, userId)
   }
 
   /**
    * 删除项目
    * @param {number} projectId - 项目ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async deleteProject(projectId) {
+  async deleteProject(projectId, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
+    
+    // 验证项目所有权
+    const project = await dbService.findOne('projects', 'id = ? AND user_id = ?', [projectId, userId])
+    if (!project) {
+      throw new Error('项目不存在或无权限删除')
+    }
     
     // 删除相关数据
     await dbService.delete('project_logs', 'project_id = ?', [projectId])
     await dbService.delete('project_milestones', 'project_id = ?', [projectId])
     await dbService.delete('ai_analyses', 'project_id = ?', [projectId])
     await dbService.delete('project_knowledge_mappings', 'project_id = ?', [projectId])
-    await dbService.delete('projects', 'id = ?', [projectId])
+    await dbService.delete('projects', 'id = ? AND user_id = ?', [projectId, userId])
     
     return true
   }
@@ -342,9 +369,12 @@ class ProjectApi {
 
   /**
    * 获取项目统计信息
-   * @param {number} userId - 用户ID（默认为1）
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async getProjectStats(userId = 1) {
+  async getProjectStats(userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     const stats = {}
@@ -404,11 +434,21 @@ class ProjectApi {
    * @param {Object} progressData - 进度数据
    * @param {number} progressData.progress - 进度百分比
    * @param {string} progressData.description - 进度描述
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async updateProgress(projectId, progressData) {
+  async updateProgress(projectId, progressData, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     try {
+      // 验证项目所有权
+      const project = await dbService.findOne('projects', 'id = ? AND user_id = ?', [projectId, userId])
+      if (!project) {
+        throw new Error('项目不存在或无权限修改')
+      }
+      
       // 更新项目进度
       const updateData = {
         progress: progressData.progress || 0
@@ -418,7 +458,7 @@ class ProjectApi {
         updateData.description = progressData.description
       }
       
-      await dbService.update('projects', updateData, 'id = ?', [projectId])
+      await dbService.update('projects', updateData, 'id = ? AND user_id = ?', [projectId, userId])
       
       // 重新计算项目进度（基于里程碑）
       await this.updateProjectProgress(projectId)
@@ -436,11 +476,21 @@ class ProjectApi {
    * @param {Object} planData - 计划数据
    * @param {string} planData.plan - 计划内容
    * @param {Array} planData.goals - 目标列表
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async updatePlan(projectId, planData) {
+  async updatePlan(projectId, planData, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     try {
+      // 验证项目所有权
+      const project = await dbService.findOne('projects', 'id = ? AND user_id = ?', [projectId, userId])
+      if (!project) {
+        throw new Error('项目不存在或无权限修改')
+      }
+      
       const updateData = {}
       
       if (planData.plan) {
@@ -451,7 +501,7 @@ class ProjectApi {
         updateData.goals = JSON.stringify(planData.goals)
       }
       
-      await dbService.update('projects', updateData, 'id = ?', [projectId])
+      await dbService.update('projects', updateData, 'id = ? AND user_id = ?', [projectId, userId])
       
       return true
     } catch (error) {

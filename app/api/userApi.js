@@ -4,6 +4,7 @@
 import dbService from '@/utils/dbService.js'
 import projectApi from './projectApi.js'
 import knowledgeApi from './knowledgeApi.js'
+import userStore from '../utils/userStore.js'
 
 class UserApi {
 	/**
@@ -17,26 +18,34 @@ class UserApi {
 
 	/**
 	 * 获取当前用户信息
+	 * @param {number} userId - 用户ID，默认为1
 	 * @returns {Promise<Object>} 用户信息
 	 */
-	async getCurrentUser() {
+	async getCurrentUser(userId = 1) {
 		try {
 			await this.ensureDBInit()
 			
-			// 获取第一个用户（默认用户）
-			const user = await dbService.findOne('users', '1=1', [])
+			// 获取指定用户或第一个用户
+			let user
+			if (userId && userId !== 1) {
+				user = await dbService.findOne('users', 'id = ?', [userId])
+			}
+			
+			if (!user) {
+				user = await dbService.findOne('users', '1=1', [])
+			}
 			
 			if (user) {
-			// 获取真实的统计数据
-			const projectStats = await projectApi.getProjectStats(user.id)
-			const knowledgeStats = await knowledgeApi.getKnowledgeStats(user.id)
-			
-			// 格式化用户数据并包含真实统计
-			return this.formatUserData(user, projectStats, knowledgeStats)
-		} else {
-			// 如果没有用户，创建默认用户
-			return await this.createDefaultUser()
-		}
+				// 获取真实的统计数据
+				const projectStats = await projectApi.getProjectStats(user.id)
+				const knowledgeStats = await knowledgeApi.getKnowledgeStats(user.id)
+				
+				// 格式化用户数据并包含真实统计
+				return this.formatUserData(user, projectStats, knowledgeStats)
+			} else {
+				// 如果没有用户，创建默认用户
+				return await this.createDefaultUser()
+			}
 		} catch (error) {
 			console.error('获取用户信息失败:', error)
 			throw error
@@ -199,6 +208,104 @@ class UserApi {
 			{ value: '🚀', label: '火箭', category: '符号' },
 			{ value: '💡', label: '灯泡', category: '符号' }
 		]
+	}
+
+	/**
+	 * 获取所有用户列表
+	 * @returns {Promise<Array>} 用户列表
+	 */
+	async getAllUsers() {
+		try {
+			await this.ensureDBInit()
+			
+			const users = await dbService.findMany('users', '1=1', [])
+			
+			// 为每个用户获取统计数据
+			const usersWithStats = await Promise.all(
+				users.map(async (user) => {
+					const projectStats = await projectApi.getProjectStats(user.id)
+					const knowledgeStats = await knowledgeApi.getKnowledgeStats(user.id)
+					return this.formatUserData(user, projectStats, knowledgeStats)
+				})
+			)
+			
+			return usersWithStats
+		} catch (error) {
+			console.error('获取用户列表失败:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * 创建新用户
+	 * @param {Object} userData 用户数据
+	 * @returns {Promise<Object>} 创建的用户信息
+	 */
+	async createUser(userData) {
+		try {
+			await this.ensureDBInit()
+			
+			const newUserData = {
+				username: userData.username || '新用户',
+				email: userData.email || '',
+				avatar: userData.avatar || '👤',
+				settings: JSON.stringify({
+					title: userData.title || '产品经理',
+					isVip: userData.isVip || false,
+					theme: userData.theme || 'light'
+				})
+			}
+			
+			const userId = await dbService.insert('users', newUserData)
+			
+			// 获取创建的用户信息
+			const user = await dbService.findOne('users', 'id = ?', [userId])
+			
+			// 获取统计数据
+			const projectStats = await projectApi.getProjectStats(userId)
+			const knowledgeStats = await knowledgeApi.getKnowledgeStats(userId)
+			
+			return this.formatUserData(user, projectStats, knowledgeStats)
+		} catch (error) {
+			console.error('创建用户失败:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * 切换当前用户
+	 * @param {number} userId 用户ID
+	 * @returns {Promise<Object>} 切换后的用户信息
+	 */
+	async switchUser(userId) {
+		try {
+			await this.ensureDBInit()
+			
+			// 验证用户是否存在
+			const user = await dbService.findOne('users', 'id = ?', [userId])
+			if (!user) {
+				throw new Error('用户不存在')
+			}
+			
+			// 使用全局状态管理器切换用户
+			userStore.setCurrentUserId(userId)
+			
+			// 返回用户信息
+			const userInfo = await this.getCurrentUser(userId)
+			userStore.setCurrentUser(userInfo)
+			return userInfo
+		} catch (error) {
+			console.error('切换用户失败:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * 获取当前用户ID
+	 * @returns {number} 当前用户ID
+	 */
+	getCurrentUserId() {
+		return userStore.getCurrentUserId()
 	}
 
 	/**

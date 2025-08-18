@@ -6,6 +6,7 @@
 import dbService from '@/utils/dbService.js'
 import projectApi from './projectApi.js'
 import knowledgeApi from './knowledgeApi.js'
+import userStore from '@/utils/userStore.js'
 
 class FavoriteApi {
   /**
@@ -19,10 +20,13 @@ class FavoriteApi {
 
   /**
    * 获取收藏列表
-   * @param {number} userId - 用户ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    * @param {string} type - 收藏类型 ('project', 'knowledge', 'all')
    */
-  async getFavoritesList(userId = 1, type = 'all') {
+  async getFavoritesList(userId = null, type = 'all') {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     let where = 'user_id = ?'
@@ -85,9 +89,12 @@ class FavoriteApi {
    * 添加收藏
    * @param {string} targetType - 目标类型 ('project', 'knowledge')
    * @param {number} targetId - 目标ID
-   * @param {number} userId - 用户ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async addFavorite(targetType, targetId, userId = 1) {
+  async addFavorite(targetType, targetId, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     // 检查是否已收藏
@@ -116,9 +123,12 @@ class FavoriteApi {
    * 取消收藏
    * @param {string} targetType - 目标类型 ('project', 'knowledge')
    * @param {number} targetId - 目标ID
-   * @param {number} userId - 用户ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async removeFavorite(targetType, targetId, userId = 1) {
+  async removeFavorite(targetType, targetId, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     const result = await dbService.delete(
@@ -134,9 +144,12 @@ class FavoriteApi {
    * 切换收藏状态
    * @param {string} targetType - 目标类型 ('project', 'knowledge')
    * @param {number} targetId - 目标ID
-   * @param {number} userId - 用户ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async toggleFavorite(targetType, targetId, userId = 1) {
+  async toggleFavorite(targetType, targetId, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     // 检查是否已收藏
@@ -166,9 +179,12 @@ class FavoriteApi {
    * 检查是否已收藏
    * @param {string} targetType - 目标类型 ('project', 'knowledge')
    * @param {number} targetId - 目标ID
-   * @param {number} userId - 用户ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async isFavorite(targetType, targetId, userId = 1) {
+  async isFavorite(targetType, targetId, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     const existing = await dbService.findOne(
@@ -182,9 +198,12 @@ class FavoriteApi {
 
   /**
    * 获取收藏统计
-   * @param {number} userId - 用户ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async getFavoritesStats(userId = 1) {
+  async getFavoritesStats(userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     const stats = {

@@ -4,8 +4,8 @@
  */
 
 const dbUpgradeConfig = {
-  current_version: '2.12.0',
-  upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.3.0', '2.4.0', '2.5.0', '2.6.0', '2.7.0', '2.8.0', '2.9.0', '2.10.0', '2.11.0', '2.12.0'],
+  current_version: '2.14.0',
+  upgrade_order: ['1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.3.0', '2.4.0', '2.5.0', '2.6.0', '2.7.0', '2.8.0', '2.9.0', '2.10.0', '2.11.0', '2.12.0', '2.13.0', '2.14.0'],
   versions: {
     '1.0.0': {
       description: '初始化数据库',
@@ -360,6 +360,84 @@ const dbUpgradeConfig = {
           type: 'create_index',
           name: 'idx_chat_conversations_type_related',
           sql: 'CREATE INDEX IF NOT EXISTS idx_chat_conversations_type_related ON chat_conversations(chat_type, related_id)',
+          ignore_error: true
+        }
+      ]
+    },
+    '2.13.0': {
+      description: '添加多用户支持，为相关表添加user_id字段',
+      dependencies: ['2.12.0'],
+      scripts: [
+        {
+          type: 'alter_table',
+          name: 'add_user_id_to_ai_config',
+          sql: 'ALTER TABLE ai_config ADD COLUMN user_id INTEGER DEFAULT 1 REFERENCES users(id)',
+          ignore_error: true
+        },
+        {
+          type: 'alter_table',
+          name: 'add_user_id_to_knowledge_base',
+          sql: 'ALTER TABLE knowledge_base ADD COLUMN user_id INTEGER DEFAULT 1 REFERENCES users(id)',
+          ignore_error: true
+        },
+        {
+          type: 'create_index',
+          name: 'idx_ai_config_user_id',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_ai_config_user_id ON ai_config(user_id)',
+          ignore_error: true
+        },
+        {
+          type: 'create_index',
+          name: 'idx_knowledge_base_user_id',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_knowledge_base_user_id ON knowledge_base(user_id)',
+          ignore_error: true
+        }
+      ]
+    },
+    '2.14.0': {
+      description: '修复ai_config表的唯一约束问题，支持多用户使用相同provider',
+      dependencies: ['2.13.0'],
+      scripts: [
+        {
+          type: 'backup_table',
+          name: 'ai_config_backup',
+          sql: 'CREATE TABLE ai_config_backup AS SELECT * FROM ai_config',
+          ignore_error: true
+        },
+        {
+          type: 'drop_table',
+          name: 'drop_ai_config',
+          sql: 'DROP TABLE ai_config',
+          ignore_error: false
+        },
+        {
+          type: 'create_table',
+          name: 'recreate_ai_config',
+          sql: 'CREATE TABLE ai_config (id INTEGER PRIMARY KEY AUTOINCREMENT, provider TEXT NOT NULL, base_url TEXT NOT NULL, api_key TEXT NOT NULL, model TEXT NOT NULL, timeout INTEGER DEFAULT 30, max_tokens INTEGER DEFAULT 2000, temperature REAL DEFAULT 0.7, is_active INTEGER DEFAULT 0, user_id INTEGER DEFAULT 1 REFERENCES users(id), created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(provider, user_id))',
+          ignore_error: false
+        },
+        {
+          type: 'restore_data',
+          name: 'ai_config_restore',
+          sql: 'INSERT INTO ai_config (id, provider, base_url, api_key, model, timeout, max_tokens, temperature, is_active, user_id, created_at, updated_at) SELECT id, provider, base_url, api_key, model, timeout, max_tokens, temperature, is_active, COALESCE(user_id, 1), created_at, updated_at FROM ai_config_backup',
+          ignore_error: true
+        },
+        {
+          type: 'drop_table',
+          name: 'ai_config_cleanup',
+          sql: 'DROP TABLE IF EXISTS ai_config_backup',
+          ignore_error: true
+        },
+        {
+          type: 'create_index',
+          name: 'idx_ai_config_user_provider',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_ai_config_user_provider ON ai_config(user_id, provider)',
+          ignore_error: true
+        },
+        {
+          type: 'create_index',
+          name: 'idx_ai_config_is_active',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_ai_config_is_active ON ai_config(is_active)',
           ignore_error: true
         }
       ]

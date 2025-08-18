@@ -23,7 +23,13 @@
 						</view>
 					</view>
 					<view class="user-details">
-						<text class="user-name">{{ userInfo.name }}</text>
+						<view class="user-name-row">
+							<text class="user-name">{{ userInfo.name }}</text>
+							<view class="user-switch-btn" @click="showUserSwitcher">
+								<nut-icon name="switch" size="14" color="#165DFF"></nut-icon>
+								<text class="switch-text">切换</text>
+							</view>
+						</view>
 						<text class="user-title">{{ userInfo.title }}</text>
 						<view class="user-stats">
 							<view class="stat-item">
@@ -72,6 +78,80 @@
 			</view>
 		</view>
 
+		<!-- 用户切换弹窗 -->
+		<nut-popup v-model:visible="showUserModal" position="bottom" :style="{ height: '60%' }">
+			<view class="user-switcher-modal">
+				<view class="modal-header">
+					<text class="modal-title">选择用户</text>
+					<nut-icon name="close" size="20" color="#86909C" @click="closeUserSwitcher"></nut-icon>
+				</view>
+				
+				<view class="user-list">
+					<view v-for="user in allUsers" :key="user.id" class="user-item" 
+						:class="{ active: user.id === userInfo.id }" @click="switchToUser(user.id)">
+						<view class="user-item-avatar">
+							<text class="user-item-emoji">{{ user.avatar }}</text>
+						</view>
+						<view class="user-item-info">
+							<text class="user-item-name">{{ user.username }}</text>
+							<text class="user-item-title">{{ user.title }}</text>
+							<text class="user-item-stats">{{ user.projectCount }}个项目 · {{ user.knowledgeCount }}个知识</text>
+						</view>
+						<nut-icon v-if="user.id === userInfo.id" name="check" size="16" color="#165DFF"></nut-icon>
+					</view>
+				</view>
+				
+				<view class="modal-actions">
+					<nut-button type="primary" size="large" @click="showCreateUserModal" block>
+						<nut-icon name="plus" size="16" color="#ffffff"></nut-icon>
+						创建新用户
+					</nut-button>
+				</view>
+			</view>
+		</nut-popup>
+
+		<!-- 创建用户弹窗 -->
+		<nut-popup v-model:visible="showCreateModal" position="center" :style="{ width: '80%' }">
+			<view class="create-user-modal">
+				<view class="modal-header">
+					<text class="modal-title">创建新用户</text>
+					<nut-icon name="close" size="20" color="#86909C" @click="closeCreateUserModal"></nut-icon>
+				</view>
+				
+				<view class="create-form">
+					<view class="form-item">
+						<text class="form-label">用户名</text>
+						<nut-input v-model="newUser.username" placeholder="请输入用户名" />
+					</view>
+					
+					<view class="form-item">
+						<text class="form-label">职位</text>
+						<nut-input v-model="newUser.title" placeholder="请输入职位" />
+					</view>
+					
+					<view class="form-item">
+						<text class="form-label">头像</text>
+						<view class="avatar-selector">
+							<view v-for="avatar in avatarOptions" :key="avatar.value" 
+								class="avatar-option" :class="{ selected: newUser.avatar === avatar.value }"
+								@click="selectAvatar(avatar.value)">
+								<text class="avatar-emoji">{{ avatar.value }}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+				
+				<view class="modal-actions">
+					<nut-button @click="closeCreateUserModal" size="large" style="margin-right: 20rpx;">
+						取消
+					</nut-button>
+					<nut-button type="primary" @click="createNewUser" size="large">
+						创建
+					</nut-button>
+				</view>
+			</view>
+		</nut-popup>
+
 		<!-- 自定义tabbar -->
 		<custom-tab-bar current="2"></custom-tab-bar>
 	</view>
@@ -83,6 +163,7 @@ import knowledgeApi from '@/api/knowledgeApi.js'
 import chatApi from '@/api/chatApi.js'
 import favoriteApi from '@/api/favoriteApi.js'
 import userApi from '@/api/userApi.js'
+import userStore from '@/utils/userStore.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 import CustomTabBar from '@/custom-tab-bar/index.vue'
 import dbService from '@/utils/dbService.js'
@@ -94,15 +175,26 @@ export default {
 	},
 	data() {
 		return {
-			userInfo: {
-				avatar: '👤',
-				name: '用户',
-				title: '产品经理',
-				isVip: false,
-				projectCount: 0,
-				knowledgeCount: 0,
-				days: 0
-			},
+				userInfo: {
+					id: 1,
+					avatar: '👤',
+					name: '用户',
+					title: '产品经理',
+					isVip: false,
+					projectCount: 0,
+					knowledgeCount: 0,
+					days: 0
+				},
+				// 用户切换相关
+				allUsers: [],
+				showUserModal: false,
+				showCreateModal: false,
+				newUser: {
+					username: '',
+					title: '产品经理',
+					avatar: '👤'
+				},
+				avatarOptions: [],
 			aiStats: {
 				todayChats: 0,
 				totalAnalysis: 0
@@ -175,16 +267,26 @@ export default {
 				}
 			],
 			version: '1.0.0'
-		}
-	},
+			}
+		},
 	async mounted() {
-		await this.loadUserInfo()
-		await this.loadUserData()
-		// await this.loadStatsData()
-		// await this.loadAIStats()
-		await this.loadFavoriteCount()
-		this.getCurrentVersion()
-	},
+			// 添加用户状态变化监听器
+			userStore.addListener(this.handleUserStateChange)
+			
+			await this.loadUserInfo()
+			await this.loadUserData()
+			// await this.loadStatsData()
+			// await this.loadAIStats()
+			await this.loadFavoriteCount()
+			await this.loadAllUsers()
+			this.loadAvatarOptions()
+			this.getCurrentVersion()
+		},
+
+	beforeDestroy() {
+			// 移除用户状态变化监听器
+			userStore.removeListener(this.handleUserStateChange)
+		},
 	methods: {
 		// 获取当前应用版本
   		getCurrentVersion() {
@@ -306,9 +408,11 @@ export default {
 		 */
 		async loadUserInfo() {
 			try {
-				const userData = await userApi.getCurrentUser()
+				const currentUserId = userStore.getCurrentUserId()
+				const userData = await userApi.getCurrentUser(currentUserId)
 				
 				this.userInfo = {
+					id: userData.id,
 					name: userData.username,
 					title: userData.title,
 					avatar: userData.avatar,
@@ -317,6 +421,9 @@ export default {
 					knowledgeCount: 0, // 将在loadUserData中更新
 					days: userApi.calculateUsageDays(userData.created_at)
 				}
+				
+				// 更新全局状态
+				userStore.setCurrentUser(this.userInfo)
 			} catch (error) {
 				console.error('加载用户信息失败:', error)
 			}
@@ -324,9 +431,10 @@ export default {
 		
 		async loadUserData() {
 			try {
+				const currentUserId = userStore.getCurrentUserId()
 				// 获取用户项目和知识统计
-				const projects = await projectApi.getAllProjects(1)
-				const knowledge = await knowledgeApi.getKnowledgeStats()
+				const projects = await projectApi.getAllProjects(currentUserId)
+				const knowledge = await knowledgeApi.getKnowledgeStats(currentUserId)
 
 				this.userInfo.projectCount = projects.length
 				this.userInfo.knowledgeCount = knowledge.publishedCount ? knowledge.publishedCount : 0
@@ -377,6 +485,162 @@ export default {
 				}
 			} catch (error) {
 				console.error('加载收藏统计失败:', error)
+			}
+		},
+
+		/**
+		 * 加载所有用户
+		 */
+		async loadAllUsers() {
+			try {
+				this.allUsers = await userApi.getAllUsers()
+			} catch (error) {
+				console.error('加载用户列表失败:', error)
+			}
+		},
+
+		/**
+		 * 加载头像选项
+		 */
+		loadAvatarOptions() {
+			this.avatarOptions = userApi.getAvatarOptions().slice(0, 12) // 只显示前12个
+		},
+
+		/**
+		 * 显示用户切换器
+		 */
+		showUserSwitcher() {
+			this.showUserModal = true
+		},
+
+		/**
+		 * 关闭用户切换器
+		 */
+		closeUserSwitcher() {
+			this.showUserModal = false
+		},
+
+		/**
+		 * 切换到指定用户
+		 */
+		async switchToUser(userId) {
+			if (userId === this.userInfo.id) {
+				this.closeUserSwitcher()
+				return
+			}
+
+			try {
+				uni.showLoading({ title: '切换中...' })
+				
+				// 切换用户
+				await userApi.switchUser(userId)
+				
+				// 重新加载用户信息和数据
+				await this.loadUserInfo()
+				await this.loadUserData()
+				await this.loadFavoriteCount()
+				
+				uni.hideLoading()
+				this.closeUserSwitcher()
+				
+				uni.showToast({
+					title: '切换成功',
+					icon: 'success'
+				})
+			} catch (error) {
+				console.error('切换用户失败:', error)
+				uni.hideLoading()
+				uni.showToast({
+					title: '切换失败',
+					icon: 'error'
+				})
+			}
+		},
+
+		/**
+		 * 显示创建用户弹窗
+		 */
+		showCreateUserModal() {
+			this.showUserModal = false
+			this.showCreateModal = true
+			// 重置表单
+			this.newUser = {
+				username: '',
+				title: '产品经理',
+				avatar: '👤'
+			}
+		},
+
+		/**
+		 * 关闭创建用户弹窗
+		 */
+		closeCreateUserModal() {
+			this.showCreateModal = false
+		},
+
+		/**
+		 * 选择头像
+		 */
+		selectAvatar(avatar) {
+			this.newUser.avatar = avatar
+		},
+
+		/**
+		 * 创建新用户
+		 */
+		async createNewUser() {
+			if (!this.newUser.username.trim()) {
+				uni.showToast({
+					title: '请输入用户名',
+					icon: 'none'
+				})
+				return
+			}
+
+			try {
+				uni.showLoading({ title: '创建中...' })
+				
+				// 创建用户
+				const newUser = await userApi.createUser(this.newUser)
+				
+				// 重新加载用户列表
+				await this.loadAllUsers()
+				
+				// 切换到新用户
+				await this.switchToUser(newUser.id)
+				
+				uni.hideLoading()
+				this.closeCreateUserModal()
+				
+				uni.showToast({
+					title: '创建成功',
+					icon: 'success'
+				})
+			} catch (error) {
+				console.error('创建用户失败:', error)
+				uni.hideLoading()
+				uni.showToast({
+					title: '创建失败',
+					icon: 'error'
+				})
+			}
+		},
+
+		/**
+		 * 处理用户状态变化
+		 */
+		handleUserStateChange(event) {
+			if (event.type === 'USER_CHANGED') {
+				// 用户切换时重新加载所有数据
+				this.loadUserInfo()
+				this.loadUserData()
+				this.loadFavoriteCount()
+			} else if (event.type === 'USER_INFO_UPDATED' && event.userInfo) {
+				// 用户信息更新时同步界面
+				this.userInfo = {
+					...this.userInfo,
+					...event.userInfo
+				}
 			}
 		}
 	}
@@ -736,5 +1000,189 @@ export default {
 .version-text {
 	font-size: 24rpx;
 	color: #C9CDD4;
+}
+
+/* 用户切换相关样式 */
+.user-name-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 8rpx;
+}
+
+.user-switch-btn {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	padding: 8rpx 16rpx;
+	background-color: #165DFF10;
+	border-radius: 20rpx;
+	border: 2rpx solid #165DFF20;
+	transition: all 0.3s ease;
+}
+
+.user-switch-btn:active {
+	background-color: #165DFF20;
+	transform: scale(0.95);
+}
+
+.switch-text {
+	font-size: 24rpx;
+	color: #165DFF;
+	font-weight: 500;
+}
+
+/* 用户切换弹窗样式 */
+.user-switcher-modal {
+	padding: 32rpx;
+	background-color: #ffffff;
+	border-radius: 32rpx 32rpx 0 0;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 32rpx;
+	padding-bottom: 24rpx;
+	border-bottom: 2rpx solid #F2F3F5;
+}
+
+.modal-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #1D2129;
+}
+
+.user-list {
+	flex: 1;
+	overflow-y: auto;
+}
+
+.user-item {
+	display: flex;
+	align-items: center;
+	padding: 24rpx;
+	margin-bottom: 16rpx;
+	background-color: #F8F9FA;
+	border-radius: 16rpx;
+	border: 2rpx solid transparent;
+	transition: all 0.3s ease;
+}
+
+.user-item:active {
+	transform: scale(0.98);
+}
+
+.user-item.active {
+	background-color: #165DFF10;
+	border-color: #165DFF;
+}
+
+.user-item-avatar {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 50%;
+	background-color: #ffffff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 24rpx;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.user-item-emoji {
+	font-size: 48rpx;
+}
+
+.user-item-info {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+}
+
+.user-item-name {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #1D2129;
+}
+
+.user-item-title {
+	font-size: 24rpx;
+	color: #86909C;
+}
+
+.user-item-stats {
+	font-size: 22rpx;
+	color: #C9CDD4;
+}
+
+.modal-actions {
+	padding-top: 24rpx;
+	border-top: 2rpx solid #F2F3F5;
+}
+
+/* 创建用户弹窗样式 */
+.create-user-modal {
+	padding: 32rpx;
+	background-color: #ffffff;
+	border-radius: 16rpx;
+	max-height: 80vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.create-form {
+	flex: 1;
+	margin-bottom: 32rpx;
+}
+
+.form-item {
+	margin-bottom: 32rpx;
+}
+
+.form-label {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #1D2129;
+	margin-bottom: 16rpx;
+	display: block;
+}
+
+.avatar-selector {
+	display: grid;
+	grid-template-columns: repeat(6, 1fr);
+	gap: 16rpx;
+	margin-top: 16rpx;
+}
+
+.avatar-option {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 50%;
+	background-color: #F8F9FA;
+	border: 3rpx solid transparent;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.3s ease;
+}
+
+.avatar-option:active {
+	transform: scale(0.9);
+}
+
+.avatar-option.selected {
+	background-color: #165DFF10;
+	border-color: #165DFF;
+	box-shadow: 0 4rpx 12rpx rgba(22, 93, 255, 0.3);
+}
+
+.avatar-option .avatar-emoji {
+	font-size: 40rpx;
 }
 </style>

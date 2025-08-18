@@ -5,6 +5,7 @@
  */
 
 import dbService from '@/utils/dbService.js'
+import userStore from '@/utils/userStore.js'
 import OpenAIAPI from '@/uni_modules/openai-chat/js_sdk/openai-api.js'
 
 class AiApi {
@@ -63,12 +64,16 @@ class AiApi {
 
   /**
    * 获取AI配置列表
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async getAIConfigList() {
+  async getAIConfigList(userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     try {
-      const configs = await dbService.findMany('ai_config', '1=1', [], 'created_at DESC')
+      const configs = await dbService.findMany('ai_config', 'user_id = ?', [userId], 'created_at DESC')
       return configs
     } catch (error) {
       console.error('获取AI配置列表失败:', error)
@@ -78,16 +83,21 @@ class AiApi {
 
   /**
    * 添加AI配置
+   * @param {Object} config - 配置信息
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async addAIConfig(config) {
+  async addAIConfig(config, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     try {
       console.log('添加AI配置:', config)
       
-      // 如果设置为激活，先将其他配置设为非激活
+      // 如果设置为激活，先将该用户的其他配置设为非激活
       if (config.is_active) {
-        await dbService.update('ai_config', { is_active: 0 }, '')
+        await dbService.update('ai_config', { is_active: 0 }, 'user_id = ?', [userId])
       }
       
       // 使用dbService.insert方法
@@ -99,7 +109,8 @@ class AiApi {
         timeout: parseInt(config.timeout) || 30,
         max_tokens: parseInt(config.max_tokens) || 2000,
         temperature: parseFloat(config.temperature) || 0.7,
-        is_active: config.is_active ? 1 : 0
+        is_active: config.is_active ? 1 : 0,
+        user_id: userId
       }
       
       const result = await dbService.insert('ai_config', configData)
@@ -112,16 +123,22 @@ class AiApi {
 
   /**
    * 更新AI配置
+   * @param {number} id - 配置ID
+   * @param {Object} config - 配置信息
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async updateAIConfig(id, config) {
+  async updateAIConfig(id, config, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     try {
       console.log('更新AI配置:', id, config)
       
-      // 如果设置为激活，先将其他配置设为非激活
+      // 如果设置为激活，先将该用户的其他配置设为非激活
       if (config.is_active) {
-        await dbService.executeSql('UPDATE ai_config SET is_active = 0 WHERE id != ?', [id])
+        await dbService.executeSql('UPDATE ai_config SET is_active = 0 WHERE id != ? AND user_id = ?', [id, userId])
       }
       
       // 使用dbService.update方法
@@ -136,7 +153,7 @@ class AiApi {
         is_active: config.is_active ? 1 : 0
       }
       
-      const result = await dbService.update('ai_config', configData, `id = ${id}`)
+      const result = await dbService.update('ai_config', configData, `id = ${id} AND user_id = ${userId}`)
       return result
     } catch (error) {
       console.error('更新AI配置失败:', error)
@@ -178,12 +195,16 @@ class AiApi {
   
   /**
    * 获取当前激活的AI配置
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async getActiveAIConfig() {
+  async getActiveAIConfig(userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     try {
-      const config = await dbService.findOne('ai_config', 'is_active = ?', [1])
+      const config = await dbService.findOne('ai_config', 'is_active = ? AND user_id = ?', [1, userId])
       console.log('数据库查询激活配置结果:', config)
       
       if (config) {
@@ -217,15 +238,20 @@ class AiApi {
 
   /**
    * 保存AI配置
+   * @param {Object} config - 配置信息
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async saveAIConfig(config) {
+  async saveAIConfig(config, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     try {
       console.log('保存AI配置:', config)
       
-      // 检查是否已存在该运营商的配置
-      const existing = await dbService.findOne('ai_config', 'provider = ?', [config.provider])
+      // 检查是否已存在该用户的该运营商配置
+      const existing = await dbService.findOne('ai_config', 'provider = ? AND user_id = ?', [config.provider, userId])
       
       const configData = {
         provider: config.provider,
@@ -235,22 +261,23 @@ class AiApi {
         timeout: parseInt(config.timeout) || 30,
         max_tokens: parseInt(config.maxTokens || config.max_tokens) || 2000,
         temperature: parseFloat(config.temperature) || 0.7,
-        is_active: config.isActive ? 1 : 0
+        is_active: config.isActive ? 1 : 0,
+        user_id: userId
       }
       
       if (existing) {
         // 更新现有配置
-        await dbService.update('ai_config', configData, 'provider = ?', [config.provider])
+        await dbService.update('ai_config', configData, 'provider = ? AND user_id = ?', [config.provider, userId])
       } else {
         // 插入新配置
         await dbService.insert('ai_config', configData)
       }
       
-      // 如果设置为激活，需要将其他配置设为非激活
+      // 如果设置为激活，需要将该用户的其他配置设为非激活
       if (config.isActive) {
         await dbService.executeSql(
-          'UPDATE ai_config SET is_active = 0 WHERE provider != ?',
-          [config.provider]
+          'UPDATE ai_config SET is_active = 0 WHERE provider != ? AND user_id = ?',
+          [config.provider, userId]
         )
       }
       
@@ -267,16 +294,21 @@ class AiApi {
   
   /**
    * 删除AI配置
+   * @param {string} provider - 提供商
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async deleteAIConfig(provider) {
+  async deleteAIConfig(provider, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     try {
-      await dbService.delete('ai_config', 'provider = ?', [provider])
+      await dbService.delete('ai_config', 'provider = ? AND user_id = ?', [provider, userId])
       console.log('AI配置删除成功:', provider)
       
       // 如果删除的是激活配置，需要重新初始化
-      const activeConfig = await this.getActiveAIConfig()
+      const activeConfig = await this.getActiveAIConfig(userId)
       if (!activeConfig.id) {
         this.isConfigured = false
       }
@@ -289,18 +321,23 @@ class AiApi {
   
   /**
    * 激活AI配置
+   * @param {string} provider - 提供商
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
-  async activateAIConfig(provider) {
+  async activateAIConfig(provider, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
     await this.ensureDBInit()
     
     try {
-      // 将所有配置设为非激活
-      await dbService.executeSql('UPDATE ai_config SET is_active = 0')
+      // 将该用户的所有配置设为非激活
+      await dbService.executeSql('UPDATE ai_config SET is_active = 0 WHERE user_id = ?', [userId])
       
       // 激活指定配置
       await dbService.executeSql(
-        'UPDATE ai_config SET is_active = 1 WHERE provider = ?',
-        [provider]
+        'UPDATE ai_config SET is_active = 1 WHERE provider = ? AND user_id = ?',
+        [provider, userId]
       )
       
       console.log('AI配置激活成功:', provider)

@@ -4,6 +4,7 @@
  */
 
 import dbService from '@/utils/dbService.js'
+import userStore from '@/utils/userStore.js'
 
 class KnowledgeApi {
   /**
@@ -24,14 +25,16 @@ class KnowledgeApi {
    * @param {number} options.limit - 限制数量
    * @param {number} options.offset - 偏移量
    * @param {string} options.orderBy - 排序方式
+   * @param {number} options.userId - 用户ID
    */
   async getKnowledgeList(options = {}) {
     await this.ensureDBInit()
     
-    const { keyword, limit = 50, offset = 0, orderBy = 'updated_at DESC' } = options
+    const { keyword, limit = 50, offset = 0, orderBy = 'updated_at DESC', userId = null } = options
+    const currentUserId = userId || userStore.getCurrentUserId()
     
-    let where = '1=1'
-    let params = []
+    let where = 'user_id = ?'
+    let params = [currentUserId]
     
     if (keyword) {
       where += ' AND (title LIKE ? OR summary LIKE ? OR content LIKE ?)'
@@ -62,11 +65,14 @@ class KnowledgeApi {
   /**
    * 获取知识详情
    * @param {number} knowledgeId - 知识ID
+   * @param {number} userId - 用户ID
    */
-  async getKnowledgeDetail(knowledgeId) {
+  async getKnowledgeDetail(knowledgeId, userId = null) {
     await this.ensureDBInit()
     
-    const knowledge = await dbService.findOne('knowledge_base', 'id = ?', [knowledgeId])
+    const currentUserId = userId || userStore.getCurrentUserId()
+    
+    const knowledge = await dbService.findOne('knowledge_base', 'id = ? AND user_id = ?', [knowledgeId, currentUserId])
     if (!knowledge) {
       throw new Error('知识不存在')
     }
@@ -98,9 +104,12 @@ class KnowledgeApi {
   /**
    * 创建知识
    * @param {Object} knowledgeData - 知识数据
+   * @param {number} userId - 用户ID
    */
-  async createKnowledge(knowledgeData) {
+  async createKnowledge(knowledgeData, userId = null) {
     await this.ensureDBInit()
+    
+    const currentUserId = userId || userStore.getCurrentUserId()
     
     const {
       title,
@@ -120,6 +129,7 @@ class KnowledgeApi {
       title,
       content,
       summary: summary || this.generateSummary(content),
+      user_id: currentUserId,
       view_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -160,9 +170,12 @@ class KnowledgeApi {
    * 更新知识
    * @param {number} knowledgeId - 知识ID
    * @param {Object} updateData - 更新数据
+   * @param {number} userId - 用户ID
    */
-  async updateKnowledge(knowledgeId, updateData) {
+  async updateKnowledge(knowledgeId, updateData, userId = null) {
     await this.ensureDBInit()
+    
+    const currentUserId = userId || userStore.getCurrentUserId()
     
     const {
       title,
@@ -182,7 +195,7 @@ class KnowledgeApi {
     if (summary !== undefined) updateFields.summary = summary
     
     // 更新知识记录
-    await dbService.update('knowledge_base', updateFields, 'id = ?', [knowledgeId])
+    await dbService.update('knowledge_base', updateFields, 'id = ? AND user_id = ?', [knowledgeId, currentUserId])
     
     // 更新标签
     if (tags !== undefined) {
@@ -226,9 +239,12 @@ class KnowledgeApi {
   /**
    * 删除知识
    * @param {number} knowledgeId - 知识ID
+   * @param {number} userId - 用户ID
    */
-  async deleteKnowledge(knowledgeId) {
+  async deleteKnowledge(knowledgeId, userId = null) {
     await this.ensureDBInit()
+    
+    const currentUserId = userId || userStore.getCurrentUserId()
     
     try {
       // 删除标签关联
@@ -245,7 +261,7 @@ class KnowledgeApi {
       await dbService.delete('favorites', 'target_type = ? AND target_id = ?', ['knowledge', knowledgeId])
       
       // 删除知识记录
-      await dbService.delete('knowledge_base', 'id = ?', [knowledgeId])
+      await dbService.delete('knowledge_base', 'id = ? AND user_id = ?', [knowledgeId, currentUserId])
       
       return true
     } catch (error) {
@@ -389,8 +405,10 @@ class KnowledgeApi {
    * 获取所有可关联的项目列表
    * @param {number} userId - 用户ID
    */
-  async getAllProjects(userId = 1) {
+  async getAllProjects(userId = null) {
     await this.ensureDBInit()
+    
+    const currentUserId = userId || userStore.getCurrentUserId()
     
     const sql = `
       SELECT id, name, description, status
@@ -399,7 +417,7 @@ class KnowledgeApi {
       ORDER BY updated_at DESC
     `
     
-    const result = await dbService.query(sql, [userId])
+    const result = await dbService.query(sql, [currentUserId])
     return result
   }
 
@@ -634,7 +652,7 @@ class KnowledgeApi {
    * @param {number} knowledgeId - 知识ID
    * @param {number} userId - 用户ID
    */
-  async incrementViewCount(knowledgeId, userId = 1) {
+  async incrementViewCount(knowledgeId, userId = null) {
     await this.ensureDBInit()
     
     // 更新浏览量（移除对不存在的knowledge_views表的操作）
@@ -651,14 +669,16 @@ class KnowledgeApi {
    * @param {number} knowledgeId - 知识ID
    * @param {number} userId - 用户ID
    */
-  async toggleFavorite(knowledgeId, userId = 1) {
+  async toggleFavorite(knowledgeId, userId = null) {
     await this.ensureDBInit()
+    
+    const currentUserId = userId || userStore.getCurrentUserId()
     
     // 检查是否已收藏
     const existing = await dbService.findOne(
       'favorites',
       'user_id = ? AND target_type = ? AND target_id = ?',
-      [userId, 'knowledge', knowledgeId]
+      [currentUserId, 'knowledge', knowledgeId]
     )
     
     if (existing) {
@@ -668,7 +688,7 @@ class KnowledgeApi {
     } else {
       // 添加收藏
       await dbService.insert('favorites', {
-        user_id: userId,
+        user_id: currentUserId,
         target_type: 'knowledge',
         target_id: knowledgeId,
         created_at: new Date().toISOString()
@@ -681,8 +701,10 @@ class KnowledgeApi {
    * 获取收藏的知识列表
    * @param {number} userId - 用户ID
    */
-  async getFavoriteKnowledge(userId = 1) {
+  async getFavoriteKnowledge(userId = null) {
     await this.ensureDBInit()
+    
+    const currentUserId = userId || userStore.getCurrentUserId()
     
     const sql = `
       SELECT kb.*, f.created_at as favorite_time
@@ -692,7 +714,7 @@ class KnowledgeApi {
       ORDER BY f.created_at DESC
     `
     
-    const result = await dbService.query(sql, [userId])
+    const result = await dbService.query(sql, [currentUserId])
     
     // 为每个知识获取标签信息
     for (let knowledge of result) {
@@ -707,14 +729,17 @@ class KnowledgeApi {
    * 搜索知识
    * @param {string} keyword - 搜索关键词
    * @param {Object} options - 搜索选项
+   * @param {number} userId - 用户ID
    */
-  async searchKnowledge(keyword, options = {}) {
+  async searchKnowledge(keyword, options = {}, userId = null) {
     await this.ensureDBInit()
+    
+    const currentUserId = userId || userStore.getCurrentUserId()
     
     const { category, limit = 20, offset = 0 } = options
     
-    let where = '(title LIKE ? OR summary LIKE ? OR content LIKE ?)'
-    let params = [`%${keyword}%`, `%${keyword}%`, `%${keyword}%`]
+    let where = 'user_id = ? AND (title LIKE ? OR summary LIKE ? OR content LIKE ?)'
+    let params = [currentUserId, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`]
     
     if (category && category !== 'all') {
       where += ' AND category = ?'
@@ -737,31 +762,33 @@ class KnowledgeApi {
 
   /**
    * 获取知识统计信息
-   * @param {number} userId - 用户ID (暂时未使用，因为knowledge_base表没有user_id字段)
+   * @param {number} userId - 用户ID
    */
-  async getKnowledgeStats(userId = 1) {
+  async getKnowledgeStats(userId = null) {
     await this.ensureDBInit()
+    
+    const currentUserId = userId || userStore.getCurrentUserId()
     
     const stats = {}
     
     // 总知识数
-    stats.totalCount = await dbService.count('knowledge_base', '1=1', [])
+    stats.totalCount = await dbService.count('knowledge_base', 'user_id = ?', [currentUserId])
     
     // 已发布知识数 (由于没有status字段，暂时等于总数)
-    stats.publishedCount = await dbService.count('knowledge_base', '1=1', [])
+    stats.publishedCount = await dbService.count('knowledge_base', 'user_id = ?', [currentUserId])
     
     // 草稿数 (由于没有status字段，暂时为0)
     stats.draftCount = 0
     
     // 总浏览量
     const viewResult = await dbService.query(
-      'SELECT SUM(view_count) as total_views FROM knowledge_base',
-      []
+      'SELECT SUM(view_count) as total_views FROM knowledge_base WHERE user_id = ?',
+      [currentUserId]
     )
     stats.totalViews = viewResult[0]?.total_views || 0
     
     // 收藏数
-    stats.favoriteCount = await dbService.count('favorites', 'user_id = ? AND target_type = "knowledge"', [userId])
+    stats.favoriteCount = await dbService.count('favorites', 'user_id = ? AND target_type = "knowledge"', [currentUserId])
     
     // 分类统计 (由于没有category字段，返回空数组)
     stats.categoryStats = []
