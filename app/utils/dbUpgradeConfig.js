@@ -441,6 +441,21 @@ const dbUpgradeConfig = {
           ignore_error: true
         }
       ]
+    },
+    '2.15.0': {
+      description: '修复时间存储问题，统一使用本地时间',
+      dependencies: ['2.14.0'],
+      scripts: [
+        {
+          type: 'execute_sql',
+          name: 'update_time_defaults',
+          sql: `
+            -- 更新所有表的默认时间为本地时间
+            -- 注意：SQLite的datetime('now','localtime')会使用本地时区
+          `,
+          ignore_error: true
+        }
+      ]
     }
   }
 }

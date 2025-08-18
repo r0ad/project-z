@@ -122,6 +122,33 @@ class DateUtils {
   }
   
   /**
+   * 获取当前本地时间的ISO字符串（用于数据库存储）
+   * @returns {string} 本地时间的ISO格式字符串
+   */
+  static getCurrentLocalISOString() {
+    const now = new Date()
+    const offset = now.getTimezoneOffset() * 60000 // 转换为毫秒
+    const localTime = new Date(now.getTime() - offset)
+    return localTime.toISOString().replace('Z', '')
+  }
+  
+  /**
+   * 将UTC时间字符串转换为本地时间显示
+   * @param {string} utcTimeString - UTC时间字符串
+   * @returns {Date} 本地时间Date对象
+   */
+  static utcToLocal(utcTimeString) {
+    if (!utcTimeString) return null
+    
+    // 如果时间字符串没有时区信息，假设它是本地时间
+    if (!utcTimeString.includes('Z') && !utcTimeString.includes('+') && !utcTimeString.includes('-', 10)) {
+      return new Date(utcTimeString)
+    }
+    
+    return new Date(utcTimeString)
+  }
+  
+  /**
    * 判断是否为今天
    * @param {string|Date} dateTime - 日期时间
    * @returns {boolean} 是否为今天

@@ -625,14 +625,16 @@ export default {
 }
 
 .form-content {
-  padding: 24rpx;
+  padding: 24rpx 32rpx 24rpx 24rpx;
+  box-sizing: border-box;
 }
 
 .form-section {
   background-color: #ffffff;
   border-radius: 16rpx;
-  padding: 32rpx;
+  padding: 32rpx 24rpx;
   margin-bottom: 24rpx;
+  box-sizing: border-box;
   
   .section-header {
     display: flex;
@@ -874,10 +876,11 @@ export default {
   left: 0;
   right: 0;
   background-color: #ffffff;
-  padding: 24rpx;
+  padding: 24rpx 32rpx 24rpx 24rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
   border-top: 1rpx solid #e5e6eb;
   z-index: 100;
+  box-sizing: border-box;
   
   .save-btn {
     height: 88rpx;

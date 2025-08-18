@@ -1013,10 +1013,12 @@ export default {
 .user-switch-btn {
 	display: flex;
 	align-items: center;
-	gap: 8rpx;
-	padding: 8rpx 16rpx;
+	justify-content: center;
+	gap: 6rpx;
+	padding: 12rpx 20rpx;
+	min-width: 120rpx;
 	background-color: #165DFF10;
-	border-radius: 20rpx;
+	border-radius: 24rpx;
 	border: 2rpx solid #165DFF20;
 	transition: all 0.3s ease;
 }
@@ -1027,9 +1029,11 @@ export default {
 }
 
 .switch-text {
-	font-size: 24rpx;
+	font-size: 26rpx;
 	color: #165DFF;
-	font-weight: 500;
+	font-weight: 600;
+	text-align: center;
+	flex: 1;
 }
 
 /* 用户切换弹窗样式 */

@@ -143,6 +143,10 @@ export default {
 		this.loadKnowledgeList()
 		this.loadAllTags()
 	},
+	onShow() {
+		// 页面显示时刷新数据，确保从其他页面返回时数据是最新的
+		this.loadKnowledgeList()
+	},
 	onPullDownRefresh() {
 		this.refreshData()
 	},

@@ -7,6 +7,7 @@ import dbService from '@/utils/dbService.js'
 import projectApi from './projectApi.js'
 import knowledgeApi from './knowledgeApi.js'
 import userStore from '@/utils/userStore.js'
+import DateUtils from '@/utils/dateUtils.js'
 
 class FavoriteApi {
   /**
@@ -113,7 +114,7 @@ class FavoriteApi {
       user_id: userId,
       target_type: targetType,
       target_id: targetId,
-      created_at: new Date().toISOString()
+      created_at: DateUtils.getCurrentLocalISOString()
     })
     
     return true
@@ -169,7 +170,7 @@ class FavoriteApi {
         user_id: userId,
         target_type: targetType,
         target_id: targetId,
-        created_at: new Date().toISOString()
+        created_at: DateUtils.getCurrentLocalISOString()
       })
       return true
     }

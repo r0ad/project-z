@@ -3,6 +3,7 @@
  * 处理聊天历史的数据库操作
  */
 import dbService from '@/utils/dbService.js'
+import DateUtils from '@/utils/dateUtils.js'
 
 class ChatApi {
   /**
@@ -23,8 +24,8 @@ class ChatApi {
         title: params.title || `对话 ${new Date().toLocaleString()}`,
         chat_type: params.type || 'project',
         related_id: params.relatedId || params.projectId,
-        created_at: params.createdAt || new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        created_at: params.createdAt || DateUtils.getCurrentLocalISOString(),
+    updated_at: DateUtils.getCurrentLocalISOString()
       }
       
       // 只有项目聊天时才设置project_id
@@ -176,7 +177,7 @@ class ChatApi {
         conversation_id: params.conversationId,
         role: params.role,
         content: params.content,
-        timestamp: params.timestamp || new Date().toISOString(),
+        timestamp: params.timestamp || DateUtils.getCurrentLocalISOString(),
         metadata: params.metadata ? JSON.stringify(params.metadata) : null
       })
       
@@ -254,7 +255,7 @@ class ChatApi {
     try {
       await dbService.initDB()
       
-      const now = new Date().toISOString()
+      const now = DateUtils.getCurrentLocalISOString()
       const messageData = {
         conversation_id: conversationId,
         role: role, // 'user' 或 'assistant'
@@ -378,7 +379,7 @@ class ChatApi {
       await dbService.initDB()
       
       // 获取今日对话数量
-      const today = new Date().toISOString().split('T')[0]
+      const today = DateUtils.formatDate(new Date())
       const todayChatsResult = await dbService.query(`
         SELECT COUNT(*) as count 
         FROM chat_messages 

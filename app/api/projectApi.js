@@ -5,6 +5,7 @@
 
 import dbService from '@/utils/dbService.js'
 import userStore from '@/utils/userStore.js'
+import DateUtils from '@/utils/dateUtils.js'
 
 class ProjectApi {
   /**
@@ -167,9 +168,11 @@ class ProjectApi {
       description: description || '',
       status: 'active',
       progress: 0,
-      start_date: new Date().toISOString().split('T')[0],
+      start_date: DateUtils.formatDate(new Date()),
       ai_suggestions: aiAnalysis ? aiAnalysis.suggestions : null
     })
+
+    console.log('projectId start_date ', projectId, DateUtils.formatDate(new Date()))
     
     // 创建AI生成的项目节点
     if (aiAnalysis && aiAnalysis.milestones && aiAnalysis.milestones.length > 0) {

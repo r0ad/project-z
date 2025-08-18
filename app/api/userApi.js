@@ -2,6 +2,7 @@
  * 用户API - 处理用户相关的数据库操作
  */
 import dbService from '@/utils/dbService.js'
+import DateUtils from '@/utils/dateUtils.js'
 import projectApi from './projectApi.js'
 import knowledgeApi from './knowledgeApi.js'
 import userStore from '../utils/userStore.js'
@@ -117,7 +118,7 @@ class UserApi {
 			}
 			
 			// 添加更新时间
-			updateData.updated_at = new Date().toISOString()
+			updateData.updated_at = DateUtils.getCurrentLocalISOString()
 			
 			await dbService.update('users', updateData, 'id = ?', [userId])
 			

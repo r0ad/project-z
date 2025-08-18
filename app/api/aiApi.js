@@ -6,6 +6,7 @@
 
 import dbService from '@/utils/dbService.js'
 import userStore from '@/utils/userStore.js'
+import DateUtils from '@/utils/dateUtils.js'
 import OpenAIAPI from '@/uni_modules/openai-chat/js_sdk/openai-api.js'
 
 class AiApi {
@@ -475,7 +476,7 @@ class AiApi {
       id: analysisId,
       type: analysisType,
       content: response.content,
-      createdAt: new Date().toISOString()
+      createdAt: DateUtils.getCurrentLocalISOString()
     }
   }
 
@@ -552,7 +553,7 @@ class AiApi {
               if (chunk === '[DONE]') {
                 resolve({
                   content: fullContent,
-                  timestamp: new Date().toISOString(),
+                  timestamp: DateUtils.getCurrentLocalISOString(),
                   tokenUsage: 0
                 })
               } else {
@@ -563,7 +564,7 @@ class AiApi {
             (result) => {
               resolve({
                 content: fullContent,
-                timestamp: new Date().toISOString(),
+                timestamp: DateUtils.getCurrentLocalISOString(),
                 tokenUsage: result.usage?.totalTokens || 0
               })
             },
@@ -585,7 +586,7 @@ class AiApi {
         
         return {
           content: response.content,
-          timestamp: new Date().toISOString(),
+          timestamp: DateUtils.getCurrentLocalISOString(),
           tokenUsage: response.usage?.totalTokens || 0
         }
       }
@@ -666,7 +667,7 @@ class AiApi {
       id: summaryId,
       period: period,
       content: response.content,
-      createdAt: new Date().toISOString()
+      createdAt: DateUtils.getCurrentLocalISOString()
     }
   }
 
@@ -726,7 +727,7 @@ class AiApi {
     
     return {
       content: response.content,
-      createdAt: new Date().toISOString(),
+      createdAt: DateUtils.getCurrentLocalISOString(),
       tokenUsage: response.usage?.totalTokens || 0
     }
   }

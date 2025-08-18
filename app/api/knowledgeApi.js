@@ -5,6 +5,7 @@
 
 import dbService from '@/utils/dbService.js'
 import userStore from '@/utils/userStore.js'
+import DateUtils from '@/utils/dateUtils.js'
 
 class KnowledgeApi {
   /**
@@ -131,8 +132,8 @@ class KnowledgeApi {
       summary: summary || this.generateSummary(content),
       user_id: currentUserId,
       view_count: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      created_at: DateUtils.getCurrentLocalISOString(),
+      updated_at: DateUtils.getCurrentLocalISOString()
     })
     
     // 处理标签
@@ -187,7 +188,7 @@ class KnowledgeApi {
     
     // 构建更新数据（只使用数据库中实际存在的字段）
     const updateFields = {
-      updated_at: new Date().toISOString()
+      updated_at: DateUtils.getCurrentLocalISOString()
     }
     
     if (title !== undefined) updateFields.title = title
@@ -310,7 +311,7 @@ class KnowledgeApi {
       await dbService.insert('knowledge_tag_mappings', {
         knowledge_id: knowledgeId,
         tag_id: tagId,
-        created_at: new Date().toISOString()
+        created_at: DateUtils.getCurrentLocalISOString()
       })
     }
   }
@@ -329,7 +330,7 @@ class KnowledgeApi {
       // 创建新标签
       const tagId = await dbService.insert('knowledge_tags', {
         name: tagName,
-        created_at: new Date().toISOString()
+        created_at: DateUtils.getCurrentLocalISOString()
       })
       return tagId
     }
@@ -568,7 +569,7 @@ class KnowledgeApi {
     await dbService.insert('project_knowledge_mappings', {
       knowledge_id: knowledgeId,
       project_id: projectId,
-      created_at: new Date().toISOString()
+      created_at: DateUtils.getCurrentLocalISOString()
     })
     
     return true
@@ -641,7 +642,7 @@ class KnowledgeApi {
       analysis_type: analysisType,
       content: typeof content === 'object' ? JSON.stringify(content) : content,
       score: score || null,
-      created_at: new Date().toISOString()
+      created_at: DateUtils.getCurrentLocalISOString()
     })
     
     return true
@@ -691,7 +692,7 @@ class KnowledgeApi {
         user_id: currentUserId,
         target_type: 'knowledge',
         target_id: knowledgeId,
-        created_at: new Date().toISOString()
+        created_at: DateUtils.getCurrentLocalISOString()
       })
       return true
     }

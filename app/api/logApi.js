@@ -4,6 +4,7 @@
  */
 
 import dbService from '@/utils/dbService.js'
+import userStore from '@/utils/userStore.js'
 import DateUtils from '@/utils/dateUtils.js'
 
 class LogApi {
@@ -106,7 +107,7 @@ class LogApi {
     
     // 更新项目的最后更新时间
     await dbService.update('projects', {
-      updated_at: new Date().toISOString()
+      updated_at: DateUtils.getCurrentLocalISOString()
     }, 'id = ?', [projectId])
     
     return await this.getLogDetail(logId)
