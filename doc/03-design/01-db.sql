@@ -22,6 +22,14 @@ CREATE INDEX idx_ai_config_is_active ON ai_config(is_active);
 CREATE TABLE android_metadata (locale TEXT);
 
 
+-- chat_conversations definition
+
+CREATE TABLE chat_conversations (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER, title TEXT, chat_type TEXT DEFAULT "project", related_id INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+
+CREATE INDEX idx_chat_conversations_project_id ON chat_conversations(project_id);
+CREATE INDEX idx_chat_conversations_type_related ON chat_conversations(chat_type, related_id);
+
+
 -- knowledge_base definition
 
 CREATE TABLE knowledge_base (
@@ -72,6 +80,14 @@ CREATE TABLE users (
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+
+-- chat_messages definition
+
+CREATE TABLE chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id INTEGER NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, metadata TEXT, FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id));
+
+CREATE INDEX idx_chat_messages_conversation_id ON chat_messages(conversation_id);
+CREATE INDEX idx_chat_messages_timestamp ON chat_messages(timestamp);
 
 
 -- favorites definition
@@ -134,21 +150,6 @@ CREATE TABLE ai_summaries (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTE
 
 CREATE INDEX idx_ai_summaries_project_updated ON ai_summaries(project_id, updated_at);
 CREATE INDEX idx_ai_summaries_project_id ON ai_summaries(project_id);
-
-
--- chat_conversations definition
-
-CREATE TABLE chat_conversations (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, title TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (project_id) REFERENCES projects(id));
-
-CREATE INDEX idx_chat_conversations_project_id ON chat_conversations(project_id);
-
-
--- chat_messages definition
-
-CREATE TABLE chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id INTEGER NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, metadata TEXT, FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id));
-
-CREATE INDEX idx_chat_messages_conversation_id ON chat_messages(conversation_id);
-CREATE INDEX idx_chat_messages_timestamp ON chat_messages(timestamp);
 
 
 -- project_knowledge_mappings definition
