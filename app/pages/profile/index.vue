@@ -259,8 +259,8 @@ export default {
 			// GitCode备份相关
 			showGitCodeModal: false,
 			gitCodeConfig: {
-				repoUrl: 'https://gitcode.com/sunzroad/diary-demo',
-				accessToken: 'KfsQET8R8ydvpB46wBo8S_qs',
+				repoUrl: '',
+				accessToken: '',
 				branchName: 'main'
 			},
 			gitCodeLoading: false,
@@ -285,7 +285,7 @@ export default {
 					path: '/pages/profile/ai-settings'
 				},
 				{
-					icon: 'cloud',
+					icon: 'refresh2',
 					iconColor: '#FF7D00',
 					iconBg: '#FF7D0020',
 					title: 'GitCode备份',
