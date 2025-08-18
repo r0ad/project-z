@@ -73,8 +73,15 @@
 			</view>
 
 			<!-- 版本信息 -->
-			<view class="version-info">
-				<text class="version-text">版本 v{{ version }}</text>
+			<view class="version-info" @click="showVersionDetails">
+				<view class="version-content">
+					<text class="version-text">版本 v{{ version }}</text>
+					<text v-if="hasUpdate" class="update-badge">有更新</text>
+				</view>
+				<view class="version-actions">
+					<text class="check-update-text" @click.stop="checkUpdate">检查更新</text>
+					<nut-icon name="right" size="14" color="#C9CDD4"></nut-icon>
+				</view>
 			</view>
 		</view>
 
@@ -229,6 +236,7 @@ import CustomTabBar from '@/custom-tab-bar/index.vue'
 import dbService from '@/utils/dbService.js'
 import { GitCodeSync } from '@/uni_modules/gitcode-sync/js_sdk/index.js'
 import { version } from 'vue'
+import { AppUpdater, isUpdateSupported, getAppInfo } from '@/uni_modules/app-updater/js_sdk/index.js'
 
 export default {
 	components: {
@@ -266,6 +274,9 @@ export default {
 			gitCodeLoading: false,
 			gitCodeLoadingText: '',
 			gitCodeResultText: '等待操作...',
+			hasUpdate: false,
+			updateInfo: null,
+			appUpdater: null,
 			aiStats: {
 				todayChats: 0,
 				totalAnalysis: 0
@@ -362,6 +373,7 @@ export default {
 		this.loadAvatarOptions()
 		this.loadGitCodeConfig()
 		this.getCurrentVersion()
+		this.checkGlobalUpdateInfo()
 		},
 
 	beforeDestroy() {
@@ -377,6 +389,137 @@ export default {
 			// #ifndef APP-PLUS
 			return '1.0.1'
 			// #endif
+		},
+		
+		checkGlobalUpdateInfo() {
+			const app = getApp()
+			if (app.globalData && app.globalData.updateInfo) {
+				this.updateInfo = app.globalData.updateInfo
+				this.appUpdater = app.globalData.appUpdater
+				this.hasUpdate = true
+			} else {
+				this.hasUpdate = false
+			}
+		},
+		
+		// 显示版本详情
+		showVersionDetails() {
+			let content = `当前版本：${this.version}\n`
+			
+			if (this.hasUpdate && this.updateInfo) {
+				content += `最新版本：${this.updateInfo.version}\n`
+				content += `更新内容：${this.updateInfo.description || '暂无描述'}\n`
+				content += `\n是否立即更新？`
+				
+				uni.showModal({
+					title: '版本信息',
+					content: content,
+					confirmText: '立即更新',
+					cancelText: '取消',
+					success: (res) => {
+						if (res.confirm) {
+							this.performUpdate()
+						}
+					}
+				})
+			} else {
+				content += '当前已是最新版本'
+				
+				uni.showModal({
+					title: '版本信息',
+					content: content,
+					showCancel: false,
+					confirmText: '确定'
+				})
+			}
+		},
+		
+		// 检查更新
+		async checkUpdate() {
+			if (!isUpdateSupported()) {
+				uni.showToast({
+					title: '当前平台不支持应用更新',
+					icon: 'none'
+				})
+				return
+			}
+			
+			uni.showLoading({ title: '检查更新中...' })
+			
+			try {
+				const appUpdater = new AppUpdater({
+					updateUrl: 'https://project.r0ad.host/version.json',
+					autoInstall: false,
+					showProgress: true
+				})
+				
+				const updateInfo = await appUpdater.checkUpdate()
+				
+				uni.hideLoading()
+				
+				if (updateInfo.hasUpdate) {
+					this.updateInfo = updateInfo
+					this.appUpdater = appUpdater
+					this.hasUpdate = true
+					
+					// 更新全局数据
+					const app = getApp()
+					app.globalData = app.globalData || {}
+					app.globalData.updateInfo = updateInfo
+					app.globalData.appUpdater = appUpdater
+					
+					uni.showModal({
+						title: '发现新版本',
+						content: `发现新版本 ${updateInfo.version}\n\n${updateInfo.description || ''}\n\n是否立即更新？`,
+						confirmText: '立即更新',
+						cancelText: '稍后再说',
+						success: (res) => {
+							if (res.confirm) {
+								this.performUpdate()
+							}
+						}
+					})
+				} else {
+					this.hasUpdate = false
+					uni.showToast({
+						title: '当前已是最新版本',
+						icon: 'success'
+					})
+				}
+			} catch (error) {
+				uni.hideLoading()
+				uni.showToast({
+					title: '检查更新失败',
+					icon: 'none'
+				})
+				console.error('检查更新失败:', error)
+			}
+		},
+		
+		// 执行更新
+		async performUpdate() {
+			if (!this.appUpdater || !this.updateInfo) {
+				uni.showToast({ title: '更新信息异常', icon: 'none' })
+				return
+			}
+			
+			try {
+				uni.showLoading({ title: '正在下载更新...' })
+				
+				const result = await this.appUpdater.performUpdate(this.updateInfo)
+				
+				uni.hideLoading()
+				
+				if (result.success) {
+					uni.showToast({ title: '更新完成', icon: 'success' })
+					this.hasUpdate = false
+				} else {
+					uni.showToast({ title: '更新失败: ' + result.message, icon: 'none' })
+				}
+			} catch (error) {
+				uni.hideLoading()
+				uni.showToast({ title: '更新异常: ' + error.message, icon: 'none' })
+			}
 		},
 		openSettings() {
 			uni.showToast({
@@ -1305,13 +1448,53 @@ export default {
 }
 
 .version-info {
-	text-align: center;
+	background-color: #ffffff;
+	border-radius: 16rpx;
 	padding: 32rpx;
+	margin-bottom: 24rpx;
+	box-shadow: 0 4rpx 16rpx 0 rgba(0, 0, 0, 0.08);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	transition: all 0.3s ease;
+}
+
+.version-info:active {
+	background-color: #F2F3F5;
+}
+
+.version-content {
+	display: flex;
+	align-items: center;
+	flex: 1;
 }
 
 .version-text {
+	font-size: 28rpx;
+	color: #1D2129;
+	font-weight: 500;
+}
+
+.update-badge {
+	background-color: #F53F3F;
+	color: #ffffff;
+	font-size: 20rpx;
+	padding: 4rpx 8rpx;
+	border-radius: 8rpx;
+	margin-left: 12rpx;
+	font-weight: 600;
+}
+
+.version-actions {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+}
+
+.check-update-text {
 	font-size: 24rpx;
-	color: #C9CDD4;
+	color: #165DFF;
+	font-weight: 500;
 }
 
 /* GitCode备份弹窗样式 */

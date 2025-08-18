@@ -1,5 +1,6 @@
 <script>
 import dbService from '@/utils/dbService.js'
+import { AppUpdater, isUpdateSupported, getAppInfo } from '@/uni_modules/app-updater/js_sdk/index.js'
 
 export default {
 	async onLaunch() {
@@ -20,6 +21,9 @@ export default {
 				})
 			}
 		}
+		
+		// 检查应用更新
+		this.checkAppUpdate()
 	},
 	
 	onShow: function() {
@@ -52,6 +56,105 @@ export default {
 					return
 				}
 				throw error
+			}
+		},
+		
+		// 检查应用更新
+		async checkAppUpdate() {
+			// 只在支持更新的平台上检查
+			if (!isUpdateSupported()) {
+				console.log('当前平台不支持应用更新')
+				return
+			}
+			
+			try {
+				const appUpdater = new AppUpdater({
+					updateUrl: 'https://project.r0ad.host/version.json',
+					autoInstall: false, // 不自动安装，让用户选择
+					showProgress: true
+				})
+				
+				const updateInfo = await appUpdater.checkUpdate()
+				
+				if (updateInfo.hasUpdate) {
+					console.log('发现新版本:', updateInfo.version)
+					
+					// 存储更新信息到全局
+					getApp().globalData = getApp().globalData || {}
+					getApp().globalData.updateInfo = updateInfo
+					getApp().globalData.appUpdater = appUpdater
+					
+					// 如果是强制更新，立即显示更新弹窗
+					if (updateInfo.forceUpdate) {
+						this.showForceUpdateDialog(updateInfo)
+					} else {
+						// 可选更新，延迟3秒后显示提示
+						setTimeout(() => {
+							this.showOptionalUpdateDialog(updateInfo)
+						}, 3000)
+					}
+				} else {
+					console.log('当前已是最新版本')
+				}
+			} catch (error) {
+				console.error('检查更新失败:', error)
+				// 静默失败，不影响应用正常使用
+			}
+		},
+		
+		// 显示强制更新对话框
+		showForceUpdateDialog(updateInfo) {
+			uni.showModal({
+				title: '发现新版本',
+				content: `发现新版本 ${updateInfo.version}，需要立即更新才能继续使用。\n\n${updateInfo.description || ''}`,
+				showCancel: false,
+				confirmText: '立即更新',
+				success: (res) => {
+					if (res.confirm) {
+						this.performUpdate(updateInfo)
+					}
+				}
+			})
+		},
+		
+		// 显示可选更新对话框
+		showOptionalUpdateDialog(updateInfo) {
+			uni.showModal({
+				title: '发现新版本',
+				content: `发现新版本 ${updateInfo.version}，是否立即更新？\n\n${updateInfo.description || ''}`,
+				confirmText: '立即更新',
+				cancelText: '稍后再说',
+				success: (res) => {
+					if (res.confirm) {
+						this.performUpdate(updateInfo)
+					}
+				}
+			})
+		},
+		
+		// 执行更新
+		async performUpdate(updateInfo) {
+			try {
+				const appUpdater = getApp().globalData.appUpdater
+				if (!appUpdater) {
+					uni.showToast({ title: '更新器未初始化', icon: 'none' })
+					return
+				}
+				
+				uni.showLoading({ title: '正在下载更新...' })
+				
+				const result = await appUpdater.performUpdate(updateInfo)
+				
+				uni.hideLoading()
+				
+				if (result.success) {
+					uni.showToast({ title: '更新完成', icon: 'success' })
+				} else {
+					uni.showToast({ title: '更新失败: ' + result.message, icon: 'none' })
+				}
+			} catch (error) {
+				uni.hideLoading()
+				uni.showToast({ title: '更新异常: ' + error.message, icon: 'none' })
 			}
 		}
 	}

@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI项目管理APP - 达成目标，指日可待</title>
+    
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .feature-icon {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app">
+        <!-- 导航栏 -->
+        <nav class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 feature-icon rounded-lg flex items-center justify-center">
+                            <i class="fas fa-rocket text-white text-lg"></i>
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">AI项目管理</span>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-8">
+                        <a href="#features" class="text-gray-600 hover:text-gray-900 transition-colors">功能特色</a>
+                        <a href="#workflow" class="text-gray-600 hover:text-gray-900 transition-colors">工作流程</a>
+                        <a href="#download" class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all">立即体验</a>
+                    </div>
+                    <button @click="toggleMobileMenu" class="md:hidden">
+                        <i class="fas fa-bars text-gray-600"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 移动端菜单 -->
+        <div v-show="showMobileMenu" class="md:hidden bg-white border-b">
+            <div class="px-4 py-2 space-y-2">
+                <a href="#features" class="block py-2 text-gray-600">功能特色</a>
+                <a href="#workflow" class="block py-2 text-gray-600">工作流程</a>
+                <a href="#download" class="block py-2 text-blue-600 font-medium">立即体验</a>
+            </div>
+        </div>
+
+        <!-- 英雄区域 -->
+        <section class="gradient-bg text-white py-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <div class="animate-fade-in">
+                    <h1 class="text-4xl md:text-6xl font-bold mb-6">
+                        达成目标，<span class="text-yellow-300">指日可待</span>
+                    </h1>
+                    <p class="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
+                        AI驱动的轻量项目管理工具，聚焦"目标-执行-分析-沉淀"闭环，让目标落地更高效，让经验可复用
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                        <button @click="scrollToSection('download')" class="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105">
+                            <i class="fas fa-download mr-2"></i>立即下载体验
+                        </button>
+                        <button @click="scrollToSection('features')" class="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-blue-600 transition-all">
+                            <i class="fas fa-play mr-2"></i>了解更多
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 浮动图标 -->
+                <div class="mt-16 relative">
+                    <div class="animate-float">
+                        <div class="w-32 h-32 mx-auto bg-white/10 rounded-3xl flex items-center justify-center backdrop-blur-sm">
+                            <i class="fas fa-brain text-6xl text-yellow-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 核心功能特色 -->
+        <section id="features" class="py-20 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">核心功能特色</h2>
+                    <p class="text-xl text-gray-600 max-w-2xl mx-auto">五大核心模块，打造完整的项目管理闭环</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div v-for="feature in features" :key="feature.id" class="card-hover bg-gray-50 rounded-2xl p-8 text-center">
+                        <div class="w-16 h-16 feature-icon rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <i :class="feature.icon" class="text-2xl text-white"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">{{ feature.title }}</h3>
+                        <p class="text-gray-600 mb-6">{{ feature.description }}</p>
+                        <div class="space-y-2">
+                            <div v-for="point in feature.points" :key="point" class="flex items-center text-sm text-gray-500">
+                                <i class="fas fa-check text-green-500 mr-2"></i>
+                                {{ point }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 工作流程 -->
+        <section id="workflow" class="py-20 bg-gray-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">智能工作流程</h2>
+                    <p class="text-xl text-gray-600 max-w-2xl mx-auto">AI全程辅助，让项目管理变得简单高效</p>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div class="space-y-8">
+                        <div v-for="(step, index) in workflowSteps" :key="step.id" class="flex items-start space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                                {{ index + 1 }}
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-gray-900 mb-2">{{ step.title }}</h3>
+                                <p class="text-gray-600 mb-3">{{ step.description }}</p>
+                                <div class="text-sm text-blue-600 font-medium">
+                                    <i class="fas fa-robot mr-1"></i>{{ step.aiFeature }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="relative">
+                        <div class="bg-white rounded-3xl shadow-2xl p-8 transform rotate-3 hover:rotate-0 transition-transform duration-500">
+                            <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 text-white text-center">
+                                <i class="fas fa-mobile-alt text-4xl mb-4"></i>
+                                <h3 class="text-xl font-bold mb-2">跨平台支持</h3>
+                                <p class="text-blue-100">iOS · Android · H5</p>
+                            </div>
+                            <div class="mt-6 space-y-4">
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-gray-700">本地数据存储</span>
+                                    <i class="fas fa-database text-green-500"></i>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-gray-700">AI智能分析</span>
+                                    <i class="fas fa-brain text-purple-500"></i>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-gray-700">语音输入支持</span>
+                                    <i class="fas fa-microphone text-blue-500"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 技术特色 -->
+        <section class="py-20 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">技术特色</h2>
+                    <p class="text-xl text-gray-600 max-w-2xl mx-auto">先进技术栈，保障应用性能与用户体验</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div v-for="tech in techFeatures" :key="tech.id" class="text-center">
+                        <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
+                            <i :class="tech.icon" class="text-3xl text-white"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ tech.title }}</h3>
+                        <p class="text-gray-600 text-sm">{{ tech.description }}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 下载体验 -->
+        <section id="download" class="py-20 gradient-bg text-white">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-6">立即开始您的高效项目管理之旅</h2>
+                <p class="text-xl text-blue-100 mb-12 max-w-2xl mx-auto">
+                    支持多平台下载，随时随地管理您的项目，让AI成为您的最佳项目助手
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all">
+                        <i class="fab fa-apple text-4xl mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">iOS版本</h3>
+                        <p class="text-blue-100 mb-4">App Store下载</p>
+                        <button class="bg-white text-blue-600 px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
+                            即将上线
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all">
+                        <i class="fab fa-android text-4xl mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Android版本</h3>
+                        <p class="text-blue-100 mb-4">APK直接下载</p>
+                        <button class="bg-white text-blue-600 px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
+                            立即下载
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all">
+                        <i class="fas fa-globe text-4xl mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Web版本</h3>
+                        <p class="text-blue-100 mb-4">浏览器直接使用</p>
+                        <button class="bg-white text-blue-600 px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
+                            在线体验
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8">
+                    <h3 class="text-2xl font-bold mb-4">开发者信息</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                        <div>
+                            <h4 class="font-semibold mb-2">技术栈</h4>
+                            <p class="text-blue-100 text-sm">UniApp + Vue3 + SQLite + AI API</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-2">开源地址</h4>
+                            <p class="text-blue-100 text-sm">GitHub: project-z</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-2">版本信息</h4>
+                            <p class="text-blue-100 text-sm">当前版本: v1.0.0</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-2">更新时间</h4>
+                            <p class="text-blue-100 text-sm">{{ currentDate }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 页脚 -->
+        <footer class="bg-gray-900 text-white py-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div>
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="w-8 h-8 feature-icon rounded-lg flex items-center justify-center">
+                                <i class="fas fa-rocket text-white"></i>
+                            </div>
+                            <span class="text-xl font-bold">AI项目管理</span>
+                        </div>
+                        <p class="text-gray-400 mb-4">达成目标，指日可待</p>
+                        <p class="text-gray-400 text-sm">让AI成为您的项目管理助手，提升工作效率，实现目标管理的智能化。</p>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">产品功能</h3>
+                        <ul class="space-y-2 text-gray-400 text-sm">
+                            <li>• 智能项目创建</li>
+                            <li>• AI日志分析</li>
+                            <li>• 知识库沉淀</li>
+                            <li>• 项目聊天助手</li>
+                            <li>• 进度智能跟踪</li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">联系我们</h3>
+                        <div class="space-y-2 text-gray-400 text-sm">
+                            <p>邮箱: contact@ai-project.com</p>
+                            <p>微信: ai-project-support</p>
+                            <div class="flex space-x-4 mt-4">
+                                <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                                    <i class="fab fa-github text-xl"></i>
+                                </a>
+                                <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                                    <i class="fab fa-weixin text-xl"></i>
+                                </a>
+                                <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                                    <i class="fab fa-qq text-xl"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
+                    <p>&copy; 2024 AI项目管理APP. 保留所有权利.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+        
+        createApp({
+            data() {
+                return {
+                    showMobileMenu: false,
+                    currentDate: new Date().toLocaleDateString('zh-CN'),
+                    features: [
+                        {
+                            id: 1,
+                            icon: 'fas fa-rocket',
+                            title: '智能项目创建',
+                            description: 'AI自动生成SMART目标和关键节点，2步完成项目创建',
+                            points: ['AI生成项目目标', '自动规划里程碑', '智能时间估算']
+                        },
+                        {
+                            id: 2,
+                            icon: 'fas fa-edit',
+                            title: 'AI日志记录',
+                            description: '支持语音输入，AI自动分类为进展/问题/计划',
+                            points: ['语音转文字', '智能内容分类', '自动关联节点']
+                        },
+                        {
+                            id: 3,
+                            icon: 'fas fa-comments',
+                            title: '项目聊天助手',
+                            description: '基于项目上下文的AI对话，提供个性化建议',
+                            points: ['上下文理解', '智能问答', '解决方案推荐']
+                        },
+                        {
+                            id: 4,
+                            icon: 'fas fa-brain',
+                            title: 'AI分析改进',
+                            description: '智能识别项目风险，推送改进建议',
+                            points: ['进度预测', '风险识别', '改进建议']
+                        },
+                        {
+                            id: 5,
+                            icon: 'fas fa-book',
+                            title: '知识库沉淀',
+                            description: '自动提炼项目经验，形成可复用的知识库',
+                            points: ['自动总结', '经验沉淀', '跨项目复用']
+                        },
+                        {
+                            id: 6,
+                            icon: 'fas fa-chart-line',
+                            title: '进度可视化',
+                            description: '直观展示项目进度和趋势分析',
+                            points: ['进度图表', '趋势分析', '数据统计']
+                        }
+                    ],
+                    workflowSteps: [
+                        {
+                            id: 1,
+                            title: '创建项目',
+                            description: '输入项目名和目标关键词，AI自动生成完整的项目规划',
+                            aiFeature: 'AI生成SMART目标和里程碑'
+                        },
+                        {
+                            id: 2,
+                            title: '记录日志',
+                            description: '通过语音或文字记录项目进展，AI自动分类整理',
+                            aiFeature: 'AI智能分类：进展/问题/计划'
+                        },
+                        {
+                            id: 3,
+                            title: 'AI互动',
+                            description: '遇到问题时与AI对话，获得基于项目上下文的解决方案',
+                            aiFeature: 'AI基于项目历史提供个性化建议'
+                        },
+                        {
+                            id: 4,
+                            title: '分析改进',
+                            description: 'AI分析项目数据，主动推送改进建议和风险提醒',
+                            aiFeature: 'AI主动识别风险并推荐优化方案'
+                        },
+                        {
+                            id: 5,
+                            title: '知识沉淀',
+                            description: '项目完成后，AI自动总结经验并沉淀到知识库',
+                            aiFeature: 'AI自动提炼可复用的项目经验'
+                        }
+                    ],
+                    techFeatures: [
+                        {
+                            id: 1,
+                            icon: 'fas fa-mobile-alt',
+                            title: 'UniApp框架',
+                            description: '一套代码，多端运行，支持iOS/Android/H5'
+                        },
+                        {
+                            id: 2,
+                            icon: 'fas fa-database',
+                            title: 'SQLite存储',
+                            description: '本地数据库存储，无需网络，数据安全可靠'
+                        },
+                        {
+                            id: 3,
+                            icon: 'fas fa-robot',
+                            title: 'AI集成',
+                            description: '集成主流AI模型，支持GPT、Claude等'
+                        },
+                        {
+                            id: 4,
+                            icon: 'fas fa-microphone',
+                            title: '语音识别',
+                            description: '支持语音输入，提升记录效率'
+                        }
+                    ]
+                }
+            },
+            methods: {
+                toggleMobileMenu() {
+                    this.showMobileMenu = !this.showMobileMenu
+                },
+                scrollToSection(sectionId) {
+                    const element = document.getElementById(sectionId)
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth' })
+                    }
+                }
+            },
+            mounted() {
+                // 添加滚动动画
+                const observerOptions = {
+                    threshold: 0.1,
+                    rootMargin: '0px 0px -50px 0px'
+                }
+                
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('animate-fade-in')
+                        }
+                    })
+                }, observerOptions)
+                
+                // 观察所有卡片元素
+                document.querySelectorAll('.card-hover').forEach(card => {
+                    observer.observe(card)
+                })
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
