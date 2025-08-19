@@ -78,9 +78,16 @@
       }
     },
     {
-      "path": "pages/test/index",
+      "path": "pages/demo/index",
       "style": {
         "navigationBarTitleText": "功能测试",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/demo/update-demo/update-demo",
+      "style": {
+        "navigationBarTitleText": "应用更新示例",
         "navigationStyle": "custom"
       }
     },
