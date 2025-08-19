@@ -7,12 +7,19 @@ class DateUtils {
   /**
    * 格式化日期时间显示
    * @param {string|Date} dateTime - 日期时间
+   * @param {boolean} convertFromUTC - 是否从UTC时间转换为本地时间，默认为true
    * @returns {string} 格式化后的时间字符串
    */
-  static formatDateTime(dateTime) {
+  static formatDateTime(dateTime, convertFromUTC = true) {
     if (!dateTime) return ''
     
-    const date = new Date(dateTime)
+    let date
+    if (convertFromUTC) {
+      // 默认将数据库的UTC时间转换为北京时间
+      date = this.utcToBeijing(dateTime)
+    } else {
+      date = new Date(dateTime)
+    }
     const now = new Date()
     const diff = now.getTime() - date.getTime()
     
@@ -57,12 +64,19 @@ class DateUtils {
   /**
    * 格式化为标准日期格式
    * @param {string|Date} dateTime - 日期时间
+   * @param {boolean} convertFromUTC - 是否从UTC时间转换为本地时间，默认为true
    * @returns {string} YYYY-MM-DD HH:mm:ss 格式
    */
-  static formatStandard(dateTime) {
+  static formatStandard(dateTime, convertFromUTC = true) {
     if (!dateTime) return ''
     
-    const date = new Date(dateTime)
+    let date
+    if (convertFromUTC) {
+      // 默认将数据库的UTC时间转换为北京时间
+      date = this.utcToBeijing(dateTime)
+    } else {
+      date = new Date(dateTime)
+    }
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
@@ -76,12 +90,19 @@ class DateUtils {
   /**
    * 格式化为日期格式（不含时间）
    * @param {string|Date} dateTime - 日期时间
+   * @param {boolean} convertFromUTC - 是否从UTC时间转换为本地时间，默认为true
    * @returns {string} YYYY-MM-DD 格式
    */
-  static formatDate(dateTime) {
+  static formatDate(dateTime, convertFromUTC = true) {
     if (!dateTime) return ''
     
-    const date = new Date(dateTime)
+    let date
+    if (convertFromUTC) {
+      // 默认将数据库的UTC时间转换为北京时间
+      date = this.utcToBeijing(dateTime)
+    } else {
+      date = new Date(dateTime)
+    }
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
@@ -92,12 +113,19 @@ class DateUtils {
   /**
    * 格式化为时间格式（不含日期）
    * @param {string|Date} dateTime - 日期时间
+   * @param {boolean} convertFromUTC - 是否从UTC时间转换为本地时间，默认为true
    * @returns {string} HH:mm:ss 格式
    */
-  static formatTime(dateTime) {
+  static formatTime(dateTime, convertFromUTC = true) {
     if (!dateTime) return ''
     
-    const date = new Date(dateTime)
+    let date
+    if (convertFromUTC) {
+      // 默认将数据库的UTC时间转换为北京时间
+      date = this.utcToBeijing(dateTime)
+    } else {
+      date = new Date(dateTime)
+    }
     const hour = String(date.getHours()).padStart(2, '0')
     const minute = String(date.getMinutes()).padStart(2, '0')
     const second = String(date.getSeconds()).padStart(2, '0')
@@ -149,14 +177,45 @@ class DateUtils {
   }
   
   /**
+   * 将UTC时间转换为北京时间（UTC+8）
+   * @param {string|Date} dateTime - UTC时间
+   * @returns {Date} 北京时间Date对象
+   */
+  static utcToBeijing(dateTime) {
+    if (!dateTime) return null
+    
+    let utcDate
+    if (typeof dateTime === 'string') {
+      // 如果是字符串且没有时区信息，假设它是UTC时间
+      if (!dateTime.includes('Z') && !dateTime.includes('+') && !dateTime.includes('-', 10)) {
+        utcDate = new Date(dateTime + 'Z') // 添加Z表示UTC时间
+      } else {
+        utcDate = new Date(dateTime)
+      }
+    } else {
+      utcDate = new Date(dateTime)
+    }
+    
+    // 转换为北京时间（UTC+8）
+    const beijingTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000)
+    return beijingTime
+  }
+  
+  /**
    * 判断是否为今天
    * @param {string|Date} dateTime - 日期时间
+   * @param {boolean} convertFromUTC - 是否从UTC时间转换为本地时间，默认为true
    * @returns {boolean} 是否为今天
    */
-  static isToday(dateTime) {
+  static isToday(dateTime, convertFromUTC = true) {
     if (!dateTime) return false
     
-    const date = new Date(dateTime)
+    let date
+    if (convertFromUTC) {
+      date = this.utcToBeijing(dateTime)
+    } else {
+      date = new Date(dateTime)
+    }
     const today = new Date()
     
     return date.getFullYear() === today.getFullYear() &&
@@ -167,12 +226,18 @@ class DateUtils {
   /**
    * 判断是否为本周
    * @param {string|Date} dateTime - 日期时间
+   * @param {boolean} convertFromUTC - 是否从UTC时间转换为本地时间，默认为true
    * @returns {boolean} 是否为本周
    */
-  static isThisWeek(dateTime) {
+  static isThisWeek(dateTime, convertFromUTC = true) {
     if (!dateTime) return false
     
-    const date = new Date(dateTime)
+    let date
+    if (convertFromUTC) {
+      date = this.utcToBeijing(dateTime)
+    } else {
+      date = new Date(dateTime)
+    }
     const today = new Date()
     const diff = today.getTime() - date.getTime()
     

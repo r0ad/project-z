@@ -413,22 +413,7 @@ class ProjectApi {
    * @param {string} time - 时间字符串
    */
   formatUpdateTime(time) {
-    if (!time) return ''
-    const date = new Date(time)
-    const now = new Date()
-    const diffMs = now - date
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 0) {
-      return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-    } else if (diffDays === 1) {
-      return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-    } else if (diffDays < 7) {
-      const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-      return `${weekdays[date.getDay()]} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-    } else {
-      return `${date.getMonth() + 1}-${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-    }
+    return DateUtils.formatDateTime(time)
   }
 
   /**

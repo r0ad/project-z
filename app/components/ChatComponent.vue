@@ -602,7 +602,7 @@ export default {
     
     toggleVoiceInput() {
       uni.showToast({
-        title: '语音功能开发中，建议使用输入法自带语音输入',
+        title: '使用输入法自带语音输入',
         icon: 'none'
       })
     },

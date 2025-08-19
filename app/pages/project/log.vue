@@ -44,7 +44,7 @@
       <view class="input-area" v-if="inputMode === 'text'">
         <nut-textarea
           v-model="logContent"
-          placeholder="记录今天的项目进展、遇到的问题和明天的计划...\n\nAI将自动帮您分类整理为：\n• 进展：完成的工作内容\n• 问题：遇到的困难和阻碍\n• 计划：下一步的行动安排"
+          placeholder="记录今天的项目进展、遇到的问题和明天的计划... AI将自动帮您分类整理为：• 进展：完成的工作内容 • 问题：遇到的困难和阻碍 • 计划：下一步的行动安排"
           :rows="12"
           :border="false"
           class="log-textarea"
@@ -213,6 +213,13 @@ export default {
     },
     
     switchInputMode(mode) {
+      if (mode === 'voice') {
+          uni.showToast({
+            title: '使用输入法自带语音输入',
+            icon: 'none'
+          })
+        return
+      }
       this.inputMode = mode
       if (mode === 'text' && this.voiceText) {
         this.logContent = this.voiceText
