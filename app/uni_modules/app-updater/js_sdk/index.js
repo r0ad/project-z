@@ -25,13 +25,13 @@ export class AppUpdater {
       console.log('[AppUpdater] 请求URL:', this.config.updateUrl)
       console.log('[AppUpdater] 请求配置:', {
         method: 'GET',
-        timeout: 10000
+        timeout: 60000
       })
       
       const response = await uni.request({
         url: this.config.updateUrl,
         method: 'GET',
-        timeout: 10000
+        timeout: 60000
       })
 
       console.log('[AppUpdater] 响应状态码:', response.statusCode)

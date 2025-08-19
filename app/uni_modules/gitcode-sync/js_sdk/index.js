@@ -590,6 +590,50 @@ export class GitCodeSync {
       throw error
     }
   }
+
+  // 获取文件列表
+  async listFiles(options = {}) {
+    const { owner, repo, accessToken, branch } = this.config
+    const { refName = branch } = options
+    
+    try {
+      console.log('[GitCodeSync] 获取文件列表:', `${owner}/${repo}`, '分支:', refName)
+      
+      // 构建查询参数字符串（根据API文档，只支持access_token和ref_name参数）
+      const queryString = `access_token=${encodeURIComponent(accessToken)}&ref_name=${encodeURIComponent(refName)}`
+      
+      const url = `https://api.gitcode.com/api/v5/repos/${owner}/${repo}/file_list?${queryString}`
+      
+      const result = await request({
+        url: url,
+        method: 'GET',
+        header: {
+          'Accept': 'application/json'
+        }
+      })
+      
+      console.log('[GitCodeSync] 获取文件列表成功:', Array.isArray(result) ? result.length : 0, '个文件')
+      // API返回的是文件名字符串数组
+      return Array.isArray(result) ? result : []
+    } catch (error) {
+      console.error('[GitCodeSync] 获取文件列表失败:', error)
+      
+      let errorMessage = '获取文件列表失败'
+      if (error.message) {
+        if (error.message.includes('401')) {
+          errorMessage = '认证失败，请检查访问令牌是否正确'
+        } else if (error.message.includes('403')) {
+          errorMessage = '权限不足，请检查令牌权限'
+        } else if (error.message.includes('404')) {
+          errorMessage = '仓库或分支不存在，请检查仓库信息'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      throw new Error(errorMessage)
+    }
+  }
 }
 
 // 插件配置管理

@@ -160,7 +160,7 @@
 		</nut-popup>
 
 		<!-- GitCode备份配置弹窗 -->
-		<nut-popup v-model:visible="showGitCodeModal" position="bottom" :style="{ height: '80%' }">
+		<nut-popup v-model:visible="showGitCodeModal" position="bottom" :style="{ height: '60%' }">
 			<view class="gitcode-modal">
 				<view class="modal-header">
 					<text class="modal-title">GitCode数据库备份</text>
@@ -169,22 +169,27 @@
 				
 				<!-- 配置区域 -->
 				<view class="gitcode-config-section">
-					<text class="section-title">配置信息</text>
-					<view class="form-item">
-						<text class="form-label">仓库URL</text>
-						<nut-input v-model="gitCodeConfig.repoUrl" placeholder="请输入GitCode仓库URL" />
+					<view class="section-header" @click="gitCodeConfigCollapsed = !gitCodeConfigCollapsed">
+						<text class="section-title">配置信息</text>
+						<nut-icon :name="gitCodeConfigCollapsed ? 'arrow-down' : 'arrow-up'" size="16" color="#86909C"></nut-icon>
 					</view>
-					<view class="form-item">
-						<text class="form-label">访问令牌</text>
-						<nut-input v-model="gitCodeConfig.accessToken" placeholder="请输入访问令牌" type="password" />
+					<view v-if="!gitCodeConfigCollapsed" class="section-content">
+						<view class="form-item">
+							<text class="form-label">仓库URL</text>
+							<nut-input v-model="gitCodeConfig.repoUrl" placeholder="请输入GitCode仓库URL" />
+						</view>
+						<view class="form-item">
+							<text class="form-label">访问令牌</text>
+							<nut-input v-model="gitCodeConfig.accessToken" placeholder="请输入访问令牌" type="password" />
+						</view>
+						<view class="form-item">
+							<text class="form-label">分支名称</text>
+							<nut-input v-model="gitCodeConfig.branchName" placeholder="main" />
+						</view>
+						<nut-button type="primary" @click="testGitCodeConnection" size="large" block>
+							测试连接
+						</nut-button>
 					</view>
-					<view class="form-item">
-						<text class="form-label">分支名称</text>
-						<nut-input v-model="gitCodeConfig.branchName" placeholder="main" />
-					</view>
-					<nut-button type="primary" @click="testGitCodeConnection" size="large" block>
-						测试连接
-					</nut-button>
 				</view>
 				
 				<!-- 操作区域 -->
@@ -204,9 +209,14 @@
 				
 				<!-- 结果显示区域 -->
 				<view class="gitcode-result-section">
-					<text class="section-title">操作结果</text>
-					<view class="result-box">
-						<text class="result-text">{{ gitCodeResultText }}</text>
+					<view class="section-header" @click="gitCodeResultCollapsed = !gitCodeResultCollapsed">
+						<text class="section-title">操作结果</text>
+						<nut-icon :name="gitCodeResultCollapsed ? 'arrow-down' : 'arrow-up'" size="16" color="#86909C"></nut-icon>
+					</view>
+					<view v-if="!gitCodeResultCollapsed" class="section-content">
+						<view class="result-box">
+							<text class="result-text">{{ gitCodeResultText }}</text>
+						</view>
 					</view>
 				</view>
 				
@@ -214,6 +224,37 @@
 				<view v-if="gitCodeLoading" class="loading-overlay">
 					<view class="loading-content">
 						<text class="loading-text">{{ gitCodeLoadingText }}</text>
+					</view>
+				</view>
+			</view>
+		</nut-popup>
+
+		<!-- 备份文件选择弹窗 -->
+		<nut-popup v-model:visible="showBackupFileSelector" position="bottom" :style="{ height: '60%' }">
+			<view class="backup-file-selector">
+				<view class="modal-header">
+					<text class="modal-title">选择备份文件</text>
+					<nut-icon name="close" size="20" color="#86909C" @click="showBackupFileSelector = false"></nut-icon>
+				</view>
+				
+				<view class="backup-file-list">
+					<view v-if="backupFileList.length === 0" class="empty-state">
+						<text class="empty-text">暂无备份文件</text>
+					</view>
+					<view v-else>
+						<view v-for="(file, index) in backupFileList" :key="index" 
+							class="backup-file-item" @click="selectBackupFileForRestore(file)">
+							<view class="file-info">
+								<view class="file-icon">
+									<nut-icon name="download" size="20" color="#165DFF"></nut-icon>
+								</view>
+								<view class="file-details">
+									<text class="file-name">{{ file.displayName }}</text>
+									<text class="file-date">{{ file.dateStr }}</text>
+								</view>
+							</view>
+							<nut-icon name="right" size="14" color="#C9CDD4"></nut-icon>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -274,6 +315,13 @@ export default {
 			gitCodeLoading: false,
 			gitCodeLoadingText: '',
 			gitCodeResultText: '等待操作...',
+			// 折叠状态
+			gitCodeConfigCollapsed: false,
+			gitCodeResultCollapsed: false,
+			// 备份文件列表相关
+			backupFileList: [],
+			selectedBackupFile: null,
+			showBackupFileSelector: false,
 			hasUpdate: false,
 			updateInfo: null,
 			appUpdater: null,
@@ -898,6 +946,10 @@ export default {
 				const savedConfig = uni.getStorageSync('gitcode_backup_config')
 				if (savedConfig) {
 					this.gitCodeConfig = { ...this.gitCodeConfig, ...savedConfig }
+					// 如果配置已存在，默认折叠配置区域
+					if (savedConfig.repoUrl && savedConfig.accessToken) {
+						this.gitCodeConfigCollapsed = true
+					}
 				}
 			} catch (error) {
 				console.log('加载GitCode配置失败:', error)
@@ -961,6 +1013,43 @@ export default {
 			}
 		},
 
+		// 获取备份文件列表
+		async getBackupFileList() {
+			const gitCodeSync = this.createGitCodeSync()
+			if (!gitCodeSync) return
+
+			try {
+				// 获取仓库中的所有文件
+				const fileList = await gitCodeSync.listFiles()
+				
+				if (Array.isArray(fileList)) {
+					// 过滤出备份文件（以database_backup_开头的json文件）
+					this.backupFileList = fileList
+						.filter(fileName => fileName.startsWith('database_backup_') && fileName.endsWith('.json'))
+						.map(fileName => {
+							// 从文件名提取日期
+							const dateStr = fileName.replace('database_backup_', '').replace('.json', '')
+							return {
+								fileName: fileName,
+								dateStr: dateStr,
+								// 格式化显示名称
+								displayName: `备份文件 - ${dateStr}`
+							}
+						})
+						.sort((a, b) => new Date(b.dateStr) - new Date(a.dateStr)) // 按日期倒序排列
+					
+					console.log('获取到备份文件列表:', this.backupFileList)
+				} else {
+					this.backupFileList = []
+					uni.showToast({ title: '获取备份文件列表失败', icon: 'none' })
+				}
+			} catch (error) {
+				console.error('获取备份文件列表失败:', error)
+				this.backupFileList = []
+				uni.showToast({ title: `获取备份文件列表异常: ${error.message}`, icon: 'none' })
+			}
+		},
+
 		// 备份数据库到GitCode
 		async backupDatabaseToGitCode() {
 			const gitCodeSync = this.createGitCodeSync()
@@ -1002,19 +1091,42 @@ export default {
 
 		// 从GitCode恢复数据库
 		async restoreDatabaseFromGitCode() {
+			// 先获取备份文件列表
+			uni.showLoading({ title: '获取备份文件列表...' })
+			await this.getBackupFileList()
+			uni.hideLoading()
+			
+			if (this.backupFileList.length === 0) {
+				uni.showModal({
+					title: '提示',
+					content: '未找到任何备份文件，请先进行数据库备份。',
+					showCancel: false
+				})
+				return
+			}
+			
+			// 显示备份文件选择器
+			this.showBackupFileSelector = true
+		},
+		
+		// 选择备份文件进行恢复
+		async selectBackupFileForRestore(backupFile) {
+			this.selectedBackupFile = backupFile
+			this.showBackupFileSelector = false
+			
 			uni.showModal({
 				title: '确认恢复',
-				content: '恢复数据库将覆盖当前所有数据，此操作不可逆，确定要继续吗？',
+				content: `确定要从备份文件"${backupFile.displayName}"恢复数据库吗？\n\n恢复数据库将覆盖当前所有数据，此操作不可逆！`,
 				success: async (res) => {
 					if (res.confirm) {
-						await this.performDatabaseRestore()
+						await this.performDatabaseRestore(backupFile.fileName)
 					}
 				}
 			})
 		},
 
 		// 执行数据库恢复
-		async performDatabaseRestore() {
+		async performDatabaseRestore(fileName) {
 			const gitCodeSync = this.createGitCodeSync()
 			if (!gitCodeSync) return
 
@@ -1022,12 +1134,10 @@ export default {
 			this.gitCodeLoadingText = '恢复数据库中...'
 
 			try {
-				// 获取最新的备份文件列表
-				const branches = await gitCodeSync.getBranches()
-				// 这里简化处理，实际应该列出所有备份文件让用户选择
-				const fileName = `database_backup_${new Date().toISOString().split('T')[0]}.json`
+				// 使用传入的文件名，如果没有传入则使用默认文件名
+				const backupFileName = fileName || `database_backup_${new Date().toISOString().split('T')[0]}.json`
 				
-				const result = await gitCodeSync.downloadData(fileName)
+				const result = await gitCodeSync.downloadData(backupFileName)
 
 				if (result.success) {
 					// 验证下载的数据
@@ -1553,6 +1663,32 @@ export default {
 	display: block;
 }
 
+.section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+	padding: 8rpx 0;
+	margin-bottom: 16rpx;
+	border-bottom: 2rpx solid #F2F3F5;
+	transition: all 0.3s ease;
+}
+
+.section-header:active {
+	background-color: #F7F8FA;
+	border-radius: 8rpx;
+	padding: 8rpx 12rpx;
+}
+
+.section-header .section-title {
+	margin-bottom: 0;
+	flex: 1;
+}
+
+.section-content {
+	padding-top: 8rpx;
+}
+
 .btn-group {
 	display: flex;
 	gap: 20rpx;
@@ -1607,6 +1743,84 @@ export default {
 	font-weight: 500;
 }
 
+/* 备份文件选择器样式 */
+.backup-file-selector {
+	padding: 32rpx;
+	background-color: #ffffff;
+	border-radius: 32rpx 32rpx 0 0;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.backup-file-list {
+	flex: 1;
+	overflow-y: auto;
+	padding-top: 16rpx;
+}
+
+.empty-state {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 400rpx;
+}
+
+.empty-text {
+	font-size: 28rpx;
+	color: #86909C;
+}
+
+.backup-file-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 24rpx;
+	margin-bottom: 16rpx;
+	background-color: #F8F9FA;
+	border-radius: 16rpx;
+	border: 2rpx solid transparent;
+	transition: all 0.3s ease;
+}
+
+.backup-file-item:active {
+	transform: scale(0.98);
+	background-color: #165DFF10;
+}
+
+.file-info {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	flex: 1;
+}
+
+.file-icon {
+	width: 64rpx;
+	height: 64rpx;
+	border-radius: 12rpx;
+	background-color: #165DFF10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.file-details {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+}
+
+.file-name {
+	font-size: 28rpx;
+	color: #1D2129;
+	font-weight: 500;
+}
+
+.file-date {
+	font-size: 24rpx;
+	color: #86909C;
+}
 /* 用户切换相关样式 */
 .user-name-row {
 	display: flex;
