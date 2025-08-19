@@ -21,33 +21,115 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
         }
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .card-3d {
+            transform: perspective(1000px) rotateX(5deg) rotateY(-5deg);
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        .card-3d:hover {
+            transform: perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1.05);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+        }
+        .feature-icon {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        }
+        .floating-elements {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .floating-shape {
+            position: absolute;
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border-radius: 50%;
+            animation: float-random 20s infinite linear;
+            backdrop-filter: blur(5px);
+        }
+        @keyframes float-random {
+            0%, 100% {
+                transform: translateY(0px) translateX(0px) rotate(0deg);
+            }
+            25% {
+                transform: translateY(-20px) translateX(10px) rotate(90deg);
+            }
+            50% {
+                transform: translateY(-10px) translateX(-15px) rotate(180deg);
+            }
+            75% {
+                transform: translateY(-30px) translateX(5px) rotate(270deg);
+            }
+        }
+        .parallax-bg {
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+        .text-shadow-glow {
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        .compact-section {
+            padding: 3rem 0;
+        }
+        .hero-compact {
+            padding: 4rem 0;
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+        }
+        .grid-compact {
+            gap: 1.5rem;
+        }
+        .card-compact {
+            padding: 1.5rem;
         }
         .card-hover {
             transition: all 0.3s ease;
         }
         .card-hover:hover {
             transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
         }
-        .feature-icon {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .grid-compact {
+            gap: 1.5rem;
         }
-        .animate-float {
-            animation: float 6s ease-in-out infinite;
+        .card-compact {
+            padding: 1.5rem;
         }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
+        .animate-slide-up {
+            animation: slideUp 1s ease-out;
         }
-        .animate-fade-in {
-            animation: fadeIn 0.8s ease-out;
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
+        .neon-glow {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+        .neon-glow:hover {
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
         }
     </style>
 </head>
@@ -85,31 +167,78 @@
         </div>
 
         <!-- 英雄区域 -->
-        <section class="gradient-bg text-white py-20">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <div class="animate-fade-in">
-                    <h1 class="text-4xl md:text-6xl font-bold mb-6">
-                        达成目标，<span class="text-yellow-300">指日可待</span>
-                    </h1>
-                    <p class="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
-                        AI驱动的轻量项目管理工具，聚焦"目标-执行-分析-沉淀"闭环，让目标落地更高效，让经验可复用
-                    </p>
-                    <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                        <button @click="scrollToSection('download')" class="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105">
-                            <i class="fas fa-download mr-2"></i>立即下载体验
-                        </button>
-                        <button @click="scrollToSection('features')" class="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-blue-600 transition-all">
-                            <i class="fas fa-play mr-2"></i>了解更多
-                        </button>
+        <section class="gradient-bg text-white hero-compact relative overflow-hidden">
+            <!-- 浮动背景元素 -->
+            <div class="floating-elements">
+                <div class="floating-shape w-20 h-20" style="left: 10%; animation-delay: 0s;"></div>
+                <div class="floating-shape w-16 h-16" style="left: 80%; animation-delay: 5s;"></div>
+                <div class="floating-shape w-12 h-12" style="left: 60%; animation-delay: 10s;"></div>
+                <div class="floating-shape w-8 h-8" style="left: 30%; animation-delay: 15s;"></div>
+            </div>
+            
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <!-- 左侧内容 -->
+                    <div class="animate-slide-up">
+                        <h1 class="text-4xl md:text-5xl font-bold mb-4 text-shadow-glow">
+                            达成目标，<span class="text-yellow-300">指日可待</span>
+                        </h1>
+                        <p class="text-lg md:text-xl mb-6 text-blue-100">
+                            AI驱动的轻量项目管理工具，聚焦"目标-执行-分析-沉淀"闭环
+                        </p>
+                        
+                        <!-- 核心特色快速展示 -->
+                        <div class="grid grid-cols-2 gap-3 mb-6">
+                            <div class="glass-effect rounded-lg p-3 text-center">
+                                <i class="fas fa-rocket text-yellow-300 mb-1"></i>
+                                <div class="text-sm">智能创建</div>
+                            </div>
+                            <div class="glass-effect rounded-lg p-3 text-center">
+                                <i class="fas fa-brain text-yellow-300 mb-1"></i>
+                                <div class="text-sm">AI分析</div>
+                            </div>
+                            <div class="glass-effect rounded-lg p-3 text-center">
+                                <i class="fas fa-comments text-yellow-300 mb-1"></i>
+                                <div class="text-sm">智能助手</div>
+                            </div>
+                            <div class="glass-effect rounded-lg p-3 text-center">
+                                <i class="fas fa-book text-yellow-300 mb-1"></i>
+                                <div class="text-sm">知识沉淀</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button @click="scrollToSection('download')" class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:shadow-xl transition-all transform hover:scale-105 neon-glow">
+                                <i class="fas fa-download mr-2"></i>立即体验
+                            </button>
+                            <button @click="scrollToSection('features')" class="glass-effect text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/20 transition-all">
+                                <i class="fas fa-play mr-2"></i>了解更多
+                            </button>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- 浮动图标 -->
-                <div class="mt-16 relative">
-                    <div class="animate-float">
-                        <div class="w-32 h-32 mx-auto bg-white/10 rounded-3xl flex items-center justify-center backdrop-blur-sm">
-                            <!-- <i class="fas fa-brain text-6xl text-yellow-300"></i> -->
-                            <img src="./img/logo.png" alt="logo" class="w-16 h-16">
+                    
+                    <!-- 右侧3D展示 -->
+                    <div class="relative">
+                        <div class="card-3d glass-effect rounded-3xl p-6 mx-auto max-w-sm">
+                            <div class="text-center mb-4">
+                                <img src="./img/logo.png" alt="logo" class="w-20 h-20 mx-auto mb-3 rounded-2xl shadow-lg">
+                                <h3 class="text-xl font-bold">点点 AI项目管理</h3>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between p-2 bg-white/10 rounded-lg">
+                                    <span class="text-sm">跨平台支持</span>
+                                    <i class="fas fa-mobile-alt text-green-400"></i>
+                                </div>
+                                <div class="flex items-center justify-between p-2 bg-white/10 rounded-lg">
+                                    <span class="text-sm">AI智能分析</span>
+                                    <i class="fas fa-brain text-purple-400"></i>
+                                </div>
+                                <div class="flex items-center justify-between p-2 bg-white/10 rounded-lg">
+                                    <span class="text-sm">语音输入</span>
+                                    <i class="fas fa-microphone text-blue-400"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -117,23 +246,29 @@
         </section>
 
         <!-- 核心功能特色 -->
-        <section id="features" class="py-20 bg-white">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="text-center mb-16">
-                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">核心功能特色</h2>
-                    <p class="text-xl text-gray-600 max-w-2xl mx-auto">五大核心模块，打造完整的项目管理闭环</p>
+        <section id="features" class="compact-section bg-gradient-to-br from-gray-50 to-blue-50 relative">
+            <!-- 背景装饰 -->
+            <div class="absolute inset-0 overflow-hidden">
+                <div class="floating-shape w-32 h-32 bg-blue-200/20" style="top: 10%; right: 10%; animation-delay: 2s;"></div>
+                <div class="floating-shape w-24 h-24 bg-purple-200/20" style="top: 60%; left: 5%; animation-delay: 8s;"></div>
+            </div>
+            
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">核心功能特色</h2>
+                    <p class="text-lg text-gray-600">五大核心模块，打造完整的项目管理闭环</p>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div v-for="feature in features" :key="feature.id" class="card-hover bg-gray-50 rounded-2xl p-8 text-center">
-                        <div class="w-16 h-16 feature-icon rounded-2xl flex items-center justify-center mx-auto mb-6">
-                            <i :class="feature.icon" class="text-2xl text-white"></i>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 grid-compact">
+                    <div v-for="feature in features" :key="feature.id" class="card-3d glass-effect rounded-xl card-compact text-center group hover:shadow-xl transition-all">
+                        <div class="w-14 h-14 feature-icon rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                            <i :class="feature.icon" class="text-xl text-white"></i>
                         </div>
-                        <h3 class="text-xl font-semibold text-gray-900 mb-4">{{ feature.title }}</h3>
-                        <p class="text-gray-600 mb-6">{{ feature.description }}</p>
-                        <div class="space-y-2">
-                            <div v-for="point in feature.points" :key="point" class="flex items-center text-sm text-gray-500">
-                                <i class="fas fa-check text-green-500 mr-2"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-3">{{ feature.title }}</h3>
+                        <p class="text-gray-600 text-sm mb-4">{{ feature.description }}</p>
+                        <div class="space-y-1">
+                            <div v-for="point in feature.points" :key="point" class="flex items-center text-xs text-gray-500">
+                                <i class="fas fa-check text-green-500 mr-2 w-3"></i>
                                 {{ point }}
                             </div>
                         </div>
@@ -214,43 +349,56 @@
         </section>
 
         <!-- 下载体验 -->
-        <section id="download" class="py-20 gradient-bg text-white">
-            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <h2 class="text-3xl md:text-4xl font-bold mb-6">立即开始您的高效项目管理之旅</h2>
-                <p class="text-xl text-blue-100 mb-12 max-w-2xl mx-auto">
-                    支持多平台下载，随时随地管理您的项目，让AI成为您的最佳项目助手
-                </p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all">
-                        <i class="fab fa-apple text-4xl mb-4"></i>
-                        <h3 class="text-xl font-semibold mb-2">iOS版本</h3>
-                        <p class="text-blue-100 mb-4">App Store下载</p>
-                        <button class="bg-white text-blue-600 px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
-                            即将上线
-                        </button>
+        <section id="download" class="compact-section gradient-bg text-white relative overflow-hidden">
+            <!-- 浮动装饰元素 -->
+            <div class="floating-elements">
+                <div class="floating-shape w-16 h-16" style="right: 15%; animation-delay: 3s;"></div>
+                <div class="floating-shape w-12 h-12" style="left: 20%; animation-delay: 7s;"></div>
+                <div class="floating-shape w-10 h-10" style="right: 40%; animation-delay: 12s;"></div>
+            </div>
+            
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+                <div class="animate-slide-up">
+                    <h2 class="text-3xl md:text-4xl font-bold mb-4 text-shadow-glow">立即开始您的高效项目管理之旅</h2>
+                    <p class="text-lg text-blue-100 mb-8">支持多平台下载，随时随地管理您的项目，让AI成为您的最佳项目助手</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                        <div class="card-3d glass-effect rounded-xl p-5 group">
+                            <div class="w-12 h-12 bg-gradient-to-br from-gray-400 to-gray-600 rounded-lg flex items-center justify-center mx-auto mb-3">
+                                <i class="fab fa-apple text-xl text-white"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold mb-2">iOS版本</h3>
+                            <p class="text-blue-100 text-sm mb-4">App Store下载</p>
+                            <button class="bg-gray-500 text-white px-5 py-2 rounded-lg font-semibold cursor-not-allowed text-sm">
+                                <i class="fas fa-clock mr-2"></i>即将上线
+                            </button>
+                        </div>
+                        
+                        <div class="card-3d glass-effect rounded-xl p-5 group hover:shadow-xl transition-all">
+                            <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                                <i class="fab fa-android text-xl text-white"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold mb-2">Android版本</h3>
+                            <p class="text-blue-100 text-sm mb-4">APK直接下载</p>
+                            <a href="./project.apk" download class="bg-white text-blue-600 px-5 py-2 rounded-lg font-semibold hover:shadow-lg transition-all neon-glow text-sm">
+                                <i class="fas fa-download mr-2"></i>立即下载
+                            </a>
+                        </div>
+                        
+                        <div class="card-3d glass-effect rounded-xl p-5 group">
+                            <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-globe text-xl text-white"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold mb-2">Web版本</h3>
+                            <p class="text-blue-100 text-sm mb-4">浏览器直接使用</p>
+                            <button class="bg-gray-500 text-white px-5 py-2 rounded-lg font-semibold cursor-not-allowed text-sm">
+                                <i class="fas fa-clock mr-2"></i>正在开发中
+                            </button>
+                        </div>
                     </div>
                     
-                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all">
-                        <i class="fab fa-android text-4xl mb-4"></i>
-                        <h3 class="text-xl font-semibold mb-2">Android版本</h3>
-                        <p class="text-blue-100 mb-4">APK直接下载</p>
-                        <a href="./project.apk" download class="bg-white text-blue-600 px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
-                            立即下载
-                        </a>
-                    </div>
-                    
-                    <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all">
-                        <i class="fas fa-globe text-4xl mb-4"></i>
-                        <h3 class="text-xl font-semibold mb-2">Web版本</h3>
-                        <p class="text-blue-100 mb-4">浏览器直接使用</p>
-                        <button class="bg-white text-blue-600 px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
-                            正在开发中
-                        </button>
-                    </div>
                 </div>
-                
-                
+            </div>
         </section>
 
         <!-- 页脚 -->
