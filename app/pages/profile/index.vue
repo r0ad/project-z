@@ -448,10 +448,11 @@ export default {
 			
 			try {
 				const appUpdater = new AppUpdater({
-					updateUrl: 'https://project.r0ad.host/version.json',
-					autoInstall: false,
-					showProgress: true
-				})
+				updateUrl: 'https://project.r0ad.host/version.json',
+				downloadUrl: 'https://project.r0ad.host/project.apk',
+				autoInstall: true,
+				showProgress: false // 使用自定义进度显示
+			})
 				
 				const updateInfo = await appUpdater.checkUpdate()
 				
@@ -504,15 +505,43 @@ export default {
 			}
 			
 			try {
-				uni.showLoading({ title: '正在下载更新...' })
+				// 显示下载进度
+				let downloadProgress = 0
+				uni.showLoading({ title: '正在下载更新... 0%' })
 				
-				const result = await this.appUpdater.performUpdate(this.updateInfo)
+				// 执行更新，包含进度回调
+				const result = await this.appUpdater.performUpdate(
+					this.updateInfo,
+					(progress, downloaded, total) => {
+						downloadProgress = progress
+						uni.showLoading({ 
+							title: `正在下载更新... ${Math.round(progress)}%` 
+						})
+					}
+				)
 				
 				uni.hideLoading()
 				
 				if (result.success) {
-					uni.showToast({ title: '更新完成', icon: 'success' })
-					this.hasUpdate = false
+					if (result.downloaded && result.installed) {
+						uni.showModal({
+							title: '更新完成',
+							content: '应用已更新完成，请重启应用以使用新版本。',
+							showCancel: false,
+							confirmText: '确定'
+						})
+						this.hasUpdate = false
+					} else if (result.downloaded) {
+						uni.showModal({
+							title: '下载完成',
+							content: '安装包已下载完成，请手动安装。',
+							showCancel: false,
+							confirmText: '确定'
+						})
+						this.hasUpdate = false
+					} else {
+						uni.showToast({ title: '更新失败: ' + result.message, icon: 'none' })
+					}
 				} else {
 					uni.showToast({ title: '更新失败: ' + result.message, icon: 'none' })
 				}

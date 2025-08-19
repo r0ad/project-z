@@ -264,7 +264,7 @@ class OpenAIAPI {
 						// 将内容按词分割，模拟流式发送（一次返回多个字符）
 						const words = content.split('')
 						let index = 0
-						const chunkSize = 6 // 每次返回6个字符
+						const chunkSize = 25 // 每次返回6个字符
 						
 						const sendNextChunk = () => {
 							if (index < words.length) {

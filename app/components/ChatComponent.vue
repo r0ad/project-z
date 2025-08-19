@@ -156,6 +156,7 @@
 
 <script>
 import aiApi from '@/api/aiApi.js'
+import chatApi from '@/api/chatApi.js'
 
 export default {
   name: 'ChatComponent',
@@ -284,7 +285,6 @@ export default {
       if (!this.currentConversationId) return
       
       try {
-        const chatApi = (await import('@/api/chatApi.js')).default
         await chatApi.saveMessage(this.currentConversationId, role, content, actions)
         
         this.$emit('message-saved', {
@@ -302,7 +302,7 @@ export default {
       if (!conversationId) return
       
       try {
-        const chatApi = (await import('@/api/chatApi.js')).default
+        // const chatApi = (await import('@/api/chatApi.js')).default
         const messages = await chatApi.getConversationMessages(conversationId)
         
         this.setMessages(messages.map(msg => ({
@@ -323,7 +323,7 @@ export default {
     
     async createOrLoadConversation() {
       try {
-        const chatApi = (await import('@/api/chatApi.js')).default
+        // const chatApi = (await import('@/api/chatApi.js')).default
         
         // 尝试获取该类型和ID的最新对话
         const conversations = await chatApi.getConversationsByTypeAndId(this.chatType, this.relatedId)

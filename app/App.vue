@@ -21,9 +21,19 @@ export default {
 				})
 			}
 		}
-		
+		// #ifdef APP-PLUS
 		// 检查应用更新
-		this.checkAppUpdate()
+		try {
+			this.checkAppUpdate()
+		} catch (error) {
+			console.error('应用更新检查失败:', error)
+		}
+		
+		// 设置3秒后主动关闭启动界面
+		setTimeout(() => {
+			plus.navigator.closeSplashscreen();
+		}, 2000);
+		// #endif
 	},
 	
 	onShow: function() {
@@ -70,8 +80,9 @@ export default {
 			try {
 				const appUpdater = new AppUpdater({
 					updateUrl: 'https://project.r0ad.host/version.json',
-					autoInstall: false, // 不自动安装，让用户选择
-					showProgress: true
+					downloadUrl: 'https://project.r0ad.host/project.apk',
+					autoInstall: true, // 自动安装
+					showProgress: false // 使用自定义进度显示
 				})
 				
 				const updateInfo = await appUpdater.checkUpdate()
@@ -141,14 +152,41 @@ export default {
 					return
 				}
 				
-				uni.showLoading({ title: '正在下载更新...' })
+				// 显示下载进度
+				let downloadProgress = 0
+				uni.showLoading({ title: '正在下载更新... 0%' })
 				
-				const result = await appUpdater.performUpdate(updateInfo)
+				// 执行更新，包含进度回调
+				const result = await appUpdater.performUpdate(
+					updateInfo,
+					(progress, downloaded, total) => {
+						downloadProgress = progress
+						uni.showLoading({ 
+							title: `正在下载更新... ${Math.round(progress)}%` 
+						})
+					}
+				)
 				
 				uni.hideLoading()
 				
 				if (result.success) {
-					uni.showToast({ title: '更新完成', icon: 'success' })
+					if (result.downloaded && result.installed) {
+						uni.showModal({
+							title: '更新完成',
+							content: '应用已更新完成，请重启应用以使用新版本。',
+							showCancel: false,
+							confirmText: '确定'
+						})
+					} else if (result.downloaded) {
+						uni.showModal({
+							title: '下载完成',
+							content: '安装包已下载完成，请手动安装。',
+							showCancel: false,
+							confirmText: '确定'
+						})
+					} else {
+						uni.showToast({ title: '更新失败: ' + result.message, icon: 'none' })
+					}
 				} else {
 					uni.showToast({ title: '更新失败: ' + result.message, icon: 'none' })
 				}

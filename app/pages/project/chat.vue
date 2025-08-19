@@ -685,7 +685,7 @@ export default {
         
         // 降级到本地回复逻辑
         const responses = {
-          '进度': {
+         /*  '进度': {
             content: `根据你的项目数据，当前进度是${this.projectProgress}%。最近的进展包括：${this.contextData.recentLogs.filter(log => log.type === 'progress').map(log => log.content).join('、')}。建议继续保持这个节奏。`,
             actions: [{ type: 'update_progress', text: '更新进度' }]
           },
@@ -696,7 +696,7 @@ export default {
           '计划': {
             content: '基于当前进度和遇到的问题，我建议下一步：1. 优化数据库连接配置 2. 完成用户模块测试 3. 开始下一个功能模块的设计。',
             actions: [{ type: 'update_plan', text: '更新计划' }]
-          }
+          } */
         }
         
         // 简单的关键词匹配
