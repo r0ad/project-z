@@ -233,7 +233,7 @@ export default {
 				base_url: 'https://api.deepseek.com/v1',
 				api_key: 'sk-',
 				model: 'deepseek-chat',
-				timeout: 30,
+				timeout: 130,
 				max_tokens: 2000,
 				temperature: 0.7,
 				is_active: false
