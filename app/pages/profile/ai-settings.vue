@@ -106,24 +106,21 @@
 					</view>
 					
 					<view class="form-content">
-						<!-- 运营商 -->
+						<!-- 运营商选择 -->
 						<view class="form-item">
 							<text class="form-label">运营商</text>
-							<nut-input 
-								v-model="formData.provider" 
-								placeholder="如：OpenAI、Claude、通义千问等"
-								type="text"
-								clear-icon
+							<nut-cell 
+								v-if="!isCustomMode"
+								:title="providerName || '请选择运营商'" 
+								:desc="''"
 								:disabled="editingConfig"
-							></nut-input>
-						</view>
-						
-						<!-- API地址 -->
-						<view class="form-item">
-							<text class="form-label">API地址</text>
+								@click="showProviderPicker = true"
+								is-link
+							></nut-cell>
 							<nut-input 
-								v-model="formData.base_url" 
-								placeholder="请输入API地址"
+								v-else
+								v-model="formData.custom_provider_name" 
+								placeholder="请输入自定义供应商名称，如：Claude、Gemini等"
 								type="text"
 								clear-icon
 							></nut-input>
@@ -140,49 +137,85 @@
 							></nut-input>
 						</view>
 						
-						<!-- AI模型 -->
+						<!-- AI模型选择 -->
 						<view class="form-item">
 							<text class="form-label">AI模型</text>
+							<nut-cell 
+					v-if="!isCustomMode && availableModels.length > 0"
+					:title="getModelDisplayName(formData.model) || '请选择模型'" 
+					:desc="''"
+					@click="showModelPicker = true"
+					is-link
+				></nut-cell>
 							<nut-input 
+								v-else
 								v-model="formData.model" 
-								placeholder="如：gpt-4、claude-3-sonnet等"
+								placeholder="请输入模型名称，如：gpt-4、claude-3-sonnet等"
 								type="text"
 								clear-icon
 							></nut-input>
 						</view>
 						
-						<!-- 超时时间 -->
-						<view class="form-item">
-							<text class="form-label">超时时间(秒)</text>
-							<nut-input 
-								v-model="formData.timeout" 
-								placeholder="请输入超时时间"
-								type="number"
-							></nut-input>
-						</view>
+						<!-- 自定义模式下显示的额外字段 -->
+						<template v-if="isCustomMode">
+							<!-- API地址 -->
+							<view class="form-item">
+								<text class="form-label">API地址</text>
+								<nut-input 
+									v-model="formData.base_url" 
+									placeholder="请输入API地址"
+									type="text"
+									clear-icon
+								></nut-input>
+							</view>
+						</template>
 						
-						<!-- 最大Token数 -->
+						<!-- 高级设置 -->
 						<view class="form-item">
-							<text class="form-label">最大Token数</text>
-							<nut-input 
-								v-model="formData.max_tokens" 
-								placeholder="请输入最大Token数"
-								type="number"
-							></nut-input>
-						</view>
-						
-						<!-- 温度参数 -->
-						<view class="form-item">
-							<text class="form-label">温度参数 ({{ formData.temperature }})</text>
-							<nut-range 
-								v-model="formData.temperature" 
-								:min="0" 
-								:max="2" 
-								:step="0.1"
-								active-color="#165DFF"
-							></nut-range>
-							<view class="range-tips">
-								<text class="tip-text">较低值使输出更确定，较高值使输出更随机</text>
+							<view class="advanced-toggle" @click="showAdvanced = !showAdvanced">
+								<text class="form-label">高级设置</text>
+								<nut-icon 
+									:name="showAdvanced ? 'arrow-up' : 'arrow-down'" 
+									size="14" 
+									color="#86909C"
+								></nut-icon>
+							</view>
+							
+							<view v-if="showAdvanced" class="advanced-content">
+								<!-- 超时时间 -->
+								<view class="form-item">
+									<text class="form-label">超时时间(秒)</text>
+									<nut-input 
+										v-model="formData.timeout" 
+										placeholder="请输入超时时间"
+										type="number"
+									></nut-input>
+								</view>
+								
+								<!-- 最大Token数 -->
+								<view class="form-item">
+									<text class="form-label">最大Token数</text>
+									<nut-input 
+										v-model="formData.max_tokens" 
+										placeholder="请输入最大Token数"
+										type="number"
+									></nut-input>
+								</view>
+								
+								<!-- 温度参数 -->
+								<view class="form-item">
+									<text class="form-label">温度参数 ({{ formData.temperature }})</text>
+									<nut-range 
+										v-model="formData.temperature" 
+										:min="0" 
+										:max="2" 
+										:step="0.1"
+										active-color="#165DFF"
+									></nut-range>
+									<view class="range-tips">
+										<text class="tip-text">较低值使输出更确定，较高值使输出更随机</text>
+									</view>
+								</view>
 							</view>
 						</view>
 						
@@ -215,12 +248,51 @@
 					</view>
 				</view>
 			</nut-popup>
+			
+			<!-- 运营商选择弹窗 -->
+			<nut-popup 
+				v-model:visible="showProviderPicker" 
+				position="bottom" 
+				safe-area-inset-bottom
+				:style="{ zIndex: 2000 }"
+			>
+				<nut-picker 
+					v-model="selectedProvider"
+					:columns="providers"
+					title="选择运营商"
+					@confirm="onProviderConfirm"
+					@cancel="showProviderPicker = false"
+				></nut-picker>
+			</nut-popup>
+			
+			<!-- 模型选择弹窗 -->
+			<nut-popup 
+				v-model:visible="showModelPicker" 
+				position="bottom" 
+				safe-area-inset-bottom
+				:style="{ zIndex: 2000 }"
+			>
+				<nut-picker 
+					v-model="selectedModel"
+					:columns="availableModels"
+					title="选择模型"
+					@confirm="onModelConfirm"
+					@cancel="showModelPicker = false"
+				></nut-picker>
+			</nut-popup>
 		</view>
 	</view>
 </template>
 
 <script>
 import aiApi from '@/api/aiApi.js'
+import { 
+	providers, 
+	getProviderDefaultConfig, 
+	getProviderModels, 
+	isCustomProvider,
+	LLMProviders 
+} from '@/utils/aiProviders.js'
 
 export default {
 	data() {
@@ -229,12 +301,13 @@ export default {
 			configList: [],
 			// 表单数据
 			formData: {
-				provider: 'deepseek',
+				provider: LLMProviders.DEEPSEEK,
+				custom_provider_name: '',
 				base_url: 'https://api.deepseek.com/v1',
-				api_key: 'sk-',
+				api_key: '',
 				model: 'deepseek-chat',
 				timeout: 130,
-				max_tokens: 2000,
+				max_tokens: 8000,
 				temperature: 0.7,
 				is_active: false
 			},
@@ -243,24 +316,43 @@ export default {
 			editingConfig: null,
 			testing: false,
 			saving: false,
-			isConfigured: false
+			isConfigured: false,
+			showAdvanced: false,
+			// Picker状态
+			showProviderPicker: false,
+			showModelPicker: false,
+			selectedProvider: [],
+			selectedModel: [],
+			// 供应商相关
+			providers: [providers.map(p => ({ text: p.name, value: p.id }))],
+			availableModels: []
 		}
 	},
 	computed: {
-		statusText() {
-			const activeConfig = this.configList.find(config => config.is_active)
-			if (activeConfig) {
-				return `当前模型：${activeConfig.model}`
-			} else {
-				return '请配置并激活AI服务'
+			statusText() {
+				const activeConfig = this.configList.find(config => config.is_active)
+				if (activeConfig) {
+					return `当前模型：${activeConfig.model}`
+				} else {
+					return '请配置并激活AI服务'
+				}
+			},
+			canTest() {
+				return this.configList.some(config => config.is_active)
+			},
+			isCustomMode() {
+				return isCustomProvider(this.formData.provider)
+			},
+			providerName() {
+				const provider = this.providers[0].find(p => p.value === this.formData.provider)
+				return provider ? provider.text : ''
 			}
 		},
-		canTest() {
-			return this.configList.some(config => config.is_active)
-		}
-	},
 	onLoad() {
 		this.loadConfigList()
+		this.updateAvailableModels()
+		// 初始化selectedProvider
+		this.selectedProvider = [LLMProviders.DEEPSEEK]
 	},
 	methods: {
 		async loadConfigList() {
@@ -295,6 +387,14 @@ export default {
 					max_tokens: parseInt(this.formData.max_tokens) || 2000,
 					temperature: parseFloat(this.formData.temperature) || 0.7
 				}
+				
+				// 如果是自定义模式，使用custom_provider_name作为provider
+				if (this.isCustomMode && this.formData.custom_provider_name) {
+					configToSave.provider = this.formData.custom_provider_name
+				}
+				
+				// 删除custom_provider_name字段，数据库中不需要
+				delete configToSave.custom_provider_name
 				
 				// 验证温度参数范围
 				if (configToSave.temperature < 0 || configToSave.temperature > 2) {
@@ -364,7 +464,8 @@ export default {
 		
 		resetForm() {
 			this.formData = {
-				provider: '',
+				provider: LLMProviders.DEEPSEEK,
+				custom_provider_name: '',
 				base_url: '',
 				api_key: '',
 				model: '',
@@ -375,11 +476,27 @@ export default {
 			}
 			this.editingConfig = null
 			this.showAddConfig = false
+			this.showAdvanced = false
+			this.showProviderPicker = false
+			this.showModelPicker = false
+			this.selectedProvider = [LLMProviders.DEEPSEEK]
+			this.selectedModel = []
+			this.onProviderChange(LLMProviders.DEEPSEEK)
 		},
 		
 		editConfig(config) {
-			this.formData = { ...config }
 			this.editingConfig = config
+			// 如果是自定义供应商，将provider值设置到custom_provider_name
+			const isCustom = !Object.values(LLMProviders).includes(config.provider)
+			const actualProvider = isCustom ? LLMProviders.CUSTOM : config.provider
+			this.formData = { 
+				...config,
+				provider: actualProvider,
+				custom_provider_name: isCustom ? config.provider : ''
+			}
+			// 设置picker的选中状态
+			this.selectedProvider = [actualProvider]
+			this.updateAvailableModels(actualProvider)
 			this.showAddConfig = true
 		},
 		
@@ -427,6 +544,73 @@ export default {
 		
 		goBack() {
 			uni.navigateBack()
+		},
+		
+		// 供应商变更处理
+		onProviderChange(providerId) {
+			// 如果是picker组件传递的对象，提取id
+			if (typeof providerId === 'object' && providerId.id) {
+				providerId = providerId.id
+			}
+			
+			// 更新selectedProvider状态
+			this.selectedProvider = [providerId]
+			
+			const defaultConfig = getProviderDefaultConfig(providerId)
+			this.formData.provider = providerId
+			this.formData.base_url = defaultConfig.base_url
+			this.formData.timeout = defaultConfig.timeout
+			this.formData.max_tokens = defaultConfig.max_tokens
+			this.formData.temperature = defaultConfig.temperature
+			
+			// 更新可用模型
+			this.updateAvailableModels()
+			
+			// 设置默认模型
+			if (this.availableModels.length > 0) {
+				this.formData.model = this.availableModels[0].id
+			}
+		},
+		
+		// 更新可用模型列表
+		updateAvailableModels(providerId) {
+			const models = getProviderModels(providerId || this.formData.provider)
+			// 转换为picker需要的格式
+			this.availableModels = models ? [models.map(m => ({ text: m.name, value: m.id }))] : []
+			
+			// 如果当前选择的模型不在新的模型列表中，清空模型选择
+			if (models && models.length > 0) {
+				const currentModelExists = models.some(model => model.id === this.formData.model)
+				if (!currentModelExists) {
+					this.formData.model = models[0]?.id || ''
+				}
+			} else {
+				this.formData.model = ''
+			}
+		},
+		
+		// 运营商选择确认
+		onProviderConfirm({ selectedValue, selectedOptions }) {
+			const providerId = selectedValue[0]
+			this.formData.provider = providerId
+			// 更新selectedProvider以正确显示选中项
+			this.selectedProvider = [providerId]
+			this.onProviderChange(providerId)
+			this.showProviderPicker = false
+		},
+		
+		// 模型选择确认
+		onModelConfirm({ selectedValue, selectedOptions }) {
+			const modelId = selectedValue[0]
+			this.formData.model = modelId
+			this.showModelPicker = false
+		},
+		
+		// 获取模型显示名称
+		getModelDisplayName(modelId) {
+			if (!modelId || !this.availableModels[0]) return ''
+			const model = this.availableModels[0].find(m => m.value === modelId)
+			return model ? model.text : modelId
 		}
 	}
 }
@@ -698,5 +882,36 @@ export default {
 
 .form-actions .nut-button {
 	flex: 1;
+}
+
+/* 高级设置样式 */
+.advanced-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 24rpx 0;
+	border-bottom: 1rpx solid #E5E6EB;
+	cursor: pointer;
+	transition: background-color 0.3s;
+}
+
+.advanced-toggle:active {
+	background-color: #F7F8FA;
+}
+
+.advanced-content {
+	padding-top: 24rpx;
+	animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-20rpx);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 </style>
