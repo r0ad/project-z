@@ -297,11 +297,11 @@ function downloadAndInstall(downloadUrl) {
   dtask.start()
   
   // 显示进度对话框
-  let progressDialog = plus.nativeUI.showWaiting('正在下载更新包...')
+  let progressDialog = plus.nativeUI.showWaiting('下载')
   
   // 监听下载状态变化
   dtask.addEventListener('statechanged', function(task) {
-    console.log('[UpdateApp] 下载状态变化:', {
+    console.log('[UpdateApp] 下载状态变化:',task, {
       state: task.state,
       downloadedSize: task.downloadedSize,
       totalSize: task.totalSize
@@ -310,7 +310,7 @@ function downloadAndInstall(downloadUrl) {
     switch (task.state) {
       case 1: // 开始下载
         console.log('[UpdateApp] 开始下载')
-        progressDialog.setTitle('开始下载...')
+        progressDialog.setTitle('准备')
         break
       case 2: // 下载中
         if (task.totalSize > 0) {
@@ -318,14 +318,15 @@ function downloadAndInstall(downloadUrl) {
           let downloadedMB = (task.downloadedSize / 1024 / 1024).toFixed(1)
           let totalMB = (task.totalSize / 1024 / 1024).toFixed(1)
           console.log('[UpdateApp] 下载进度:', progress + '%', downloadedMB + 'MB/' + totalMB + 'MB')
-          progressDialog.setTitle(`下载中 ${progress}%\n${downloadedMB}MB / ${totalMB}MB`)
+          // 只显示百分比，最多两个字符
+          progressDialog.setTitle(`${progress}%`)
         } else {
-          progressDialog.setTitle('下载中...')
+          progressDialog.setTitle('下载中')
         }
         break
       case 3: // 下载完成
         console.log('[UpdateApp] 下载完成')
-        progressDialog.setTitle('下载完成，准备安装...')
+        progressDialog.setTitle('下载中')
         break
       case 4: // 下载失败
         console.error('[UpdateApp] 下载失败')
