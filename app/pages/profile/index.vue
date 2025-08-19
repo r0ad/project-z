@@ -277,7 +277,7 @@ import CustomTabBar from '@/custom-tab-bar/index.vue'
 import dbService from '@/utils/dbService.js'
 import { GitCodeSync } from '@/uni_modules/gitcode-sync/js_sdk/index.js'
 import { version } from 'vue'
-import { AppUpdater, isUpdateSupported, getAppInfo } from '@/uni_modules/app-updater/js_sdk/index.js'
+import UpdateApp from '@/utils/updateApp.js'
 
 export default {
 	components: {
@@ -324,7 +324,7 @@ export default {
 			showBackupFileSelector: false,
 			hasUpdate: false,
 			updateInfo: null,
-			appUpdater: null,
+			updateApp: null,
 			aiStats: {
 				todayChats: 0,
 				totalAnalysis: 0
@@ -383,7 +383,8 @@ export default {
 					iconColor: '#165DFF',
 					iconBg: '#165DFF20',
 					title: '数据统计',
-					type: 'navigate',
+					type: 'disabled',
+					disabled: true,
 					path: '/pages/profile/stats'
 				},
 				{
@@ -401,11 +402,11 @@ export default {
 					title: '意见反馈',
 					subtitle: '待开发',
 					type: 'disabled',
-					type: 'navigate',
+					disabled: true,
 					path: '/pages/profile/feedback'
 				}
 			],
-			version: '1.0.0'
+			version: '1.0.1'
 			}
 		},
 	async mounted() {
@@ -420,7 +421,7 @@ export default {
 			await this.loadAllUsers()
 		this.loadAvatarOptions()
 		this.loadGitCodeConfig()
-		this.getCurrentVersion()
+		this.version = this.getCurrentVersion()
 		this.checkGlobalUpdateInfo()
 		},
 
@@ -443,7 +444,7 @@ export default {
 			const app = getApp()
 			if (app.globalData && app.globalData.updateInfo) {
 				this.updateInfo = app.globalData.updateInfo
-				this.appUpdater = app.globalData.appUpdater
+				this.updateApp = app.globalData.updateApp
 				this.hasUpdate = true
 			} else {
 				this.hasUpdate = false
@@ -455,8 +456,8 @@ export default {
 			let content = `当前版本：${this.version}\n`
 			
 			if (this.hasUpdate && this.updateInfo) {
-				content += `最新版本：${this.updateInfo.version}\n`
-				content += `更新内容：${this.updateInfo.description || '暂无描述'}\n`
+				content += `最新版本：${this.updateInfo.latestVersion}\n`
+				content += `更新内容：${this.updateInfo.versionHistory || '暂无描述'}\n`
 				content += `\n是否立即更新？`
 				
 				uni.showModal({
@@ -484,56 +485,27 @@ export default {
 		
 		// 检查更新
 		async checkUpdate() {
-			if (!isUpdateSupported()) {
-				uni.showToast({
-					title: '当前平台不支持应用更新',
-					icon: 'none'
-				})
-				return
-			}
-			
 			uni.showLoading({ title: '检查更新中...' })
 			
 			try {
-				const appUpdater = new AppUpdater({
-				updateUrl: 'https://project.r0ad.host/version.json',
-				downloadUrl: 'https://project.r0ad.host/project.apk',
-				autoInstall: true,
-				showProgress: false // 使用自定义进度显示
-			})
-				
-				const updateInfo = await appUpdater.checkUpdate()
+				const updateApp = new UpdateApp()
+				// 手动检查更新，传入showTip=true，会自动显示结果弹窗
+				const updateInfo = await updateApp.checkUpdate(true)
 				
 				uni.hideLoading()
 				
 				if (updateInfo.hasUpdate) {
 					this.updateInfo = updateInfo
-					this.appUpdater = appUpdater
+					this.updateApp = updateApp
 					this.hasUpdate = true
 					
 					// 更新全局数据
 					const app = getApp()
 					app.globalData = app.globalData || {}
 					app.globalData.updateInfo = updateInfo
-					app.globalData.appUpdater = appUpdater
-					
-					uni.showModal({
-						title: '发现新版本',
-						content: `发现新版本 ${updateInfo.version}\n\n${updateInfo.description || ''}\n\n是否立即更新？`,
-						confirmText: '立即更新',
-						cancelText: '稍后再说',
-						success: (res) => {
-							if (res.confirm) {
-								this.performUpdate()
-							}
-						}
-					})
+					app.globalData.updateApp = updateApp
 				} else {
 					this.hasUpdate = false
-					uni.showToast({
-						title: '当前已是最新版本',
-						icon: 'success'
-					})
 				}
 			} catch (error) {
 				uni.hideLoading()
@@ -547,21 +519,19 @@ export default {
 		
 		// 执行更新
 		async performUpdate() {
-			if (!this.appUpdater || !this.updateInfo) {
+			if (!this.updateApp || !this.updateInfo) {
 				uni.showToast({ title: '更新信息异常', icon: 'none' })
 				return
 			}
 			
 			try {
 				// 显示下载进度
-				let downloadProgress = 0
 				uni.showLoading({ title: '正在下载更新... 0%' })
 				
 				// 执行更新，包含进度回调
-				const result = await this.appUpdater.performUpdate(
-					this.updateInfo,
+				const result = await this.updateApp.downloadAndInstall(
+					'https://project.r0ad.host/project.apk',
 					(progress, downloaded, total) => {
-						downloadProgress = progress
 						uni.showLoading({ 
 							title: `正在下载更新... ${Math.round(progress)}%` 
 						})
@@ -571,7 +541,7 @@ export default {
 				uni.hideLoading()
 				
 				if (result.success) {
-					if (result.downloaded && result.installed) {
+					if (result.installed) {
 						uni.showModal({
 							title: '更新完成',
 							content: '应用已更新完成，请重启应用以使用新版本。',
