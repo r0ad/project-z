@@ -49,4 +49,5 @@ coverage
 Thumbs.db
 cache
 dist
-dairy-app/unpackage/release/apk/*
+app/unpackage/release/apk/*
+project.apk
