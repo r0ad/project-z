@@ -25,13 +25,13 @@ export class AppUpdater {
       console.log('[AppUpdater] 请求URL:', this.config.updateUrl)
       console.log('[AppUpdater] 请求配置:', {
         method: 'GET',
-        timeout: 60000
+        timeout: 160000
       })
       
       const response = await uni.request({
         url: this.config.updateUrl,
         method: 'GET',
-        timeout: 60000
+        timeout: 160000
       })
 
       console.log('[AppUpdater] 响应状态码:', response.statusCode)
@@ -148,7 +148,7 @@ export class AppUpdater {
         console.log('[AppUpdater] 创建下载任务...')
         this.downloadTask = plus.downloader.createDownload(downloadUrl, {
           filename: savePath,
-          timeout: 60000, // 增加超时时间
+          timeout: 160000, // 增加超时时间
           retry: 3 // 重试次数
         }, (download, status) => {
           console.log('[AppUpdater] 下载任务完成回调，状态码:', status)
