@@ -40,7 +40,7 @@
 			</view>
 
 			<!-- 功能指南 -->
-			<view class="guide-section">
+			<!-- <view class="guide-section">
 				<view class="section-title">功能指南</view>
 				<view class="guide-grid">
 					<view 
@@ -56,23 +56,23 @@
 						<text class="guide-desc">{{ guide.description }}</text>
 					</view>
 				</view>
-			</view>
+			</view> -->
 
 			<!-- 联系我们 -->
 			<view class="contact-section">
-				<view class="section-title">联系我们</view>
+				<view class="section-title">联系我</view>
 				<view class="contact-card">
 					<view class="contact-item" @click="copyEmail">
 						<view class="contact-icon">
 							<nut-icon name="message" size="20" color="#165DFF"></nut-icon>
 						</view>
 						<view class="contact-info">
-							<text class="contact-label">邮箱支持</text>
-							<text class="contact-value">support@example.com</text>
+							<text class="contact-label">添加微信</text>
+							<text class="contact-value">codetrend</text>
 						</view>
 						<nut-icon name="copy" size="16" color="#86909C"></nut-icon>
 					</view>
-					<view class="contact-item" @click="openFeedback">
+					<!-- <view class="contact-item" @click="openFeedback">
 						<view class="contact-icon">
 							<nut-icon name="service" size="20" color="#00B42A"></nut-icon>
 						</view>
@@ -81,7 +81,7 @@
 							<text class="contact-value">提交问题和建议</text>
 						</view>
 						<nut-icon name="right" size="16" color="#86909C"></nut-icon>
-					</view>
+					</view> -->
 				</view>
 			</view>
 		</view>

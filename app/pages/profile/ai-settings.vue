@@ -492,7 +492,13 @@ export default {
 			this.formData = { 
 				...config,
 				provider: actualProvider,
-				custom_provider_name: isCustom ? config.provider : ''
+				custom_provider_name: isCustom ? config.provider : '',
+				// 确保is_active是布尔值
+				is_active: Boolean(config.is_active),
+				// 确保数值类型正确
+				timeout: Number(config.timeout) || 30,
+				max_tokens: Number(config.max_tokens) || 2000,
+				temperature: Number(config.temperature) || 0.7
 			}
 			// 设置picker的选中状态
 			this.selectedProvider = [actualProvider]

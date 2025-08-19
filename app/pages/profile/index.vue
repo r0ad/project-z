@@ -92,9 +92,9 @@
 					<text class="modal-title">选择用户</text>
 					<nut-icon name="close" size="20" color="#86909C" @click="closeUserSwitcher"></nut-icon>
 				</view>
-				
+
 				<view class="user-list">
-					<view v-for="user in allUsers" :key="user.id" class="user-item" 
+					<view v-for="user in allUsers" :key="user.id" class="user-item"
 						:class="{ active: user.id === userInfo.id }" @click="switchToUser(user.id)">
 						<view class="user-item-avatar">
 							<text class="user-item-emoji">{{ user.avatar }}</text>
@@ -102,12 +102,13 @@
 						<view class="user-item-info">
 							<text class="user-item-name">{{ user.username }}</text>
 							<text class="user-item-title">{{ user.title }}</text>
-							<text class="user-item-stats">{{ user.projectCount }}个项目 · {{ user.knowledgeCount }}个知识</text>
+							<text class="user-item-stats">{{ user.projectCount }}个项目 · {{ user.knowledgeCount
+								}}个知识</text>
 						</view>
 						<nut-icon v-if="user.id === userInfo.id" name="check" size="16" color="#165DFF"></nut-icon>
 					</view>
 				</view>
-				
+
 				<view class="modal-actions">
 					<nut-button type="primary" size="large" @click="showCreateUserModal" block>
 						<nut-icon name="plus" size="16" color="#ffffff"></nut-icon>
@@ -124,30 +125,30 @@
 					<text class="modal-title">创建新用户</text>
 					<nut-icon name="close" size="20" color="#86909C" @click="closeCreateUserModal"></nut-icon>
 				</view>
-				
+
 				<view class="create-form">
 					<view class="form-item">
 						<text class="form-label">用户名</text>
 						<nut-input v-model="newUser.username" placeholder="请输入用户名" />
 					</view>
-					
+
 					<view class="form-item">
 						<text class="form-label">职位</text>
 						<nut-input v-model="newUser.title" placeholder="请输入职位" />
 					</view>
-					
+
 					<view class="form-item">
 						<text class="form-label">头像</text>
 						<view class="avatar-selector">
-							<view v-for="avatar in avatarOptions" :key="avatar.value" 
-								class="avatar-option" :class="{ selected: newUser.avatar === avatar.value }"
+							<view v-for="avatar in avatarOptions" :key="avatar.value" class="avatar-option"
+								:class="{ selected: newUser.avatar === avatar.value }"
 								@click="selectAvatar(avatar.value)">
 								<text class="avatar-emoji">{{ avatar.value }}</text>
 							</view>
 						</view>
 					</view>
 				</view>
-				
+
 				<view class="modal-actions">
 					<nut-button @click="closeCreateUserModal" size="large" style="margin-right: 20rpx;">
 						取消
@@ -166,12 +167,13 @@
 					<text class="modal-title">GitCode数据库备份</text>
 					<nut-icon name="close" size="20" color="#86909C" @click="closeGitCodeModal"></nut-icon>
 				</view>
-				
+
 				<!-- 配置区域 -->
 				<view class="gitcode-config-section">
 					<view class="section-header" @click="gitCodeConfigCollapsed = !gitCodeConfigCollapsed">
 						<text class="section-title">配置信息</text>
-						<nut-icon :name="gitCodeConfigCollapsed ? 'arrow-down' : 'arrow-up'" size="16" color="#86909C"></nut-icon>
+						<nut-icon :name="gitCodeConfigCollapsed ? 'arrow-down' : 'arrow-up'" size="16"
+							color="#86909C"></nut-icon>
 					</view>
 					<view v-if="!gitCodeConfigCollapsed" class="section-content">
 						<view class="form-item">
@@ -191,12 +193,13 @@
 						</nut-button>
 					</view>
 				</view>
-				
+
 				<!-- 操作区域 -->
 				<view class="gitcode-operation-section">
 					<text class="section-title">备份操作</text>
 					<view class="btn-group">
-						<nut-button type="success" @click="backupDatabaseToGitCode" size="large" style="margin-right: 20rpx;">
+						<nut-button type="success" @click="backupDatabaseToGitCode" size="large"
+							style="margin-right: 20rpx;">
 							<nut-icon name="upload" size="16" color="#ffffff"></nut-icon>
 							备份到云端
 						</nut-button>
@@ -206,12 +209,13 @@
 						</nut-button>
 					</view>
 				</view>
-				
+
 				<!-- 结果显示区域 -->
 				<view class="gitcode-result-section">
 					<view class="section-header" @click="gitCodeResultCollapsed = !gitCodeResultCollapsed">
 						<text class="section-title">操作结果</text>
-						<nut-icon :name="gitCodeResultCollapsed ? 'arrow-down' : 'arrow-up'" size="16" color="#86909C"></nut-icon>
+						<nut-icon :name="gitCodeResultCollapsed ? 'arrow-down' : 'arrow-up'" size="16"
+							color="#86909C"></nut-icon>
 					</view>
 					<view v-if="!gitCodeResultCollapsed" class="section-content">
 						<view class="result-box">
@@ -219,7 +223,7 @@
 						</view>
 					</view>
 				</view>
-				
+
 				<!-- 加载状态 -->
 				<view v-if="gitCodeLoading" class="loading-overlay">
 					<view class="loading-content">
@@ -236,14 +240,14 @@
 					<text class="modal-title">选择备份文件</text>
 					<nut-icon name="close" size="20" color="#86909C" @click="showBackupFileSelector = false"></nut-icon>
 				</view>
-				
+
 				<view class="backup-file-list">
 					<view v-if="backupFileList.length === 0" class="empty-state">
 						<text class="empty-text">暂无备份文件</text>
 					</view>
 					<view v-else>
-						<view v-for="(file, index) in backupFileList" :key="index" 
-							class="backup-file-item" @click="selectBackupFileForRestore(file)">
+						<view v-for="(file, index) in backupFileList" :key="index" class="backup-file-item"
+							@click="selectBackupFileForRestore(file)">
 							<view class="file-info">
 								<view class="file-icon">
 									<nut-icon name="download" size="20" color="#165DFF"></nut-icon>
@@ -285,26 +289,26 @@ export default {
 	},
 	data() {
 		return {
-				userInfo: {
-					id: 1,
-					avatar: '👤',
-					name: '用户',
-					title: '产品经理',
-					isVip: false,
-					projectCount: 0,
-					knowledgeCount: 0,
-					days: 0
-				},
-				// 用户切换相关
-				allUsers: [],
-				showUserModal: false,
-				showCreateModal: false,
-				newUser: {
-					username: '',
-					title: '产品经理',
-					avatar: '👤'
-				},
-				avatarOptions: [],
+			userInfo: {
+				id: 1,
+				avatar: '👤',
+				name: '用户',
+				title: '产品经理',
+				isVip: false,
+				projectCount: 0,
+				knowledgeCount: 0,
+				days: 0
+			},
+			// 用户切换相关
+			allUsers: [],
+			showUserModal: false,
+			showCreateModal: false,
+			newUser: {
+				username: '',
+				title: '产品经理',
+				avatar: '👤'
+			},
+			avatarOptions: [],
 			// GitCode备份相关
 			showGitCodeModal: false,
 			gitCodeConfig: {
@@ -336,6 +340,15 @@ export default {
 			],
 			menuItems: [
 				{
+					icon: 'star',
+					iconColor: '#FFD700',
+					iconBg: '#FFD70020',
+					title: '我的收藏',
+					badge: '0',
+					type: 'navigate',
+					path: '/pages/profile/favorites'
+				},
+				{
 					icon: 'JIMI40',
 					iconColor: '#165DFF',
 					iconBg: '#165DFF20',
@@ -347,27 +360,27 @@ export default {
 					icon: 'refresh2',
 					iconColor: '#FF7D00',
 					iconBg: '#FF7D0020',
-					title: 'GitCode备份',
-					subtitle: '数据库云端同步',
+					title: '云备份',
+					subtitle: '华为GitCode云端同步',
 					type: 'action',
 					handler: 'showGitCodeBackup'
 				},
+
 				{
 					icon: 'refresh',
 					iconColor: '#00B42A',
 					iconBg: '#00B42A20',
-					title: '数据库升级重试',
+					title: '修复应用',
 					type: 'action',
 					handler: 'retryDatabaseUpgrade'
 				},
 				{
-					icon: 'star',
-					iconColor: '#FFD700',
-					iconBg: '#FFD70020',
-					title: '我的收藏',
-					badge: '0',
+					icon: 'tips',
+					iconColor: '#86909C',
+					iconBg: '#86909C20',
+					title: '帮助中心',
 					type: 'navigate',
-					path: '/pages/profile/favorites'
+					path: '/pages/profile/help'
 				},
 				{
 					icon: 'notice',
@@ -383,18 +396,12 @@ export default {
 					iconColor: '#165DFF',
 					iconBg: '#165DFF20',
 					title: '数据统计',
+					subtitle: '待开发',
 					type: 'disabled',
 					disabled: true,
 					path: '/pages/profile/stats'
 				},
-				{
-					icon: 'tips',
-					iconColor: '#86909C',
-					iconBg: '#86909C20',
-					title: '帮助中心',
-					type: 'navigate',
-					path: '/pages/profile/help'
-				},
+
 				{
 					icon: 'service',
 					iconColor: '#F53F3F',
@@ -407,31 +414,31 @@ export default {
 				}
 			],
 			version: '1.0.1'
-			}
-		},
+		}
+	},
 	async mounted() {
-			// 添加用户状态变化监听器
-			userStore.addListener(this.handleUserStateChange)
-			
-			await this.loadUserInfo()
-			await this.loadUserData()
-			// await this.loadStatsData()
-			// await this.loadAIStats()
-			await this.loadFavoriteCount()
-			await this.loadAllUsers()
+		// 添加用户状态变化监听器
+		userStore.addListener(this.handleUserStateChange)
+
+		await this.loadUserInfo()
+		await this.loadUserData()
+		// await this.loadStatsData()
+		// await this.loadAIStats()
+		await this.loadFavoriteCount()
+		await this.loadAllUsers()
 		this.loadAvatarOptions()
 		this.loadGitCodeConfig()
 		this.version = this.getCurrentVersion()
 		this.checkGlobalUpdateInfo()
-		},
+	},
 
 	beforeDestroy() {
-			// 移除用户状态变化监听器
-			userStore.removeListener(this.handleUserStateChange)
-		},
+		// 移除用户状态变化监听器
+		userStore.removeListener(this.handleUserStateChange)
+	},
 	methods: {
 		// 获取当前应用版本
-  		getCurrentVersion() {
+		getCurrentVersion() {
 			// #ifdef APP-PLUS
 			return plus.runtime.version
 			// #endif
@@ -439,7 +446,7 @@ export default {
 			return '1.0.1'
 			// #endif
 		},
-		
+
 		checkGlobalUpdateInfo() {
 			const app = getApp()
 			if (app.globalData && app.globalData.updateInfo) {
@@ -450,16 +457,16 @@ export default {
 				this.hasUpdate = false
 			}
 		},
-		
+
 		// 显示版本详情
 		showVersionDetails() {
 			let content = `当前版本：${this.version}\n`
-			
+
 			if (this.hasUpdate && this.updateInfo) {
 				content += `最新版本：${this.updateInfo.latestVersion}\n`
 				content += `更新内容：${this.updateInfo.versionHistory || '暂无描述'}\n`
 				content += `\n是否立即更新？`
-				
+
 				uni.showModal({
 					title: '版本信息',
 					content: content,
@@ -473,7 +480,7 @@ export default {
 				})
 			} else {
 				content += '当前已是最新版本'
-				
+
 				uni.showModal({
 					title: '版本信息',
 					content: content,
@@ -482,23 +489,23 @@ export default {
 				})
 			}
 		},
-		
+
 		// 检查更新
 		async checkUpdate() {
 			uni.showLoading({ title: '检查更新中...' })
-			
+
 			try {
 				const updateApp = new UpdateApp()
 				// 手动检查更新，传入showTip=true，会自动显示结果弹窗
 				const updateInfo = await updateApp.checkUpdate(true)
-				
+
 				uni.hideLoading()
-				
+
 				if (updateInfo.hasUpdate) {
 					this.updateInfo = updateInfo
 					this.updateApp = updateApp
 					this.hasUpdate = true
-					
+
 					// 更新全局数据
 					const app = getApp()
 					app.globalData = app.globalData || {}
@@ -516,30 +523,30 @@ export default {
 				console.error('检查更新失败:', error)
 			}
 		},
-		
+
 		// 执行更新
 		async performUpdate() {
 			if (!this.updateApp || !this.updateInfo) {
 				uni.showToast({ title: '更新信息异常', icon: 'none' })
 				return
 			}
-			
+
 			try {
 				// 显示下载进度
 				uni.showLoading({ title: '正在下载更新... 0%' })
-				
+
 				// 执行更新，包含进度回调
 				const result = await this.updateApp.downloadAndInstall(
 					'https://project.r0ad.host/project.apk',
 					(progress, downloaded, total) => {
-						uni.showLoading({ 
-							title: `正在下载更新... ${Math.round(progress)}%` 
+						uni.showLoading({
+							title: `正在下载更新... ${Math.round(progress)}%`
 						})
 					}
 				)
-				
+
 				uni.hideLoading()
-				
+
 				if (result.success) {
 					if (result.installed) {
 						uni.showModal({
@@ -596,7 +603,7 @@ export default {
 						})
 					}
 					break
-					
+
 				case 'action':
 					// 功能调用
 					if (item.handler && typeof this[item.handler] === 'function') {
@@ -609,7 +616,7 @@ export default {
 						})
 					}
 					break
-					
+
 				case 'disabled':
 					// 禁用状态
 					uni.showToast({
@@ -617,7 +624,7 @@ export default {
 						icon: 'none'
 					})
 					break
-					
+
 				default:
 					// 未知类型
 					console.error('未知的菜单类型:', item)
@@ -681,7 +688,7 @@ export default {
 			try {
 				const currentUserId = userStore.getCurrentUserId()
 				const userData = await userApi.getCurrentUser(currentUserId)
-				
+
 				this.userInfo = {
 					id: userData.id,
 					name: userData.username,
@@ -692,14 +699,14 @@ export default {
 					knowledgeCount: 0, // 将在loadUserData中更新
 					days: userApi.calculateUsageDays(userData.created_at)
 				}
-				
+
 				// 更新全局状态
 				userStore.setCurrentUser(this.userInfo)
 			} catch (error) {
 				console.error('加载用户信息失败:', error)
 			}
 		},
-		
+
 		async loadUserData() {
 			try {
 				const currentUserId = userStore.getCurrentUserId()
@@ -742,7 +749,7 @@ export default {
 				console.error('加载AI统计数据失败:', error)
 			}
 		},
-		
+
 		/**
 		 * 加载收藏数量
 		 */
@@ -802,18 +809,18 @@ export default {
 
 			try {
 				uni.showLoading({ title: '切换中...' })
-				
+
 				// 切换用户
 				await userApi.switchUser(userId)
-				
+
 				// 重新加载用户信息和数据
 				await this.loadUserInfo()
 				await this.loadUserData()
 				await this.loadFavoriteCount()
-				
+
 				uni.hideLoading()
 				this.closeUserSwitcher()
-				
+
 				uni.showToast({
 					title: '切换成功',
 					icon: 'success'
@@ -870,19 +877,19 @@ export default {
 
 			try {
 				uni.showLoading({ title: '创建中...' })
-				
+
 				// 创建用户
 				const newUser = await userApi.createUser(this.newUser)
-				
+
 				// 重新加载用户列表
 				await this.loadAllUsers()
-				
+
 				// 切换到新用户
 				await this.switchToUser(newUser.id)
-				
+
 				uni.hideLoading()
 				this.closeCreateUserModal()
-				
+
 				uni.showToast({
 					title: '创建成功',
 					icon: 'success'
@@ -991,7 +998,7 @@ export default {
 			try {
 				// 获取仓库中的所有文件
 				const fileList = await gitCodeSync.listFiles()
-				
+
 				if (Array.isArray(fileList)) {
 					// 过滤出备份文件（以database_backup_开头的json文件）
 					this.backupFileList = fileList
@@ -1007,7 +1014,7 @@ export default {
 							}
 						})
 						.sort((a, b) => new Date(b.dateStr) - new Date(a.dateStr)) // 按日期倒序排列
-					
+
 					console.log('获取到备份文件列表:', this.backupFileList)
 				} else {
 					this.backupFileList = []
@@ -1065,7 +1072,7 @@ export default {
 			uni.showLoading({ title: '获取备份文件列表...' })
 			await this.getBackupFileList()
 			uni.hideLoading()
-			
+
 			if (this.backupFileList.length === 0) {
 				uni.showModal({
 					title: '提示',
@@ -1074,16 +1081,16 @@ export default {
 				})
 				return
 			}
-			
+
 			// 显示备份文件选择器
 			this.showBackupFileSelector = true
 		},
-		
+
 		// 选择备份文件进行恢复
 		async selectBackupFileForRestore(backupFile) {
 			this.selectedBackupFile = backupFile
 			this.showBackupFileSelector = false
-			
+
 			uni.showModal({
 				title: '确认恢复',
 				content: `确定要从备份文件"${backupFile.displayName}"恢复数据库吗？\n\n恢复数据库将覆盖当前所有数据，此操作不可逆！`,
@@ -1106,7 +1113,7 @@ export default {
 			try {
 				// 使用传入的文件名，如果没有传入则使用默认文件名
 				const backupFileName = fileName || `database_backup_${new Date().toISOString().split('T')[0]}.json`
-				
+
 				const result = await gitCodeSync.downloadData(backupFileName)
 
 				if (result.success) {
@@ -1114,7 +1121,7 @@ export default {
 					let rawData = result.data
 					console.log('下载的原始数据类型:', typeof rawData)
 					console.log('下载的原始数据:', rawData)
-					
+
 					// 处理不同类型的数据
 					if (typeof rawData === 'object' && rawData !== null) {
 						// 如果已经是对象，直接使用
@@ -1127,10 +1134,10 @@ export default {
 							}
 							// 恢复数据库
 							await dbService.importAllData(backupData.data)
-							
+
 							this.gitCodeResultText = '恢复成功！\n数据库已从云端恢复'
 							uni.showToast({ title: '恢复成功', icon: 'success' })
-							
+
 							// 重新加载用户数据
 							await this.loadUserInfo()
 							await this.loadUserData()
@@ -1143,7 +1150,7 @@ export default {
 						// 其他类型转换为字符串
 						rawData = String(rawData)
 					}
-					
+
 					// 确保rawData是字符串后再进行字符串操作
 					if (typeof rawData === 'string') {
 						console.log('字符串数据前100字符:', rawData.substring(0, 100))
@@ -1153,7 +1160,7 @@ export default {
 							rawData = rawData.slice(1)
 						}
 					}
-					
+
 					let backupData
 					try {
 						backupData = JSON.parse(rawData)
@@ -1162,18 +1169,18 @@ export default {
 						console.error('解析失败的数据:', rawData.substring(0, 200))
 						throw new Error(`JSON解析失败: ${parseError.message}`)
 					}
-					
+
 					// 验证备份数据结构
 					if (!backupData || !backupData.data) {
 						throw new Error('备份数据格式不正确，缺少data字段')
 					}
-					
+
 					// 恢复数据库
 					await dbService.importAllData(backupData.data)
-					
+
 					this.gitCodeResultText = '恢复成功！\n数据库已从云端恢复'
 					uni.showToast({ title: '恢复成功', icon: 'success' })
-					
+
 					// 重新加载用户数据
 					await this.loadUserInfo()
 					await this.loadUserData()
@@ -1791,6 +1798,7 @@ export default {
 	font-size: 24rpx;
 	color: #86909C;
 }
+
 /* 用户切换相关样式 */
 .user-name-row {
 	display: flex;
@@ -1804,8 +1812,8 @@ export default {
 	align-items: center;
 	justify-content: center;
 	gap: 6rpx;
-	padding: 12rpx 20rpx;
-	min-width: 120rpx;
+	padding: 12rpx 12rpx;
+	max-width: 100rpx;
 	background-color: #165DFF10;
 	border-radius: 24rpx;
 	border: 2rpx solid #165DFF20;
