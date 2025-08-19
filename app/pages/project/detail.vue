@@ -525,14 +525,13 @@
 							</nut-radio-group>
 						</view>
 						<view class="form-item" v-if="editingMilestone && milestoneForm.status === 'progress'">
-							<view class="form-label">进度</view>
+							<view class="form-label">进度<text style="margin-left: 16rpx; color: #86909C;">%</text></view>
 							<nut-input-number 
 								v-model="milestoneForm.progress"
 								:min="0"
 								:max="100"
 								:step="10"
 							/>
-							<text style="margin-left: 16rpx; color: #86909C;">%</text>
 						</view>
 					</scroll-view>
 					<view class="modal-actions">
