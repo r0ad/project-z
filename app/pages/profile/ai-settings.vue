@@ -231,7 +231,7 @@ export default {
 			formData: {
 				provider: 'deepseek',
 				base_url: 'https://api.deepseek.com/v1',
-				api_key: 'sk-REMOVED',
+				api_key: 'sk-',
 				model: 'deepseek-chat',
 				timeout: 30,
 				max_tokens: 2000,
