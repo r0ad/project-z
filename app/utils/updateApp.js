@@ -145,8 +145,8 @@ async function updateApp(showTip = false) {
     })
     
     // 获取当前版本
-    // const currentVersion = getCurrentVersion()
-    const currentVersion = '1.0.0'
+    const currentVersion = getCurrentVersion()
+    // const currentVersion = '1.0.0'
     console.log('[UpdateApp] 当前版本:', currentVersion, '远程版本:', remoteVersion)
     
     const hasUpdate = compareVersion(remoteVersion, currentVersion) > 0
