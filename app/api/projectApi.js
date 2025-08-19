@@ -359,13 +359,31 @@ class ProjectApi {
       return
     }
     
-    const completedCount = milestones.filter(m => m.status === 'completed').length
-    const progress = Math.round((completedCount / milestones.length) * 100)
+    // 计算基于所有节点状态和进度的项目整体进度
+    const totalProgress = milestones.reduce((sum, milestone) => {
+      let milestoneProgress = 0
+      
+      if (milestone.status === 'completed') {
+        // 已完成的节点进度为100%
+        milestoneProgress = 100
+      } else if (milestone.status === 'progress') {
+        // 进行中的节点使用实际进度百分比
+        milestoneProgress = milestone.progress || 0
+      } else {
+        // 未开始的节点进度为0%
+        milestoneProgress = 0
+      }
+      
+      return sum + milestoneProgress
+    }, 0)
+    
+    const progress = Math.round(totalProgress / milestones.length)
     
     await dbService.update('projects', { progress }, 'id = ?', [projectId])
     
-    // 如果所有节点完成，更新项目状态
-    if (progress === 100) {
+    // 如果所有节点都是已完成状态，更新项目状态
+    const allCompleted = milestones.every(m => m.status === 'completed')
+    if (allCompleted && milestones.length > 0) {
       await dbService.update('projects', { status: 'completed' }, 'id = ?', [projectId])
     }
   }

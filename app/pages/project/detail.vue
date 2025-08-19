@@ -788,15 +788,15 @@ export default {
 		async updateProjectProgress() {
 			if (this.milestones.length === 0) return
 			
-			const totalProgress = this.milestones.reduce((sum, milestone) => {
-				return sum + (milestone.progress || 0)
-			}, 0)
-			
-			const avgProgress = Math.round(totalProgress / this.milestones.length)
-			
 			try {
-				await projectApi.updateProjectProgress(this.projectId, avgProgress)
-				this.project.progress = avgProgress
+				// 调用API更新项目进度（API内部会根据所有节点进度计算）
+				await projectApi.updateProjectProgress(this.projectId)
+				
+				// 重新加载项目详情以获取最新进度
+				const updatedProject = await projectApi.getProjectDetail(this.projectId)
+				if (updatedProject) {
+					this.project = updatedProject
+				}
 			} catch (error) {
 				console.error('更新项目进度失败:', error)
 			}
