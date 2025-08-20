@@ -268,7 +268,7 @@
 		<nut-popup 
 			v-model:visible="showPromoModal" 
 			position="center" 
-			:style="{width: '90%', minWidth: '500rpx', borderRadius: '20rpx'}"
+			:style="{width: '90%', minWidth: '500rpx', borderRadius: '20rpx', maxHeight: '80vh'}"
 			:closeable="true"
 			@close="closePromoModal"
 		>
@@ -276,6 +276,7 @@
 				<view class="promo-header">
 					<text class="promo-title">推广码管理</text>
 				</view>
+				<view class="promo-content">
 				
 				<!-- 当前状态显示 -->
 				<view class="promo-status" v-if="promoStatus">
@@ -308,7 +309,8 @@
 					<view class="input-label">
 						<text>推广码</text>
 					</view>
-					<nut-input 
+					<nut-textarea  
+						:autosize="{ maxHeight: `200rpx`, minHeight: `100rpx` }"
 						v-model="promoCode" 
 						placeholder="请输入推广码"
 						:disabled="promoLoading"
@@ -417,6 +419,7 @@
 				<!-- 结果显示 -->
 				<view class="promo-result">
 					<text class="result-text">{{ promoResultText }}</text>
+				</view>
 				</view>
 			</view>
 		</nut-popup>
@@ -620,6 +623,18 @@ export default {
 			promoManager: promoManager
 		}
 	},
+	onLoad(options) {
+		// 处理页面参数
+		if (options.tab === 'promo') {
+			// 延迟显示推广码弹窗，确保页面加载完成
+			this.$nextTick(() => {
+				setTimeout(() => {
+					this.showPromoCodeModal()
+				}, 300)
+			})
+		}
+	},
+
 	async mounted() {
 			// 添加用户状态变化监听器
 			userStore.addListener(this.handleUserStateChange)
@@ -949,9 +964,10 @@ export default {
 
 			try {
 				const result = await promoManager.applyPromoCode(this.promoCode)
+				console.log('应用推广码结果:', result)
 				
 				if (result.success) {
-					this.promoResultText = `推广码应用成功！\n供应商: ${result.config.provider}\n模型: ${result.config.modelName}\n剩余天数: ${result.remainingDays}天`
+					this.promoResultText = `推广码应用成功！\n供应商: ${result.config.provider}\n模型: ${result.config.model}\n剩余天数: ${result.remainingDays}天`
 					
 					// 重新加载状态
 					await this.loadPromoStatus()
@@ -2507,25 +2523,36 @@ export default {
 
 /* 推广码弹窗样式 */
 .promo-modal {
-	padding: 40rpx;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	max-height: 80vh;
 	background-color: #ffffff;
 	border-radius: 20rpx;
-	max-height: 80vh;
-	overflow-y: auto;
 	min-width: 500rpx;
 }
 
 .promo-header {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	background-color: #ffffff;
 	text-align: center;
-	margin-bottom: 32rpx;
-	padding-bottom: 24rpx;
+	padding: 40rpx 40rpx 24rpx 40rpx;
 	border-bottom: 2rpx solid #F2F3F5;
+	border-radius: 20rpx 20rpx 0 0;
 }
 
 .promo-title {
 	font-size: 32rpx;
 	font-weight: bold;
 	color: #1D2129;
+}
+
+.promo-content {
+	flex: 1;
+	overflow-y: auto;
+	padding: 0 40rpx 40rpx 40rpx;
 }
 
 .promo-status {

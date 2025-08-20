@@ -5,6 +5,7 @@
 
 import cryptoUtils from '@/utils/cryptoUtils.js'
 import dbService from '@/utils/dbService.js'
+import userStore from '@/utils/userStore.js'
 
 class PromoApi {
   constructor() {
@@ -65,30 +66,42 @@ class PromoApi {
       }
 
       const promoData = validation.data
+      const userId = userStore.getCurrentUserId()
+
+      // 确保数据库已初始化
+      await dbService.initDB()
 
       // 备份当前AI配置
       await this.backupCurrentAIConfig()
 
-      // 应用推广码配置
+      // 先将所有现有配置设为非激活状态
+      await dbService.update('ai_config', { is_active: 0 }, 'user_id = ?', [userId])
+
+      // 准备AI配置数据（符合数据库表结构）
       const aiConfig = {
+        user_id: userId,
         provider: promoData.provider,
-        apiKey: promoData.apiKey,
-        modelName: promoData.model,  // 使用model字段
-        isActive: true,
-        fromPromoCode: true,
-        promoCodeAppliedAt: Date.now()
+        base_url: promoData.baseUrl || 'https://api.deepseek.com/v1',
+        api_key: promoData.apiKey,
+        model: promoData.model,
+        timeout: promoData.timeout || 30,
+        max_tokens: promoData.maxTokens || 2000,
+        temperature: promoData.temperature || 0.7,
+        is_active: 1,
+        created_at: Date.now(),
+        updated_at: Date.now()
       }
 
-      // 保存AI配置到本地存储
-      await this.saveAIConfig(aiConfig)
+      // 保存AI配置到数据库
+      await dbService.insert('ai_config', aiConfig)
 
-      // 保存推广码信息
+      // 保存推广码信息到本地存储
       const promoConfig = {
         code: promoCode,
         appliedAt: Date.now(),
         expiresAt: promoData.expiresAt,
         provider: promoData.provider,
-        modelName: promoData.modelName
+        modelName: promoData.model
       }
       await this.savePromoConfig(promoConfig)
 
@@ -113,19 +126,28 @@ class PromoApi {
    */
   async backupCurrentAIConfig() {
     try {
-      // 获取当前AI配置
-      const currentConfig = uni.getStorageSync('ai_config') || {}
+      const userId = userStore.getCurrentUserId()
       
-      // 添加备份时间戳
-      const backup = {
-        ...currentConfig,
-        backedUpAt: Date.now()
-      }
+      // 确保数据库已初始化
+      await dbService.initDB()
+      
+      // 获取当前激活的AI配置（从数据库）
+      const currentConfig = await dbService.findOne('ai_config', 'is_active = ? AND user_id = ?', [1, userId])
+      
+      if (currentConfig) {
+        // 添加备份时间戳
+        const backup = {
+          ...currentConfig,
+          backedUpAt: Date.now()
+        }
 
-      // 保存备份
-      uni.setStorageSync(this.BACKUP_STORAGE_KEY, backup)
-      
-      console.log('AI配置备份成功')
+        // 保存备份
+        uni.setStorageSync(this.BACKUP_STORAGE_KEY, backup)
+        
+        console.log('AI配置备份成功')
+      } else {
+        console.log('没有找到激活的AI配置，跳过备份')
+      }
     } catch (error) {
       console.error('备份AI配置失败:', error)
       throw error
@@ -147,19 +169,34 @@ class PromoApi {
         }
       }
 
-      // 移除备份时间戳
-      const { backedUpAt, ...config } = backup
+      const userId = userStore.getCurrentUserId()
       
-      // 恢复配置
-      uni.setStorageSync('ai_config', config)
+      // 确保数据库已初始化
+      await dbService.initDB()
       
-      // 清除推广码配置
-      await this.clearPromoConfig()
+      // 移除备份时间戳和id字段
+      const { backedUpAt, id, ...config } = backup
+      
+      // 先将所有现有配置设为非激活状态
+      await dbService.update('ai_config', { is_active: 0 }, 'user_id = ?', [userId])
+      
+      // 恢复配置到数据库
+      const restoreConfig = {
+        ...config,
+        user_id: userId,
+        is_active: 1,
+        updated_at: Date.now()
+      }
+      
+      await dbService.insert('ai_config', restoreConfig)
+      
+      // 清除备份
+      uni.removeStorageSync(this.BACKUP_STORAGE_KEY)
 
       return {
         success: true,
         message: '配置恢复成功',
-        config: config
+        config: restoreConfig
       }
     } catch (error) {
       console.error('恢复AI配置失败:', error)
@@ -348,8 +385,19 @@ class PromoApi {
         }
       }
 
+      const userId = userStore.getCurrentUserId()
+      
+      // 确保数据库已初始化
+      await dbService.initDB()
+      
+      // 删除推广码相关的AI配置（根据provider匹配）
+      await dbService.delete('ai_config', 'user_id = ? AND provider = ?', [userId, promoConfig.provider])
+      
       // 恢复备份配置
       const restoreResult = await this.restoreBackupAIConfig()
+      
+      // 清除推广码配置
+      await this.clearPromoConfig()
       
       return {
         success: true,
