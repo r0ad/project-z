@@ -15,8 +15,25 @@
 
 		<!-- 页面内容 -->
 		<view class="page-content">
+			<!-- AI配置提示卡片 -->
+			<view v-if="!isAIConfigured" class="ai-config-tip-card">
+				<view class="ai-tip-header">
+					<nut-icon name="robot" color="#FF7D00" size="20"></nut-icon>
+					<text class="ai-tip-title">AI功能未配置</text>
+				</view>
+				<text class="ai-tip-desc">项目功能需要AI支持，请先配置AI服务以获得完整体验</text>
+				<nut-button 
+					type="primary" 
+					size="small" 
+					@click="goToAISettings"
+					class="ai-config-btn"
+				>
+					立即配置
+				</nut-button>
+			</view>
+			
 			<!-- 快捷提示 -->
-			<view class="tip-card">
+			<view class="tip-card" v-if="isAIConfigured">
 				<nut-icon name="tips" color="#165DFF" size="16"></nut-icon>
 				<text class="tip-text">点击项目卡片进入详情，或使用右上角按钮创建新项目</text>
 			</view>
@@ -107,6 +124,7 @@
 import CustomTabBar from '@/custom-tab-bar/index.vue'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 import projectApi from '@/api/projectApi.js'
+import aiApi from '@/api/aiApi.js'
 import DateUtils from '@/utils/dateUtils.js'
 
 export default {
@@ -118,20 +136,41 @@ export default {
 		return {
 			projectList: [],
 			loading: false,
-			refreshing: false
+			refreshing: false,
+			isAIConfigured: false
 		}
 	},
 	onLoad() {
+		this.checkAIConfiguration()
 		this.loadProjects()
 	},
 	onShow() {
 		// 页面显示时刷新数据
+		this.checkAIConfiguration()
 		this.loadProjects()
 	},
 	onPullDownRefresh() {
 		this.refreshProjects()
 	},
 	methods: {
+		// 检查AI配置状态
+		async checkAIConfiguration() {
+			try {
+				const configs = await aiApi.getAIConfigList()
+				this.isAIConfigured = configs && configs.length > 0 && configs.some(config => config.is_active)
+			} catch (error) {
+				console.error('检查AI配置失败:', error)
+				this.isAIConfigured = false
+			}
+		},
+		
+		// 跳转到AI设置页面
+		goToAISettings() {
+			uni.navigateTo({
+				url: '/pages/profile/ai-settings'
+			})
+		},
+		
 		async loadProjects() {
 			if (this.loading) return
 			
@@ -184,11 +223,43 @@ export default {
 			return colorMap[status] || '#165DFF'
 		},
 		createProject() {
+			// 检查AI配置状态
+			if (!this.isAIConfigured) {
+				uni.showModal({
+					title: '需要配置AI',
+					content: '创建项目需要AI支持，请先配置AI服务',
+					confirmText: '去配置',
+					cancelText: '取消',
+					success: (res) => {
+						if (res.confirm) {
+							this.goToAISettings()
+						}
+					}
+				})
+				return
+			}
+			
 			uni.navigateTo({
 				url: '/pages/project/create'
 			})
 		},
 		goToDetail(project) {
+			// 检查AI配置状态
+			if (!this.isAIConfigured) {
+				uni.showModal({
+					title: '需要配置AI',
+					content: '查看项目详情需要AI支持，请先配置AI服务',
+					confirmText: '去配置',
+					cancelText: '取消',
+					success: (res) => {
+						if (res.confirm) {
+							this.goToAISettings()
+						}
+					}
+				})
+				return
+			}
+			
 			uni.navigateTo({
 				url: `/pages/project/detail?id=${project.id}&title=${project.title}`
 			})
@@ -294,6 +365,67 @@ export default {
 	color: #165DFF;
 	line-height: 1.5;
 	flex: 1;
+}
+
+/* AI配置提示卡片样式 */
+.ai-config-tip-card {
+	background: linear-gradient(135deg, #FF7D0010, #FF7D0005);
+	border: 2rpx solid #FF7D0020;
+	border-radius: 16rpx;
+	padding: 32rpx;
+	margin-bottom: 32rpx;
+	position: relative;
+	overflow: hidden;
+}
+
+.ai-config-tip-card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 4rpx;
+	background: linear-gradient(90deg, #FF7D00, #FFB800);
+	opacity: 0.8;
+}
+
+.ai-tip-header {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	margin-bottom: 16rpx;
+}
+
+.ai-tip-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #FF7D00;
+}
+
+.ai-tip-desc {
+	font-size: 28rpx;
+	color: #86909C;
+	line-height: 1.6;
+	margin-bottom: 24rpx;
+	display: block;
+}
+
+.ai-config-btn {
+	align-self: flex-start;
+	background: linear-gradient(135deg, #FF7D00, #FFB800);
+	border: none;
+	border-radius: 12rpx;
+	padding: 16rpx 32rpx;
+	font-size: 28rpx;
+	font-weight: 500;
+	color: #ffffff;
+	transition: all 0.3s ease;
+	box-shadow: 0 4rpx 12rpx rgba(255, 125, 0, 0.3);
+}
+
+.ai-config-btn:active {
+	transform: translateY(2rpx);
+	box-shadow: 0 2rpx 8rpx rgba(255, 125, 0, 0.4);
 }
 
 .project-list {
