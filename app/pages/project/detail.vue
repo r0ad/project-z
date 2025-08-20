@@ -164,6 +164,15 @@
 								>
 									编辑
 								</nut-button>
+								<nut-button 
+									type="default" 
+									size="small" 
+									plain
+									@click="deleteLog(log)"
+									style="margin-left: 16rpx;"
+								>
+									删除
+								</nut-button>
 							</view>
 						</view>
 						<view class="log-content">
@@ -350,12 +359,14 @@
 			<nut-popup 
 				v-model:visible="showEditModal" 
 				position="bottom" 
-				:style="{ height: '70%' }"
+				:style="{ height: '80%' }"
 				round
 				closeable
+				safe-area-inset-top
 			>
 				<view class="edit-modal">
 					<view class="edit-header">
+						<view class="status-bar-placeholder"></view>
 						<text class="edit-title">编辑日志</text>
 					</view>
 					<view class="edit-form">
@@ -945,6 +956,38 @@ export default {
 			} finally {
 				this.savingAnalysis = false
 			}
+		},
+		
+		// 删除日志
+		async deleteLog(log) {
+			uni.showModal({
+				title: '确认删除',
+				content: '确定要删除这条日志吗？删除后无法恢复。',
+				success: async (res) => {
+					if (res.confirm) {
+						try {
+							await logApi.deleteLog(log.id)
+							
+							// 从本地数据中移除
+							const index = this.projectLogs.findIndex(l => l.id === log.id)
+							if (index !== -1) {
+								this.projectLogs.splice(index, 1)
+							}
+							
+							uni.showToast({
+								title: '删除成功',
+								icon: 'success'
+							})
+						} catch (error) {
+							console.error('删除日志失败:', error)
+							uni.showToast({
+								title: '删除失败，请重试',
+								icon: 'none'
+							})
+						}
+					}
+				}
+			})
 		},
 		
 		// 里程碑管理方法
@@ -2050,7 +2093,7 @@ export default {
 }
 
 .edit-modal {
-	padding: 32rpx;
+	padding: 0 32rpx 32rpx 32rpx;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -2058,12 +2101,20 @@ export default {
 
 .edit-header {
 	margin-bottom: 32rpx;
+	padding-top: 32rpx;
 }
 
 .edit-title {
 	font-size: 32rpx;
 	font-weight: 600;
 	color: #1D2129;
+}
+
+.status-bar-placeholder {
+	height: env(safe-area-inset-top);
+	min-height: 44px;
+	width: 100%;
+	background-color: transparent;
 }
 
 .bottom-actions {
