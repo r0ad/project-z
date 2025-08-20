@@ -29,7 +29,7 @@ class AppStartup {
 			await this.checkPromoCodeValidity()
 			
 			// 设置定期检查（每小时检查一次）
-			this.setupPeriodicCheck()
+			// this.setupPeriodicCheck()
 			
 			this.initialized = true
 			console.log('[AppStartup] 应用启动检查完成')

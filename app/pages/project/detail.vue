@@ -1959,6 +1959,8 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 32rpx;
+	padding: 32rpx;
+	overflow-y: auto;
 }
 
 .form-item {
@@ -1975,10 +1977,35 @@ export default {
 
 .edit-actions {
 	display: flex;
-	justify-content: flex-end;
-	padding-top: 32rpx;
+	justify-content: space-between;
+	padding: 32rpx;
+	gap: 16rpx;
+	background-color: #ffffff;
 	border-top: 2rpx solid #E5E6EB;
-	margin-top: 32rpx;
+	position: sticky;
+	bottom: 0;
+	z-index: 10;
+	margin-top: auto;
+}
+
+.edit-actions .nut-button {
+	flex: 1;
+	max-width: 300rpx;
+	min-width: 120rpx;
+}
+
+/* 为文本编辑域添加浅黑色边框 */
+.edit-form .nut-textarea {
+	border: 2rpx solid #E5E6EB;
+	border-radius: 12rpx;
+	padding: 16rpx;
+	background-color: #ffffff;
+	transition: border-color 0.3s ease;
+}
+
+.edit-form .nut-textarea:focus {
+	border-color: #165DFF;
+	outline: none;
 }
 
 /* 里程碑管理样式 */
@@ -2093,15 +2120,18 @@ export default {
 }
 
 .edit-modal {
-	padding: 0 32rpx 32rpx 32rpx;
+	padding: 0;
 	height: 1100rpx;
 	display: flex;
 	flex-direction: column;
+	background-color: #ffffff;
 }
 
 .edit-header {
 	margin-bottom: 32rpx;
-	padding-top: 32rpx;
+	padding: 32rpx 32rpx 0 32rpx;
+	border-bottom: 2rpx solid #E5E6EB;
+	padding-bottom: 24rpx;
 }
 
 .edit-title {
