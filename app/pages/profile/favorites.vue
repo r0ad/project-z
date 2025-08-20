@@ -20,9 +20,9 @@
 					class="favorite-item"
 					@click="goToDetail(item)"
 				>
-					<view class="item-icon" :style="{ backgroundColor: item.iconBg }">
+					<!-- <view class="item-icon" :style="{ backgroundColor: item.iconBg }">
 						<nut-icon :name="item.icon" size="16" :color="item.iconColor"></nut-icon>
-					</view>
+					</view> -->
 					<view class="item-content">
 						<text class="item-title">{{ item.title }}</text>
 						<text class="item-desc">{{ item.description }}</text>
@@ -157,13 +157,14 @@ export default {
 }
 
 .empty-text {
+	margin-top: 80rpx;
 	font-size: 32rpx;
 	color: #86909C;
-	margin: 32rpx 0 16rpx;
 	display: block;
 }
 
 .empty-desc {
+	margin-top: 80rpx;
 	font-size: 28rpx;
 	color: #C9CDD4;
 	display: block;
