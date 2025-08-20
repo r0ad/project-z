@@ -989,7 +989,7 @@ export default {
 
 .chat-messages {
   flex: 1;
-  padding: 120rpx 40rpx 160rpx 40rpx;
+  padding: 120rpx 40rpx 200rpx 40rpx;
 }
 
 .message-list {
