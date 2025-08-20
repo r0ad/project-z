@@ -200,7 +200,7 @@
 					<view class="btn-group">
 						<nut-button type="success" @click="backupDatabaseToGitCode" size="large"
 							style="margin-right: 20rpx;">
-							<nut-icon name="upload" size="16" color="#ffffff"></nut-icon>
+							<nut-icon name="top" size="16" color="#ffffff"></nut-icon>
 							备份到云端
 						</nut-button>
 						<nut-button type="info" @click="restoreDatabaseFromGitCode" size="large">
