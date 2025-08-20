@@ -138,7 +138,7 @@ class FavoriteApi {
       [userId, targetType, targetId]
     )
     
-    return result > 0
+    return true
   }
 
   /**
