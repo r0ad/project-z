@@ -537,10 +537,7 @@ export default {
         }
         
         // 默认回复
-        return {
-          content: '抱歉，我暂时无法连接到AI服务。请稍后再试，或者尝试重新描述你的问题。',
-          actions: [{ type: 'retry', text: '重试' }]
-        }
+        return {}
       }
     },
     
