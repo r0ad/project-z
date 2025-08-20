@@ -264,6 +264,163 @@
 			</view>
 		</nut-popup>
 
+		<!-- 推广码弹窗 -->
+		<nut-popup 
+			v-model:visible="showPromoModal" 
+			position="center" 
+			:style="{width: '90%', minWidth: '500rpx', borderRadius: '20rpx'}"
+			:closeable="true"
+			@close="closePromoModal"
+		>
+			<view class="promo-modal">
+				<view class="promo-header">
+					<text class="promo-title">推广码管理</text>
+				</view>
+				
+				<!-- 当前状态显示 -->
+				<view class="promo-status" v-if="promoStatus">
+					<view class="status-item" v-if="promoStatus.hasPromoCode && !promoStatus.expired">
+						<text class="status-label">当前状态:</text>
+						<text class="status-value active">已激活</text>
+					</view>
+					<view class="status-item" v-if="promoStatus.hasPromoCode && promoStatus.expired">
+						<text class="status-label">当前状态:</text>
+						<text class="status-value expired">已过期</text>
+					</view>
+					<view class="status-item" v-if="!promoStatus.hasPromoCode">
+						<text class="status-label">当前状态:</text>
+						<text class="status-value inactive">未激活</text>
+					</view>
+					
+					<view class="status-item" v-if="promoStatus.hasPromoCode">
+						<text class="status-label">供应商:</text>
+						<text class="status-value">{{ promoStatus.provider }}</text>
+					</view>
+					
+					<view class="status-item" v-if="promoStatus.hasPromoCode && !promoStatus.expired">
+						<text class="status-label">剩余时间:</text>
+						<text class="status-value">{{ promoManager.formatRemainingTime(promoStatus.remainingDays) }}</text>
+					</view>
+				</view>
+				
+				<!-- 输入区域 -->
+				<view class="promo-input-section">
+					<view class="input-label">
+						<text>推广码</text>
+					</view>
+					<nut-input 
+						v-model="promoCode" 
+						placeholder="请输入推广码"
+						:disabled="promoLoading"
+						class="promo-input"
+					/>
+				</view>
+				
+				<!-- 有效期选择区域 -->
+				<view class="promo-validity-section">
+					<view class="input-label">
+						<text>推广码有效期</text>
+					</view>
+					<nut-cell 
+						title="有效期选择" 
+						:desc="selectedValidityText" 
+						@click="showValidityPicker = true"
+						class="validity-cell"
+					></nut-cell>
+					
+					<nut-popup 
+						v-model:visible="showValidityPicker" 
+						position="bottom" 
+						safe-area-inset-bottom
+					>
+						<nut-picker 
+							v-model="selectedValidityDays"
+							:columns="validityOptions"
+							title="选择有效期"
+							@confirm="onValidityConfirm"
+							@cancel="showValidityPicker = false"
+						>
+						</nut-picker>
+					</nut-popup>
+				</view>
+				
+				<!-- 压缩版选项 -->
+				<view class="promo-compress-section" v-if="false">
+					<view class="input-label">
+						<text>推广码格式</text>
+					</view>
+					<nut-cell 
+						title="使用压缩版" 
+						:desc="useCompressed ? '压缩版 (长度更短)' : '标准版 (兼容旧版)'" 
+						class="compress-cell"
+					>
+						<template #link>
+							<nut-switch v-model="useCompressed" size="small"></nut-switch>
+						</template>
+					</nut-cell>
+					<view class="compress-tip">
+						<text class="tip-text">💡 压缩版推广码长度减少60-80%，更便于复制分享</text>
+					</view>
+				</view>
+				
+				<!-- 操作按钮 -->
+				<view class="promo-actions">
+					<nut-button 
+						type="primary" 
+						@click="applyPromoCode"
+						:loading="promoLoading"
+						:disabled="!promoCode || !promoCode.trim()"
+						class="action-btn"
+					>
+						应用推广码
+					</nut-button>
+					
+					<nut-button 
+						v-if="promoStatus && promoStatus.hasPromoCode"
+						type="danger" 
+						@click="removePromoCode"
+						:loading="promoLoading"
+						class="action-btn"
+					>
+						移除推广码
+					</nut-button>
+					
+					<nut-button 
+						v-if="promoStatus && promoStatus.hasBackup"
+						type="warning" 
+						@click="restoreBackupConfig"
+						:loading="promoLoading"
+						class="action-btn"
+					>
+						恢复备份
+					</nut-button>
+					
+					<nut-button 
+						type="success" 
+						@click="generatePromoFromCurrentConfig"
+						:loading="promoLoading"
+						class="action-btn"
+					>
+						<nut-icon name="magic" size="16" color="#ffffff"></nut-icon>
+						根据当前配置生成
+					</nut-button>
+					
+					<nut-button 
+						type="default" 
+						@click="showPromoContactInfo"
+						class="action-btn"
+					>
+						获取推广码
+					</nut-button>
+				</view>
+				
+				<!-- 结果显示 -->
+				<view class="promo-result">
+					<text class="result-text">{{ promoResultText }}</text>
+				</view>
+			</view>
+		</nut-popup>
+		
 		<!-- 自定义tabbar -->
 		<custom-tab-bar current="2"></custom-tab-bar>
 	</view>
@@ -275,7 +432,10 @@ import knowledgeApi from '@/api/knowledgeApi.js'
 import chatApi from '@/api/chatApi.js'
 import favoriteApi from '@/api/favoriteApi.js'
 import userApi from '@/api/userApi.js'
+import promoApi from '@/api/promoApi.js'
+import aiApi from '@/api/aiApi.js'
 import userStore from '@/utils/userStore.js'
+import promoManager from '@/utils/promoManager.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 import CustomTabBar from '@/custom-tab-bar/index.vue'
 import dbService from '@/utils/dbService.js'
@@ -326,6 +486,38 @@ export default {
 			backupFileList: [],
 			selectedBackupFile: null,
 			showBackupFileSelector: false,
+			// 推广码相关
+			showPromoModal: false,
+			promoCode: '',
+			useCompressed: true, // 默认使用压缩版
+			promoStatus: {
+				hasPromoCode: false,
+				expired: false,
+				remainingDays: 0,
+				provider: '',
+				modelName: '',
+				hasBackup: false
+			},
+			promoLoading: false,
+			promoResultText: '等待操作...',
+			promoConfigCollapsed: false,
+			promoResultCollapsed: false,
+			// 有效期选择相关
+			showValidityPicker: false,
+			selectedValidityDays: ['7'], // 默认7天
+			selectedValidityText: '7天',
+			validityOptions: [
+				[
+					{ text: '1天', value: '1' },
+					{ text: '3天', value: '3' },
+					{ text: '5天', value: '5' },
+					{ text: '7天', value: '7' },
+					{ text: '10天', value: '10' },
+					{ text: '15天', value: '15' },
+					{ text: '20天', value: '20' },
+					{ text: '30天', value: '30' }
+				]
+			],
 			hasUpdate: false,
 			updateInfo: null,
 			updateApp: null,
@@ -339,24 +531,33 @@ export default {
 				{ label: '完成率', value: '0%' }
 			],
 			menuItems: [
-				{
-					icon: 'star',
-					iconColor: '#FFD700',
-					iconBg: '#FFD70020',
-					title: '我的收藏',
-					badge: '0',
-					type: 'navigate',
-					path: '/pages/profile/favorites'
-				},
-				{
-					icon: 'JIMI40',
-					iconColor: '#165DFF',
-					iconBg: '#165DFF20',
-					title: 'AI设置',
-					subtitle: '支持DeepSeek、Kimi、ChatGPT等模型',
-					type: 'navigate',
-					path: '/pages/profile/ai-settings'
-				},
+					{
+						icon: 'star',
+						iconColor: '#FFD700',
+						iconBg: '#FFD70020',
+						title: '我的收藏',
+						badge: '0',
+						type: 'navigate',
+						path: '/pages/profile/favorites'
+					},
+					{
+						icon: 'JIMI40',
+						iconColor: '#165DFF',
+						iconBg: '#165DFF20',
+						title: 'AI设置',
+						subtitle: '支持DeepSeek、Kimi、ChatGPT等模型',
+						type: 'navigate',
+						path: '/pages/profile/ai-settings'
+					},
+					{
+						icon: 'scan',
+						iconColor: '#FF7D00',
+						iconBg: '#FF7D0020',
+						title: '推广码',
+						subtitle: '一键配置AI模型',
+						type: 'action',
+						handler: 'showPromoCodeModal'
+					},
 				{
 					icon: 'refresh2',
 					iconColor: '#FF7D00',
@@ -414,29 +615,34 @@ export default {
 					path: '/pages/profile/feedback'
 				}
 			],
-			version: '1.0.1'
+			version: '1.0.1',
+			// 工具类引用
+			promoManager: promoManager
 		}
 	},
 	async mounted() {
-		// 添加用户状态变化监听器
-		userStore.addListener(this.handleUserStateChange)
+			// 添加用户状态变化监听器
+			userStore.addListener(this.handleUserStateChange)
 
-		await this.loadUserInfo()
-		await this.loadUserData()
-		// await this.loadStatsData()
-		// await this.loadAIStats()
-		await this.loadFavoriteCount()
-		await this.loadAllUsers()
-		this.loadAvatarOptions()
-		this.loadGitCodeConfig()
-		this.version = this.getCurrentVersion()
-		this.checkGlobalUpdateInfo()
-	},
+			await this.loadUserInfo()
+			await this.loadUserData()
+			// await this.loadStatsData()
+			// await this.loadAIStats()
+			await this.loadFavoriteCount()
+			await this.loadAllUsers()
+			this.loadAvatarOptions()
+			this.loadGitCodeConfig()
+			await this.loadPromoStatus()
+			this.version = this.getCurrentVersion()
+			this.checkGlobalUpdateInfo()
+		},
 
 	beforeDestroy() {
-		// 移除用户状态变化监听器
-		userStore.removeListener(this.handleUserStateChange)
-	},
+			// 移除用户状态变化监听器
+			userStore.removeListener(this.handleUserStateChange)
+			// 销毁推广码管理器
+			promoManager.destroy()
+		},
 	methods: {
 		// 获取当前应用版本
 		getCurrentVersion() {
@@ -582,12 +788,12 @@ export default {
 				icon: 'none'
 			})
 		},
-		editProfile() {
+		editProfile(event) {
 			uni.navigateTo({
 				url: '/pages/profile/edit'
 			})
 		},
-		handleMenuClick(item) {
+		handleMenuClick(item, event) {
 			// 统一的菜单交互逻辑处理
 			switch (item.type) {
 				case 'navigate':
@@ -682,6 +888,322 @@ export default {
 				}
 			})
 		},
+
+		// ==================== 推广码相关方法 ====================
+		
+		/**
+		 * 显示推广码弹窗
+		 */
+		showPromoCodeModal() {
+			this.showPromoModal = true
+			this.promoResultText = '等待操作...'
+		},
+
+		/**
+		 * 关闭推广码弹窗
+		 */
+		closePromoModal() {
+			this.showPromoModal = false
+			this.promoCode = ''
+			this.promoResultText = '等待操作...'
+		},
+
+		/**
+		 * 加载推广码状态
+		 */
+		async loadPromoStatus() {
+			try {
+				const status = await promoManager.getStatus()
+				this.promoStatus = status
+				
+				// 更新菜单项的副标题
+				const promoMenuItem = this.menuItems.find(item => item.handler === 'showPromoCodeModal')
+				if (promoMenuItem) {
+					if (status.hasPromoCode && !status.expired) {
+						promoMenuItem.subtitle = `${status.provider} - ${promoManager.formatRemainingTime(status.remainingDays)}`
+					} else if (status.expired) {
+						promoMenuItem.subtitle = '推广码已过期'
+					} else {
+						promoMenuItem.subtitle = '一键配置AI模型'
+					}
+				}
+			} catch (error) {
+				console.error('加载推广码状态失败:', error)
+			}
+		},
+
+		/**
+		 * 应用推广码
+		 */
+		async applyPromoCode(event) {
+			if (!this.promoCode.trim()) {
+				uni.showToast({
+					title: '请输入推广码',
+					icon: 'none'
+				})
+				return
+			}
+
+			this.promoLoading = true
+			this.promoResultText = '正在验证推广码...'
+
+			try {
+				const result = await promoManager.applyPromoCode(this.promoCode)
+				
+				if (result.success) {
+					this.promoResultText = `推广码应用成功！\n供应商: ${result.config.provider}\n模型: ${result.config.modelName}\n剩余天数: ${result.remainingDays}天`
+					
+					// 重新加载状态
+					await this.loadPromoStatus()
+					
+					// 清空输入框
+					this.promoCode = ''
+				} else {
+					this.promoResultText = `应用失败: ${result.error}`
+					
+					if (result.expired) {
+						this.promoResultText += '\n\n推广码已过期，请联系微信号 codetrend 重新申请。'
+					}
+				}
+			} catch (error) {
+				console.error('应用推广码失败:', error)
+				this.promoResultText = `应用失败: ${error.message}`
+			} finally {
+				this.promoLoading = false
+			}
+		},
+
+		/**
+		 * 移除推广码
+		 */
+		async removePromoCode(event) {
+			uni.showModal({
+				title: '移除推广码',
+				content: '确定要移除当前推广码吗？这将恢复您之前的AI配置。',
+				success: async (res) => {
+					if (res.confirm) {
+						this.promoLoading = true
+						this.promoResultText = '正在移除推广码...'
+
+						try {
+							const result = await promoManager.removePromoCode()
+							
+							if (result.success) {
+								this.promoResultText = '推广码已移除，配置已恢复'
+								
+								// 重新加载状态
+								await this.loadPromoStatus()
+							} else {
+								this.promoResultText = `移除失败: ${result.error}`
+							}
+						} catch (error) {
+							console.error('移除推广码失败:', error)
+							this.promoResultText = `移除失败: ${error.message}`
+						} finally {
+							this.promoLoading = false
+						}
+					}
+				}
+			})
+		},
+
+		/**
+		 * 恢复备份配置
+		 */
+		async restoreBackupConfig(event) {
+			uni.showModal({
+				title: '恢复备份',
+				content: '确定要恢复备份的AI配置吗？',
+				success: async (res) => {
+					if (res.confirm) {
+						this.promoLoading = true
+						this.promoResultText = '正在恢复备份配置...'
+
+						try {
+							const result = await promoManager.restoreBackup()
+							
+							if (result.success) {
+								this.promoResultText = '备份配置恢复成功'
+								
+								// 重新加载状态
+								await this.loadPromoStatus()
+							} else {
+								this.promoResultText = `恢复失败: ${result.error}`
+							}
+						} catch (error) {
+							console.error('恢复备份配置失败:', error)
+							this.promoResultText = `恢复失败: ${error.message}`
+						} finally {
+							this.promoLoading = false
+						}
+					}
+				}
+			})
+		},
+
+		/**
+		 * 获取推广码联系信息
+		 */
+		showPromoContactInfo(event) {
+			const contactInfo = promoManager.getContactInfo()
+			
+			uni.showModal({
+				title: '获取推广码',
+				content: `${contactInfo.description}\n\n${contactInfo.instructions.join('\n')}`,
+				confirmText: '复制微信号',
+				cancelText: '知道了',
+				success: (res) => {
+					if (res.confirm) {
+						// 复制微信号到剪贴板
+						uni.setClipboardData({
+							data: contactInfo.wechat,
+							success: () => {
+								uni.showToast({
+									title: '微信号已复制',
+									icon: 'success'
+								})
+							}
+						})
+					}
+				}
+			})
+		},
+
+		/**
+		 * 有效期选择确认
+		 */
+		onValidityConfirm({ selectedValue, selectedOptions }) {
+			this.selectedValidityDays = selectedValue
+			this.selectedValidityText = selectedOptions.map(item => item.text).join(',')
+			this.showValidityPicker = false
+		},
+
+		/**
+		 * 根据当前AI配置生成推广码
+		 */
+		async generatePromoFromCurrentConfig(event) {
+			try {
+				this.promoLoading = true
+				this.promoResultText = '正在获取当前AI配置...'
+
+				// 获取当前激活的AI配置
+				const activeConfig = await aiApi.getActiveAIConfig()
+				
+				if (!activeConfig || !activeConfig.provider || !activeConfig.model) {
+					this.promoResultText = '未找到有效的AI配置，请先在AI设置中配置并激活一个AI模型'
+					return
+				}
+
+				this.promoResultText = `正在为 ${activeConfig.provider} - ${activeConfig.model} 生成推广码...`
+
+				// 调用Node.js推广码生成工具
+				const result = await this.callPromoGenerator(activeConfig)
+				
+				if (result.success) {
+					this.promoCode = result.promoCode
+					
+					// 自动复制到剪贴板
+					try {
+						uni.setClipboardData({
+							data: result.promoCode,
+							success: () => {
+								uni.showToast({
+									title: '推广码已复制到剪贴板',
+									icon: 'success'
+								})
+							}
+						})
+					} catch (copyError) {
+						console.error('复制到剪贴板失败:', copyError)
+					}
+					
+					this.promoResultText = `推广码生成成功！\n供应商: ${activeConfig.provider}\n模型: ${activeConfig.model}\n有效期: ${this.selectedValidityText}\n格式: ${result.format || '标准版'}\n长度: ${result.promoCode.length} 字符\n\n推广码已自动填入上方输入框并复制到剪贴板，点击"应用推广码"即可使用。`
+				} else {
+					this.promoResultText = `生成失败: ${result.error || '未知错误'}`
+				}
+			} catch (error) {
+				console.error('生成推广码失败:', error)
+				this.promoResultText = `生成失败: ${error.message || '网络错误，请检查Node.js推广码生成工具是否正常运行'}`
+			} finally {
+				this.promoLoading = false
+			}
+		},
+
+		/**
+		 * 调用Node.js推广码生成工具
+		 */
+		async callPromoGenerator(config) {
+			try {
+				// 获取选择的有效期
+				const validDays = parseInt(this.selectedValidityDays[0]) || 7
+				
+				// 构建命令参数
+				const args = [
+					'generate',
+					'--provider', config.provider,
+					'--model', config.model,
+					'--days', validDays.toString()
+				]
+
+				// 使用uni.request调用本地Node.js服务（如果有的话）
+				// 或者直接生成推广码（简化版本）
+				return await this.generatePromoCodeLocally(config)
+			} catch (error) {
+				console.error('调用推广码生成工具失败:', error)
+				throw error
+			}
+		},
+
+		/**
+		 * 本地生成推广码（简化版本）
+		 */
+		async generatePromoCodeLocally(config) {
+			try {
+				// 导入推广码生成相关工具
+				const cryptoUtils = (await import('@/utils/cryptoUtils.js')).default
+				
+				// 获取选择的有效期
+				const validDays = parseInt(this.selectedValidityDays[0]) || 7
+				
+				let promoCode
+				
+				if (this.useCompressed) {
+					// 生成压缩版推广码
+					promoCode = cryptoUtils.generateCompressedPromoCode(
+						config.provider,
+						config.api_key,
+						config.model,
+						validDays
+					)
+				} else {
+					// 生成标准版推广码（兼容旧版）
+					const promoData = {
+						provider: config.provider,
+						model: config.model,
+						baseUrl: config.base_url,
+						apiKey: config.api_key,
+						expiresAt: Date.now() + (validDays * 24 * 60 * 60 * 1000),
+						createdAt: Date.now(),
+						validDays: validDays
+					}
+					promoCode = cryptoUtils.encrypt(JSON.stringify(promoData))
+				}
+				
+				return {
+					success: true,
+					promoCode: promoCode,
+					validDays: validDays,
+					format: this.useCompressed ? '压缩版' : '标准版'
+				}
+			} catch (error) {
+				console.error('本地生成推广码失败:', error)
+				return {
+					success: false,
+					error: error.message
+				}
+			}
+		},
+
 		/**
 		 * 加载用户信息
 		 */
@@ -788,7 +1310,7 @@ export default {
 		/**
 		 * 显示用户切换器
 		 */
-		showUserSwitcher() {
+		showUserSwitcher(event) {
 			this.showUserModal = true
 		},
 
@@ -1981,5 +2503,158 @@ export default {
 
 .avatar-option .avatar-emoji {
 	font-size: 40rpx;
+}
+
+/* 推广码弹窗样式 */
+.promo-modal {
+	padding: 40rpx;
+	background-color: #ffffff;
+	border-radius: 20rpx;
+	max-height: 80vh;
+	overflow-y: auto;
+	min-width: 500rpx;
+}
+
+.promo-header {
+	text-align: center;
+	margin-bottom: 32rpx;
+	padding-bottom: 24rpx;
+	border-bottom: 2rpx solid #F2F3F5;
+}
+
+.promo-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #1D2129;
+}
+
+.promo-status {
+	margin-bottom: 32rpx;
+	padding: 24rpx;
+	background-color: #F8F9FA;
+	border-radius: 16rpx;
+}
+
+.status-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16rpx;
+}
+
+.status-item:last-child {
+	margin-bottom: 0;
+}
+
+.status-label {
+	font-size: 28rpx;
+	color: #86909C;
+	font-weight: 500;
+}
+
+.status-value {
+	font-size: 28rpx;
+	font-weight: 500;
+}
+
+.status-value.active {
+	color: #00B42A;
+}
+
+.status-value.expired {
+	color: #F53F3F;
+}
+
+.status-value.inactive {
+	color: #86909C;
+}
+
+.promo-input-section {
+	margin-bottom: 32rpx;
+}
+
+.input-label {
+	margin-bottom: 16rpx;
+}
+
+.input-label text {
+	font-size: 28rpx;
+	color: #1D2129;
+	font-weight: 500;
+}
+
+.promo-input {
+	width: 100%;
+}
+
+.promo-validity-section {
+	margin-bottom: 32rpx;
+}
+
+.validity-cell {
+	width: 100%;
+	background-color: #F8F9FA;
+	border: 2rpx solid #E5E6EB;
+	border-radius: 12rpx;
+	margin-top: 16rpx;
+}
+
+.promo-compress-section {
+	margin-bottom: 32rpx;
+}
+
+.compress-cell {
+	width: 100%;
+	background-color: #F8F9FA;
+	border: 2rpx solid #E5E6EB;
+	border-radius: 12rpx;
+	margin-top: 16rpx;
+}
+
+.compress-tip {
+	margin-top: 12rpx;
+	padding: 12rpx 16rpx;
+	background-color: #E8F4FF;
+	border-radius: 8rpx;
+	border-left: 4rpx solid #165DFF;
+}
+
+.tip-text {
+	font-size: 24rpx;
+	color: #4E5969;
+	line-height: 1.4;
+}
+
+.promo-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+	margin-bottom: 32rpx;
+}
+
+.action-btn {
+	width: 100%;
+	height: 80rpx;
+	border-radius: 12rpx;
+	font-size: 28rpx;
+	font-weight: 500;
+}
+
+.promo-result {
+	padding: 24rpx;
+	background-color: #F8F9FA;
+	border-radius: 16rpx;
+	min-height: 120rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.result-text {
+	font-size: 26rpx;
+	color: #1D2129;
+	line-height: 1.6;
+	text-align: center;
+	white-space: pre-line;
 }
 </style>

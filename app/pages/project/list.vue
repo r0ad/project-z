@@ -21,15 +21,27 @@
 					<nut-icon name="robot" color="#FF7D00" size="20"></nut-icon>
 					<text class="ai-tip-title">AI功能未配置</text>
 				</view>
-				<text class="ai-tip-desc">项目功能需要AI支持，请先配置AI服务以获得完整体验</text>
-				<nut-button 
-					type="primary" 
-					size="small" 
-					@click="goToAISettings"
-					class="ai-config-btn"
-				>
-					立即配置
-				</nut-button>
+				<text class="ai-tip-desc">项目功能需要AI支持，请选择配置方式以获得完整体验</text>
+				<view class="ai-config-buttons">
+					<nut-button 
+						type="primary" 
+						size="small" 
+						@click="goToPromoCode"
+						class="ai-config-btn promo-btn"
+					>
+						<nut-icon name="gift" size="14"></nut-icon>
+						使用推广码
+					</nut-button>
+					<nut-button 
+						type="default" 
+						size="small" 
+						@click="goToAISettings"
+						class="ai-config-btn manual-btn"
+					>
+						<nut-icon name="setting" size="14"></nut-icon>
+						手动配置
+					</nut-button>
+				</view>
 			</view>
 			
 			<!-- 快捷提示 -->
@@ -171,6 +183,13 @@ export default {
 			})
 		},
 		
+		// 跳转到推广码页面
+		goToPromoCode() {
+			uni.navigateTo({
+				url: '/pages/profile/index?tab=promo'
+			})
+		},
+		
 		async loadProjects() {
 			if (this.loading) return
 			
@@ -225,13 +244,13 @@ export default {
 		createProject() {
 			// 检查AI配置状态
 			if (!this.isAIConfigured) {
-				uni.showModal({
-					title: '需要配置AI',
-					content: '创建项目需要AI支持，请先配置AI服务',
-					confirmText: '去配置',
-					cancelText: '取消',
+				uni.showActionSheet({
+					title: '创建项目需要AI支持，请选择配置方式',
+					itemList: ['使用推广码', '手动配置AI'],
 					success: (res) => {
-						if (res.confirm) {
+						if (res.tapIndex === 0) {
+							this.goToPromoCode()
+						} else if (res.tapIndex === 1) {
 							this.goToAISettings()
 						}
 					}
@@ -246,13 +265,13 @@ export default {
 		goToDetail(project) {
 			// 检查AI配置状态
 			if (!this.isAIConfigured) {
-				uni.showModal({
-					title: '需要配置AI',
-					content: '查看项目详情需要AI支持，请先配置AI服务',
-					confirmText: '去配置',
-					cancelText: '取消',
+				uni.showActionSheet({
+					title: '查看项目详情需要AI支持，请选择配置方式',
+					itemList: ['使用推广码', '手动配置AI'],
 					success: (res) => {
-						if (res.confirm) {
+						if (res.tapIndex === 0) {
+							this.goToPromoCode()
+						} else if (res.tapIndex === 1) {
 							this.goToAISettings()
 						}
 					}
@@ -410,17 +429,38 @@ export default {
 	display: block;
 }
 
+.ai-config-buttons {
+	display: flex;
+	gap: 24rpx;
+	margin-top: 24rpx;
+	align-items: center;
+}
+
 .ai-config-btn {
-	align-self: flex-start;
-	background: linear-gradient(135deg, #FF7D00, #FFB800);
-	border: none;
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8rpx;
+	min-height: 72rpx;
 	border-radius: 12rpx;
 	padding: 16rpx 32rpx;
 	font-size: 28rpx;
 	font-weight: 500;
-	color: #ffffff;
 	transition: all 0.3s ease;
-	box-shadow: 0 4rpx 12rpx rgba(255, 125, 0, 0.3);
+}
+
+.promo-btn {
+	background: linear-gradient(135deg, #165DFF, #00B42A);
+	border: none;
+	color: white;
+	box-shadow: 0 4rpx 12rpx rgba(22, 93, 255, 0.3);
+}
+
+.manual-btn {
+	border: 2rpx solid #165DFF;
+	color: #165DFF;
+	background: rgba(22, 93, 255, 0.05);
 }
 
 .ai-config-btn:active {

@@ -1,6 +1,7 @@
 <script>
 import dbService from '@/utils/dbService.js'
 import UpdateApp from '@/utils/updateApp.js'
+import AppStartup from '@/utils/appStartup.js'
 
 export default {
 	async onLaunch() {
@@ -21,6 +22,16 @@ export default {
 				})
 			}
 		}
+		
+		// 初始化推广码检查
+		try {
+			const appStartup = new AppStartup()
+			await appStartup.init()
+			console.log('推广码检查初始化成功')
+		} catch (error) {
+			console.error('推广码检查初始化失败:', error)
+		}
+		
 		// #ifdef APP-PLUS
 		// 检查应用更新
 		try {
