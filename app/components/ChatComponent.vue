@@ -23,7 +23,8 @@
           <view class="message-content">
             <view class="message-bubble ai-bubble">
               <slot name="welcomeMessage" :contextData="contextData">
-                <text class="message-text">{{ defaultWelcomeMessage }}</text>
+                <!-- 欢迎消息也使用ua-markdown渲染 -->
+                <ua-markdown :source="defaultWelcomeMessage" :showLine="true" class="message-markdown" />
               </slot>
             </view>
             <view class="message-time">{{ formatTime(new Date()) }}</view>
@@ -47,7 +48,8 @@
               :class="message.type === 'user' ? 'user-bubble' : 'ai-bubble'"
               @longpress="copyMessage(message.content)"
             >
-              <text class="message-text">{{ message.content }}</text>
+              <!-- 使用ua-markdown渲染消息内容 -->
+              <ua-markdown :source="message.content" :showLine="true" class="message-markdown" />
               
               <!-- 流式输出指示器 -->
               <view v-if="message.isStreaming" class="streaming-indicator">
@@ -87,7 +89,8 @@
           </view>
           <view class="message-content">
             <view class="message-bubble ai-bubble">
-              <text class="message-text">{{ streamContent }}</text>
+              <!-- 流式内容使用ua-markdown渲染 -->
+              <ua-markdown :source="streamContent" :showLine="true" class="message-markdown" />
               <text class="cursor blink">|</text>
             </view>
           </view>
@@ -1061,6 +1064,111 @@ export default {
 
 .user-bubble .message-text {
   color: #ffffff;
+}
+
+/* markdown组件样式 */
+.message-markdown {
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #1D2129;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.user-bubble .message-markdown {
+  color: #ffffff;
+}
+
+/* 覆盖markdown组件内部样式以适应聊天气泡 */
+.message-markdown /deep/ .ua__markdown {
+  color: inherit;
+}
+
+.message-markdown /deep/ .ua__markdown p {
+  margin: 0;
+  padding: 0;
+  color: inherit;
+}
+
+.message-markdown /deep/ .ua__markdown pre {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 8rpx;
+  padding: 16rpx;
+  margin: 16rpx 0;
+  overflow-x: auto;
+}
+
+.user-bubble .message-markdown /deep/ .ua__markdown pre {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.message-markdown /deep/ .ua__markdown code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 4rpx 8rpx;
+  border-radius: 4rpx;
+  font-family: 'Courier New', monospace;
+}
+
+.user-bubble .message-markdown /deep/ .ua__markdown code {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.message-markdown /deep/ .ua__markdown h1,
+.message-markdown /deep/ .ua__markdown h2,
+.message-markdown /deep/ .ua__markdown h3,
+.message-markdown /deep/ .ua__markdown h4,
+.message-markdown /deep/ .ua__markdown h5,
+.message-markdown /deep/ .ua__markdown h6 {
+  margin: 16rpx 0 8rpx 0;
+  color: inherit;
+  font-weight: bold;
+}
+
+.message-markdown /deep/ .ua__markdown ul,
+.message-markdown /deep/ .ua__markdown ol {
+  margin: 8rpx 0;
+  padding-left: 32rpx;
+}
+
+.message-markdown /deep/ .ua__markdown li {
+  margin: 4rpx 0;
+  color: inherit;
+}
+
+.message-markdown /deep/ .ua__markdown blockquote {
+  border-left: 4rpx solid #165DFF;
+  padding-left: 16rpx;
+  margin: 16rpx 0;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.message-markdown /deep/ .ua__markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 16rpx 0;
+}
+
+.message-markdown /deep/ .ua__markdown th,
+.message-markdown /deep/ .ua__markdown td {
+  border: 1rpx solid #E5E6EB;
+  padding: 12rpx;
+  text-align: left;
+  color: inherit;
+}
+
+.user-bubble .message-markdown /deep/ .ua__markdown th,
+.user-bubble .message-markdown /deep/ .ua__markdown td {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.message-markdown /deep/ .ua__markdown th {
+  background-color: rgba(0, 0, 0, 0.05);
+  font-weight: bold;
+}
+
+.user-bubble .message-markdown /deep/ .ua__markdown th {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .message-time {
