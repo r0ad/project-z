@@ -72,11 +72,11 @@
     <!-- 业务功能悬浮按钮 -->
     <view class="business-actions">
       <view class="business-btn" @click="convertToKnowledge">
-        <nut-icon name="star" size="20" color="#165DFF"></nut-icon>
+        <nut-icon name="star" size="14" color="#165DFF"></nut-icon>
         <!-- <text class="business-text">转为知识</text> -->
       </view>
       <view class="business-btn" @click="showLogCountConfig">
-        <nut-icon name="setting" size="20" color="#165DFF"></nut-icon>
+        <nut-icon name="setting" size="14" color="#165DFF"></nut-icon>
         <!-- <text class="business-text">设置日志</text> -->
       </view>
     </view>
@@ -583,9 +583,9 @@ export default {
         actions.push({ type: 'update_plan', text: '更新计划' })
       } */
       
-      if (content.includes('知识') || content.includes('经验')) {
+      /* if (content.includes('知识') || content.includes('经验')) {
         actions.push({ type: 'save_knowledge', text: '保存到知识库' })
-      }
+      } */
       
       // 里程碑相关操作
       if (content.includes('里程碑') || content.includes('节点') || content.includes('阶段')) {
@@ -2017,5 +2017,24 @@ ${chatContent}
 
 .log-btn:hover {
   background: linear-gradient(135deg, #e881e9 0%, #e3455a 100%);
+}
+
+
+.business-btn {
+  width: 50rpx;
+  height: 50rpx;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.business-btn:hover {
+  transform: translateY(-4rpx);
+  box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.16);
 }
 </style>

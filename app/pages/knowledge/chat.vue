@@ -1,96 +1,90 @@
 <template>
   <view class="knowledge-chat-page">
     <!-- 自定义导航栏 -->
-    <CustomNavbar :title="pageTitle" :show-back="true" @back="goBack">
-      <template #right>
-        <view class="nav-actions">
-          <nut-icon name="more" size="20" color="#86909C" @click="showMoreActions"></nut-icon>
-        </view>
-      </template>
-    </CustomNavbar>
+    <CustomNavbar 
+      :title="pageTitle"
+      right-icon="more"
+      left-icon-color="#1D2129"
+      right-icon-color="#1D2129"
+      @left-click="goBack"
+      @right-click="showMoreActions"
+    />
     
-    <!-- 导航栏占位 -->
-    <view class="navbar-placeholder"></view>
-
-    <!-- 加载状态 -->
-    <view v-if="isLoading" class="loading-container">
-      <!-- <nut-loading type="circular" size="24"></nut-loading> -->
-      <text class="loading-text">加载知识库数据中...</text>
-    </view>
-    
-    <!-- 错误状态 -->
-    <view v-else-if="!knowledgeData || !knowledgeData.title" class="error-container">
-      <nut-icon name="warning" size="48" color="#F56C6C"></nut-icon>
-      <text class="error-text">知识库数据加载失败</text>
-      <nut-button type="primary" size="small" @click="initKnowledgeChat">重新加载</nut-button>
-    </view>
-    
-    <!-- 聊天组件 -->
+    <!-- 使用公共聊天组件 -->
     <ChatComponent
-      v-else
+      v-if="!loading && !error && knowledgeData"
       ref="chatComponent"
       chat-type="knowledge"
       :related-id="knowledgeId"
-      :system-prompt="systemPrompt"
       :context-data="contextData"
-      :current-conversation-id="currentConversationId"
+      :show-context="showContext"
       :default-welcome-message="welcomeMessage"
-      input-placeholder="问问这个知识库..."
+      input-placeholder="询问关于这个知识库的问题..."
       :enable-voice="true"
       :enable-stream="true"
       :custom-ai-call="handleAICall"
       @message-sent="handleMessageSent"
       @message-received="handleMessageReceived"
       @action-clicked="handleActionClicked"
-      @chat-init="handleChatInit"
-      @conversation-created="loadOrCreateConversation"
-      @conversation-loaded="loadChatHistory"
+      @context-toggle="toggleContext"
+      @menu-show="showMenu = true"
+      @menu-hide="showMenu = false"
+      @chat-init="initChat"
+      @conversation-changed="handleConversationChanged"
     >
-      <!-- 知识信息卡片 -->
-      <template #header>
-        <view class="knowledge-info-card">
-          <view class="knowledge-header">
-            <text class="knowledge-title">{{ knowledgeData.title }}</text>
-            <view class="knowledge-meta">
-              <view class="meta-item">
-                <nut-icon name="time" size="12" color="#86909C"></nut-icon>
-                <text class="meta-text">{{ knowledgeData.updateTime }}</text>
-              </view>
-              <view class="meta-item">
-                <nut-icon name="eye" size="12" color="#86909C"></nut-icon>
-                <text class="meta-text">{{ knowledgeData.viewCount }}</text>
-              </view>
+      <!-- 知识库上下文信息插槽 -->
+      <template #contextInfo="{ contextData, toggleContext }">
+        <view class="context-info" v-if="knowledgeData">
+          <view class="context-compact">
+            <nut-icon name="star" size="14" color="#165DFF"></nut-icon>
+            <text class="context-text">{{ knowledgeData.title || '未知标题' }} · {{ knowledgeData.view_count || 0 }}次查看 · {{ knowledgeData.tags ? knowledgeData.tags.length : 0 }}个标签</text>
+            <view class="context-toggle" @click="toggleContext">
+              <nut-icon name="close" size="12" color="#86909C"></nut-icon>
             </view>
-          </view>
-          <view class="knowledge-summary">
-            <text class="summary-text">{{ knowledgeData.summary }}</text>
-          </view>
-          <view class="knowledge-tags" v-if="knowledgeData.tags && knowledgeData.tags.length > 0">
-            <text 
-              v-for="(tag, index) in knowledgeData.tags" 
-              :key="index"
-              class="knowledge-tag"
-            >
-              {{ tag }}
-            </text>
           </view>
         </view>
       </template>
-      
+
+      <!-- 知识库特定的消息操作按钮 -->
       <template #messageActions="{ actions, handleAction }">
-        <view class="knowledge-message-actions" v-if="actions && actions.length > 0">
-          <view 
+        <view class="knowledge-message-actions">
+          <nut-button 
             v-for="action in actions" 
             :key="action.type"
-            :class="['knowledge-action-btn', getActionButtonType(action.type)]"
+            size="small"
+            :type="getActionButtonType(action.type)"
+            plain
             @click="handleKnowledgeAction(action)"
+            class="knowledge-action-btn"
           >
-            <nut-icon :name="getActionIcon(action.type)" size="14"></nut-icon>
-            <text class="action-text">{{ action.label }}</text>
-          </view>
+            <nut-icon 
+              :name="getActionIcon(action.type)" 
+              size="12" 
+              class="action-icon"
+            ></nut-icon>
+            {{ action.label }}
+          </nut-button>
         </view>
       </template>
     </ChatComponent>
+
+    <!-- 业务功能悬浮按钮 -->
+    <view class="business-actions">
+      <view class="business-btn" @click="viewKnowledgeDetail">
+        <nut-icon name="eye" size="14" color="#165DFF"></nut-icon>
+      </view>
+    </view>
+    
+    <!-- 加载状态 -->
+    <view v-if="loading" class="loading-container">
+      <text class="loading-text">正在加载知识库信息...</text>
+    </view>
+    
+    <!-- 错误状态 -->
+    <view v-else-if="error" class="error-container">
+      <nut-icon name="close-circle" size="40" color="#F56C6C"></nut-icon>
+      <text class="error-text">{{ error }}</text>
+    </view>
   </view>
 </template>
 
@@ -108,29 +102,26 @@ export default {
   data() {
     return {
       knowledgeId: '',
-      knowledgeData: {
-        title: '',
-        summary: '',
-        content: '',
-        tags: [],
-        updateTime: '',
-        viewCount: 0
-      },
-      currentConversationId: null,
-      isLoading: false
+      knowledgeData: null,
+      loading: false,
+      error: null,
+      showContext: true,
+      showMenu: false,
+      currentConversationId: null
     }
   },
   computed: {
     pageTitle() {
-      return this.knowledgeData.title ? `聊知识 - ${this.knowledgeData.title}` : '聊知识'
+      return this.knowledgeData && this.knowledgeData.title ? `聊知识 - ${this.knowledgeData.title.slice(0, 5)} ...` : '聊知识'
     },
     systemPrompt() {
+      if (!this.knowledgeData) return ''
       return `你是一个专业的知识助手，专门帮助用户理解和应用知识库中的内容。
 
 当前知识信息：
-标题：${this.knowledgeData.title}
-概要：${this.knowledgeData.summary}
-详细内容：${this.knowledgeData.content}
+标题：${this.knowledgeData.title || ''}
+概要：${this.knowledgeData.summary || ''}
+详细内容：${this.knowledgeData.content || ''}
 
 请基于这个知识内容回答用户的问题，提供深入的解释、实际应用建议和相关扩展。你可以：
 1. 解释知识点的核心概念
@@ -142,15 +133,19 @@ export default {
 请保持专业、准确、有帮助的回答风格。`
     },
     contextData() {
+      if (!this.knowledgeData) return {}
       return {
         knowledgeId: this.knowledgeId,
-        knowledgeTitle: this.knowledgeData.title,
-        knowledgeSummary: this.knowledgeData.summary,
-        knowledgeContent: this.knowledgeData.content,
-        knowledgeTags: this.knowledgeData.tags
+        knowledgeTitle: this.knowledgeData.title || '',
+        knowledgeSummary: this.knowledgeData.summary || '',
+        knowledgeContent: this.knowledgeData.content || '',
+        knowledgeTags: this.knowledgeData.tags || []
       }
     },
     welcomeMessage() {
+      if (!this.knowledgeData || !this.knowledgeData.title) {
+        return '你好！我是你的知识助手，正在加载知识库信息...'
+      }
       return `你好！我是你的知识助手。我已经了解了「${this.knowledgeData.title}」的相关内容，可以帮你：
 
 💡 深入理解核心概念
@@ -162,9 +157,19 @@ export default {
     }
   },
   async onLoad(options) {
-    if (options.id) {
-      this.knowledgeId = options.id
+    this.knowledgeId = options.id || options.knowledgeId || ''
+    console.log('知识库聊天页面加载，知识库ID:', this.knowledgeId)
+    
+    if (this.knowledgeId) {
       this.initKnowledgeChat()
+    } else {
+      uni.showToast({
+        title: '知识库ID不能为空',
+        icon: 'error'
+      })
+      setTimeout(() => {
+        uni.navigateBack()
+      }, 1500)
     }
   },
   onUnload() {
@@ -174,11 +179,22 @@ export default {
     goBack() {
       uni.navigateBack()
     },
+    
+    toggleContext() {
+      this.showContext = !this.showContext
+    },
+    
+    viewKnowledgeDetail() {
+      uni.navigateTo({
+        url: `/pages/knowledge/detail?id=${this.knowledgeId}`
+      })
+    },
+    
     async initKnowledgeChat() {
+      this.loading = true
+      this.error = null
       try {
-        this.isLoading = true
-        
-        // 加载知识详情
+        // 获取知识库详情
         const knowledge = await knowledgeApi.getKnowledgeDetail(this.knowledgeId)
         if (knowledge) {
           this.knowledgeData = {
@@ -187,18 +203,16 @@ export default {
             content: knowledge.content || '',
             tags: knowledge.tags || [],
             updateTime: knowledge.updateTime || '',
-            viewCount: knowledge.view_count || 0
+            view_count: knowledge.view_count || 0
           }
+        } else {
+          this.error = '知识库不存在'
         }
-        
       } catch (error) {
-        console.error('初始化知识聊天失败:', error)
-        uni.showToast({
-          title: '初始化失败',
-          icon: 'error'
-        })
+        console.error('初始化知识库聊天失败:', error)
+        this.error = '知识库数据加载失败'
       } finally {
-        this.isLoading = false
+        this.loading = false
       }
     },
     async loadOrCreateConversation() {
@@ -237,13 +251,24 @@ export default {
       }
     },
     
+    initChat() {
+      // 聊天组件初始化完成
+      console.log('知识库聊天初始化完成')
+    },
+    
+    handleConversationChanged(conversationId) {
+      this.currentConversationId = conversationId
+      console.log('会话切换:', conversationId)
+    },
+    
 
     
     getActionButtonType(actionType) {
       const typeMap = {
         'save_to_knowledge': 'primary',
-        'view_related': 'secondary',
-        'export_summary': 'info'
+        'view_related': 'success',
+        'export_summary': 'info',
+        'edit_knowledge': 'warning'
       }
       return typeMap[actionType] || 'default'
     },
@@ -252,7 +277,8 @@ export default {
       const iconMap = {
         'save_to_knowledge': 'star',
         'view_related': 'link',
-        'export_summary': 'download'
+        'export_summary': 'download',
+        'edit_knowledge': 'edit'
       }
       return iconMap[actionType] || 'more'
     },
@@ -377,7 +403,7 @@ ${this.knowledgeData.content || '无详细内容'}
         }
         
         // 保存到知识库操作
-        if (aiResponse && aiResponse.length > 50) {
+        /* if (aiResponse && aiResponse.length > 50) {
           actions.push({
             type: 'save_to_knowledge',
             label: '保存到知识库',
@@ -427,7 +453,7 @@ ${this.knowledgeData.content || '无详细内容'}
             knowledgeId: this.knowledgeId,
             currentContent: this.knowledgeData.content || ''
           }
-        })
+        }) */
         
       } catch (error) {
         console.error('生成知识库操作按钮失败:', error)
@@ -624,59 +650,9 @@ ${knowledgeContent}
       }
     },
     showMoreActions() {
-      uni.showActionSheet({
-        itemList: ['清空对话', '导出对话', '分享知识'],
-        success: (res) => {
-          switch (res.tapIndex) {
-            case 0:
-              this.clearConversation()
-              break
-            case 1:
-              this.exportConversation()
-              break
-            case 2:
-              this.shareKnowledge()
-              break
-          }
-        }
-      })
+      this.$refs.chatComponent.showContextMenu()
     },
-    async clearConversation() {
-      uni.showModal({
-        title: '确认清空',
-        content: '确定要清空当前对话吗？此操作不可恢复。',
-        success: async (res) => {
-          if (res.confirm && this.currentConversationId) {
-            try {
-              await chatApi.clearConversation(this.currentConversationId)
-              this.$refs.chatComponent.clearMessages()
-              uni.showToast({
-                title: '已清空对话',
-                icon: 'success'
-              })
-            } catch (error) {
-              console.error('清空对话失败:', error)
-              uni.showToast({
-                title: '清空失败',
-                icon: 'error'
-              })
-            }
-          }
-        }
-      })
-    },
-    exportConversation() {
-      uni.showToast({
-        title: '导出功能开发中',
-        icon: 'none'
-      })
-    },
-    shareKnowledge() {
-      uni.showToast({
-        title: '分享功能开发中',
-        icon: 'none'
-      })
-    }
+
   }
 }
 </script>
@@ -687,84 +663,74 @@ ${knowledgeContent}
   background-color: #F2F3F5;
 }
 
-.navbar-placeholder {
-  height: calc(var(--status-bar-height) + 136rpx);
+/* 上下文信息样式 */
+.context-info {
+  background-color: #ffffff;
+  border-bottom: 1rpx solid #E5E6EB;
 }
 
-.nav-actions {
+.context-compact {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  gap: 12rpx;
 }
 
-.knowledge-info-card {
-  background-color: #ffffff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  margin: 16rpx;
-  margin-bottom: 0;
-  box-shadow: 0 2rpx 8rpx 0 rgba(0, 0, 0, 0.06);
+.context-text {
+  flex: 1;
+  font-size: 24rpx;
+  color: #4E5969;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.knowledge-header {
+.context-toggle {
+  padding: 8rpx;
+  border-radius: 50%;
+  background-color: #F7F8FA;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.context-toggle:hover {
+  background-color: #E5E6EB;
+}
+
+/* 业务功能悬浮按钮 */
+.business-actions {
+  position: fixed;
+  right: 32rpx;
+  bottom: 200rpx;
+  z-index: 100;
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
-  margin-bottom: 16rpx;
+  gap: 16rpx;
 }
 
-.knowledge-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1D2129;
-  line-height: 1.4;
-}
-
-.knowledge-meta {
+.business-btn {
+  width: 50rpx;
+  height: 50rpx;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
   display: flex;
   align-items: center;
-  gap: 24rpx;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
-}
-
-.meta-text {
-  font-size: 22rpx;
-  color: #86909C;
-}
-
-.knowledge-summary {
-  margin-bottom: 16rpx;
-}
-
-.summary-text {
-  font-size: 26rpx;
-  color: #4E5969;
-  line-height: 1.5;
-  display: block;
-}
-
-.knowledge-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
-}
-
-.knowledge-tag {
-  padding: 6rpx 12rpx;
-  background-color: #F2F3F5;
-  border-radius: 6rpx;
-  font-size: 22rpx;
-  color: #86909C;
+.business-btn:hover {
+  transform: translateY(-4rpx);
+  box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.16);
 }
 
 /* 知识库消息操作按钮样式 */
 .knowledge-message-actions {
   display: flex;
-  gap: 16rpx;
+  gap: 12rpx;
   margin-top: 16rpx;
   flex-wrap: wrap;
 }
@@ -773,60 +739,13 @@ ${knowledgeContent}
   display: inline-flex;
   align-items: center;
   gap: 8rpx;
-  padding: 12rpx 24rpx;
-  border: none;
-  border-radius: 40rpx;
   font-size: 24rpx;
-  font-weight: 500;
-  cursor: pointer;
+  border-radius: 32rpx;
   transition: all 0.3s ease;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
 }
 
-.knowledge-action-btn:hover {
-  transform: translateY(-2rpx);
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
-}
-
-.action-text {
-  font-size: 24rpx;
-}
-
-/* 不同类型按钮的样式 */
-.knowledge-action-btn.primary {
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  color: white;
-}
-
-.knowledge-action-btn.primary:hover {
-  background: linear-gradient(45deg, #5a6fd8, #6a42a0);
-}
-
-.knowledge-action-btn.secondary {
-  background: linear-gradient(45deg, #11998e, #38ef7d);
-  color: white;
-}
-
-.knowledge-action-btn.secondary:hover {
-  background: linear-gradient(45deg, #0e8478, #32d96b);
-}
-
-.knowledge-action-btn.info {
-  background: linear-gradient(45deg, #3498db, #2980b9);
-  color: white;
-}
-
-.knowledge-action-btn.info:hover {
-  background: linear-gradient(45deg, #2980b9, #21618c);
-}
-
-.knowledge-action-btn.default {
-  background: linear-gradient(45deg, #95a5a6, #7f8c8d);
-  color: white;
-}
-
-.knowledge-action-btn.default:hover {
-  background: linear-gradient(45deg, #7f8c8d, #6c7b7d);
+.knowledge-action-btn .action-icon {
+  margin-right: 4rpx;
 }
 
 /* 加载状态样式 */
