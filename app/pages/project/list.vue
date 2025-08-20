@@ -29,7 +29,7 @@
 						@click="goToPromoCode"
 						class="ai-config-btn promo-btn"
 					>
-						<nut-icon name="gift" size="14"></nut-icon>
+						<nut-icon name="share" size="14"></nut-icon>
 						使用分享码
 					</nut-button>
 					<nut-button 
@@ -86,9 +86,6 @@
 					<view class="data-section">
 						<!-- 进度卡片 -->
 						<view class="data-card progress-card">
-							<view class="data-icon">
-								<nut-icon name="chart-pie" size="20" color="#165DFF"></nut-icon>
-							</view>
 							<view class="data-content">
 								<text class="data-label">项目进度</text>
 								<text class="data-value">{{ project.progress }}%</text>
@@ -104,9 +101,6 @@
 						
 						<!-- 里程碑卡片 -->
 						<view class="data-card milestone-card" v-if="project.milestones && project.milestones.length > 0">
-							<view class="data-icon">
-								<nut-icon name="target" size="20" color="#00B42A"></nut-icon>
-							</view>
 							<view class="data-content">
 								<text class="data-label">里程碑</text>
 								<text class="data-value">{{ project.completedMilestones }}/{{ project.milestoneCount }}</text>
@@ -549,7 +543,7 @@ export default {
 	background: linear-gradient(135deg, rgba(22, 93, 255, 0.03), rgba(22, 93, 255, 0.01));
 	border: 2rpx solid rgba(22, 93, 255, 0.08);
 	border-radius: 16rpx;
-	padding: 20rpx;
+	padding: 10rpx;
 	position: relative;
 	overflow: hidden;
 }

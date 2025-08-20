@@ -2050,7 +2050,7 @@ export default {
 }
 
 .analysis-modal {
-	height: 100%;
+	height: 1100rpx;
 	display: flex;
 	flex-direction: column;
 	padding: 0;
@@ -2094,7 +2094,7 @@ export default {
 
 .edit-modal {
 	padding: 0 32rpx 32rpx 32rpx;
-	height: 100%;
+	height: 1100rpx;
 	display: flex;
 	flex-direction: column;
 }

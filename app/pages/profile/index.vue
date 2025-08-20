@@ -2212,7 +2212,7 @@ export default {
 /* GitCode备份弹窗样式 */
 .gitcode-modal {
 	padding: 32rpx;
-	height: 100%;
+	height: 1100rpx;
 	background-color: #F2F3F5;
 	display: flex;
 	flex-direction: column;
