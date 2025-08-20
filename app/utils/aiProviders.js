@@ -68,27 +68,27 @@ export const defaultConfigs = {
     temperature: 0.7,
   },
   [LLMProviders.SILICONFLOW]: {
-    timeout: 60,
+    timeout: 130,
     max_tokens: 4000,
     temperature: 0.7,
   },
   [LLMProviders.OPENAI]: {
-    timeout: 60,
+    timeout: 130,
     max_tokens: 4000,
     temperature: 0.7,
   },
   [LLMProviders.KIMI]: {
-    timeout: 60,
+    timeout: 130,
     max_tokens: 4000,
     temperature: 0.7,
   },
   [LLMProviders.QWEN]: {
-    timeout: 60,
+    timeout: 130,
     max_tokens: 4000,
     temperature: 0.7,
   },
   [LLMProviders.CUSTOM]: {
-    timeout: 30,
+    timeout: 130,
     max_tokens: 2000,
     temperature: 0.7,
   },
