@@ -29,41 +29,71 @@
 					class="project-card"
 					@click="goToDetail(project)"
 				>
+					<!-- 卡片头部 -->
 					<view class="card-header">
-						<text class="project-title">{{ project.title }}</text>
-						<view class="card-actions">
+						<view class="header-left">
+							<text class="project-title">{{ project.title }}</text>
 							<nut-tag 
 								:type="getStatusType(project.status)" 
 								size="small"
+								class="status-tag"
 							>
 								{{ project.statusText }}
 							</nut-tag>
-							<nut-icon 
-								name="del" 
-								size="16" 
-								color="#FF4D4F"
-								class="delete-icon"
-								@click.stop="deleteProject(project, index)"
-							></nut-icon>
+						</view>
+						<nut-icon 
+							name="del" 
+							size="16" 
+							color="#FF4D4F"
+							class="delete-icon"
+							@click.stop="deleteProject(project, index)"
+						></nut-icon>
+					</view>
+					
+					<!-- 项目描述 -->
+					<text class="project-desc" v-if="project.description">{{ project.description }}</text>
+					
+					<!-- 数据展示区域 -->
+					<view class="data-section">
+						<!-- 进度卡片 -->
+						<view class="data-card progress-card">
+							<view class="data-icon">
+								<nut-icon name="chart-pie" size="20" color="#165DFF"></nut-icon>
+							</view>
+							<view class="data-content">
+								<text class="data-label">项目进度</text>
+								<text class="data-value">{{ project.progress }}%</text>
+							</view>
+							<nut-progress 
+								:percentage="project.progress" 
+								:color="getProgressColor(project.status)"
+								:show-text="false"
+								height="4rpx"
+								class="mini-progress"
+							></nut-progress>
+						</view>
+						
+						<!-- 里程碑卡片 -->
+						<view class="data-card milestone-card" v-if="project.milestones && project.milestones.length > 0">
+							<view class="data-icon">
+								<nut-icon name="target" size="20" color="#00B42A"></nut-icon>
+							</view>
+							<view class="data-content">
+								<text class="data-label">里程碑</text>
+								<text class="data-value">{{ project.completedMilestones }}/{{ project.milestoneCount }}</text>
+							</view>
+							<view class="milestone-latest" v-if="getLatestMilestone(project)">
+								<view class="milestone-status-dot" :class="getMilestoneStatusClass(getLatestMilestone(project).status)"></view>
+								<text class="milestone-title">{{ getLatestMilestone(project).title }}</text>
+							</view>
 						</view>
 					</view>
 					
-					<text class="project-desc">{{ project.description }}</text>
-					
-					<view class="progress-section">
-						<view class="progress-header">
-							<text class="progress-label">进度</text>
-							<text class="progress-value">{{ project.progress }}%</text>
-						</view>
-						<nut-progress 
-							:percentage="project.progress" 
-							:color="getProgressColor(project.status)"
-							:show-text="false"
-							height="6rpx"
-						></nut-progress>
+					<!-- 底部信息 -->
+					<view class="card-footer">
+						<text class="update-time">{{ project.updateTime }}</text>
+						<nut-icon name="right" size="12" color="#C9CDD4"></nut-icon>
 					</view>
-					
-					<text class="update-time">最近更新：{{ project.updateTime }}</text>
 				</view>
 			</view>
 		</view>
@@ -190,6 +220,48 @@ export default {
 		},
 		formatUpdateTime(time) {
 			return DateUtils.formatDateTime(time)
+		},
+		
+		// 获取最新的里程碑（优先显示进行中的，其次是待开始的，最后是已完成的）
+		getLatestMilestone(project) {
+			if (!project.milestones || project.milestones.length === 0) {
+				return null
+			}
+			
+			// 优先显示进行中的里程碑
+			const inProgress = project.milestones.find(m => m.status === 'progress')
+			if (inProgress) return inProgress
+			
+			// 其次显示待开始的里程碑
+			const pending = project.milestones.find(m => m.status === 'pending')
+			if (pending) return pending
+			
+			// 最后显示最近完成的里程碑
+			const completed = project.milestones.filter(m => m.status === 'completed')
+			if (completed.length > 0) {
+				return completed[completed.length - 1] // 返回最后一个完成的
+			}
+			
+			return project.milestones[0] // 兜底返回第一个
+		},
+		
+		// 获取里程碑状态样式类
+		getMilestoneStatusClass(status) {
+			return {
+				'status-completed': status === 'completed',
+				'status-progress': status === 'progress',
+				'status-pending': status === 'pending'
+			}
+		},
+		
+		// 获取里程碑状态文本
+		getMilestoneStatusText(status) {
+			const statusMap = {
+				completed: '已完成',
+				progress: '进行中',
+				pending: '待开始'
+			}
+			return statusMap[status] || '未知'
 		}
 	}
 }
@@ -232,75 +304,165 @@ export default {
 
 .project-card {
 	background-color: #ffffff;
-	border-radius: 16rpx;
-	padding: 32rpx;
-	box-shadow: 0 4rpx 16rpx 0 rgba(0, 0, 0, 0.08);
+	border-radius: 20rpx;
+	padding: 0;
+	box-shadow: 0 8rpx 24rpx 0 rgba(0, 0, 0, 0.06);
 	transition: all 0.3s ease;
+	overflow: hidden;
+	border: 2rpx solid rgba(22, 93, 255, 0.08);
 }
 
 .project-card:active {
-	transform: scale(0.98);
-	box-shadow: 0 2rpx 8rpx 0 rgba(0, 0, 0, 0.12);
+	transform: translateY(-4rpx);
+	box-shadow: 0 12rpx 32rpx 0 rgba(0, 0, 0, 0.12);
+	border-color: rgba(22, 93, 255, 0.15);
 }
 
 .card-header {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
-	margin-bottom: 16rpx;
+	padding: 32rpx 32rpx 24rpx;
+	background: linear-gradient(135deg, rgba(22, 93, 255, 0.02), rgba(22, 93, 255, 0.01));
+	border-bottom: 2rpx solid rgba(22, 93, 255, 0.05);
 }
 
-.project-title {
-	font-size: 32rpx;
-	font-weight: 600;
-	color: #1D2129;
+.header-left {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
 	flex: 1;
 }
 
-.card-actions {
-	display: flex;
-	align-items: center;
-	gap: 16rpx;
+.project-title {
+	font-size: 34rpx;
+	font-weight: 600;
+	color: #1D2129;
+	line-height: 1.3;
+	margin-bottom: 0;
+}
+
+.status-tag {
+	align-self: flex-start;
 }
 
 .delete-icon {
-	padding: 8rpx;
-	border-radius: 8rpx;
-	transition: background-color 0.3s ease;
+	padding: 12rpx;
+	border-radius: 12rpx;
+	transition: all 0.3s ease;
+	background-color: rgba(255, 77, 79, 0.05);
 }
 
 .delete-icon:active {
-	background-color: rgba(255, 77, 79, 0.1);
+	background-color: rgba(255, 77, 79, 0.15);
+	transform: scale(0.9);
 }
 
 .project-desc {
 	font-size: 28rpx;
 	color: #86909C;
-	line-height: 1.5;
-	margin-bottom: 24rpx;
+	line-height: 1.6;
+	padding: 0 32rpx 24rpx;
 	display: block;
 }
 
-.progress-section {
-	margin-bottom: 16rpx;
+.data-section {
+	display: flex;
+	gap: 16rpx;
+	padding: 0 32rpx 24rpx;
 }
 
-.progress-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
+.data-card {
+	flex: 1;
+	background: linear-gradient(135deg, rgba(22, 93, 255, 0.03), rgba(22, 93, 255, 0.01));
+	border: 2rpx solid rgba(22, 93, 255, 0.08);
+	border-radius: 16rpx;
+	padding: 20rpx;
+	position: relative;
+	overflow: hidden;
+}
+
+.data-card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 4rpx;
+	background: linear-gradient(90deg, #165DFF, #00B42A);
+	opacity: 0.6;
+}
+
+.data-icon {
 	margin-bottom: 12rpx;
 }
 
-.progress-label {
-	font-size: 24rpx;
-	color: #4E5969;
+.data-content {
+	display: flex;
+	flex-direction: column;
+	gap: 4rpx;
+	margin-bottom: 12rpx;
 }
 
-.progress-value {
-	font-size: 24rpx;
+.data-label {
+	font-size: 22rpx;
+	color: #86909C;
+	font-weight: 400;
+}
+
+.data-value {
+	font-size: 28rpx;
+	color: #1D2129;
+	font-weight: 600;
+}
+
+.mini-progress {
+	margin-top: 8rpx;
+}
+
+.card-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 20rpx 32rpx;
+	background-color: rgba(22, 93, 255, 0.02);
+	border-top: 2rpx solid rgba(22, 93, 255, 0.05);
+}
+
+.milestone-latest {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	margin-top: 8rpx;
+}
+
+.milestone-status-dot {
+	width: 8rpx;
+	height: 8rpx;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.milestone-status-dot.status-completed {
+	background-color: #00B42A;
+}
+
+.milestone-status-dot.status-progress {
+	background-color: #165DFF;
+}
+
+.milestone-status-dot.status-pending {
+	background-color: #C9CDD4;
+}
+
+.milestone-title {
+	font-size: 20rpx;
 	color: #4E5969;
-	font-weight: 500;
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	line-height: 1.2;
 }
 
 .update-time {
