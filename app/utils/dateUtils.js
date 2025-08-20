@@ -22,7 +22,7 @@ class DateUtils {
     }
     const now = new Date()
     const diff = now.getTime() - date.getTime()
-    
+    console.log('dateTime diff', dateTime,now,date,diff)
     // 小于1分钟
     if (diff < 60 * 1000) {
       return '刚刚'
@@ -188,14 +188,13 @@ class DateUtils {
     if (typeof dateTime === 'string') {
       // 如果是字符串且没有时区信息，假设它是UTC时间
       if (!dateTime.includes('Z') && !dateTime.includes('+') && !dateTime.includes('-', 10)) {
-        utcDate = new Date(dateTime + 'Z') // 添加Z表示UTC时间
+        return new Date(dateTime + 'Z') // 添加Z表示UTC时间
       } else {
         utcDate = new Date(dateTime)
       }
     } else {
       utcDate = new Date(dateTime)
     }
-    
     // 转换为北京时间（UTC+8）
     const beijingTime = new Date(utcDate.getTime() + 8 * 60 * 60 * 1000)
     return beijingTime

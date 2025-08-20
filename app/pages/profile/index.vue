@@ -25,7 +25,7 @@
 					<view class="user-details">
 						<view class="user-name-row">
 							<text class="user-name">{{ userInfo.name }}</text>
-							<view class="user-switch-btn" @click="showUserSwitcher">
+							<view class="user-switch-link" @click="showUserSwitcher">
 								<nut-icon name="switch" size="14" color="#165DFF"></nut-icon>
 								<text class="switch-text">切换</text>
 							</view>
@@ -353,6 +353,7 @@ export default {
 					iconColor: '#165DFF',
 					iconBg: '#165DFF20',
 					title: 'AI设置',
+					subtitle: '支持DeepSeek、Kimi、ChatGPT等模型',
 					type: 'navigate',
 					path: '/pages/profile/ai-settings'
 				},
@@ -1807,30 +1808,25 @@ export default {
 	margin-bottom: 8rpx;
 }
 
-.user-switch-btn {
-	display: flex;
+.user-switch-link {
+	display: inline-flex;
 	align-items: center;
-	justify-content: center;
-	gap: 6rpx;
-	padding: 12rpx 12rpx;
-	max-width: 100rpx;
-	background-color: #165DFF10;
-	border-radius: 24rpx;
-	border: 2rpx solid #165DFF20;
+	gap: 4rpx;
 	transition: all 0.3s ease;
+	cursor: pointer;
 }
 
-.user-switch-btn:active {
-	background-color: #165DFF20;
+.user-switch-link:active {
 	transform: scale(0.95);
+	opacity: 0.7;
 }
 
 .switch-text {
-	font-size: 26rpx;
+	font-size: 28rpx;
 	color: #165DFF;
-	font-weight: 600;
-	text-align: center;
-	flex: 1;
+	font-weight: 400;
+	text-decoration: underline;
+	text-underline-offset: 4rpx;
 }
 
 /* 用户切换弹窗样式 */
