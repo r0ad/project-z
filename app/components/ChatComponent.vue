@@ -145,7 +145,7 @@
         <slot name="contextMenu" :hideMenu="hideMenu">
           <!-- 默认菜单项 -->
           <view class="menu-item" @click="clearContext">
-            <nut-icon name="delete" size="16" color="#F53F3F"></nut-icon>
+            <nut-icon name="del2" size="16" color="#F53F3F"></nut-icon>
             <text>清空当前对话</text>
           </view>
         </slot>
@@ -157,6 +157,7 @@
 <script>
 import aiApi from '@/api/aiApi.js'
 import chatApi from '@/api/chatApi.js'
+import DateUtils from '@/utils/dateUtils.js'
 
 export default {
   name: 'ChatComponent',
@@ -233,6 +234,7 @@ export default {
     'chat-init',
     'conversation-created',
     'conversation-loaded',
+    'conversation-changed',
     'message-saved'
   ],
   
@@ -244,6 +246,10 @@ export default {
       streamContent: '',
       showMenu: false,
       messages: [],
+      
+      // 会话管理
+      conversations: [],
+      conversationId: null, // 内部会话ID
       
       // 智能滚动控制
       scrollTop: 0,
@@ -262,8 +268,26 @@ export default {
     }
   },
   
-  mounted() {
-    this.initChat()
+  computed: {
+    // 获取当前会话ID，优先使用内部conversationId
+    getCurrentConversationId() {
+      return this.conversationId || this.currentConversationId
+    }
+  },
+  
+  async mounted() {
+    // 初始化内部会话ID
+    this.conversationId = this.currentConversationId
+    // 初始化聊天
+    await this.initChat()
+    
+    // 加载会话列表
+    await this.loadConversations()
+    
+    // 滚动到底部
+    this.$nextTick(() => {
+      this.scrollToBottom(true)
+    })
   },
   
   onUnload() {
@@ -282,16 +306,16 @@ export default {
     
     // 消息会话处理方法
     async saveMessageToHistory(role, content, actions = []) {
-      if (!this.currentConversationId) return
+      const currentId = this.getCurrentConversationId
+      if (!currentId) return
       
       try {
-        await chatApi.saveMessage(this.currentConversationId, role, content, actions)
+        await chatApi.saveMessage(currentId, role, content)
         
         this.$emit('message-saved', {
-          conversationId: this.currentConversationId,
+          conversationId: currentId,
           role,
-          content,
-          actions
+          content
         })
       } catch (error) {
         console.error('保存消息失败:', error)
@@ -308,8 +332,7 @@ export default {
         this.setMessages(messages.map(msg => ({
           type: msg.role === 'user' ? 'user' : 'ai',
           content: msg.content,
-          timestamp: msg.timestamp,
-          actions: msg.actions || []
+          timestamp: msg.timestamp
         })))
         
         this.$emit('conversation-loaded', {
@@ -331,22 +354,33 @@ export default {
         if (conversations.length > 0) {
           // 使用最新的对话
           const latestConversation = conversations[0]
+          this.conversationId = latestConversation.id
           await this.loadChatHistory(latestConversation.id)
+          this.$emit('conversation-changed', latestConversation.id)
           return latestConversation.id
         } else {
           // 创建新对话
-          const conversation = await chatApi.createConversation({
+          const conversationParams = {
             type: this.chatType,
             relatedId: this.relatedId,
             title: this.getDefaultConversationTitle(),
             createdAt: new Date().toISOString()
-          })
+          }
           
+          // 对于项目聊天，需要传递projectId
+          if (this.chatType === 'project') {
+            conversationParams.projectId = this.relatedId
+          }
+          
+          const conversation = await chatApi.createConversation(conversationParams)
+          
+          this.conversationId = conversation.id
           this.$emit('conversation-created', {
             conversation,
             chatType: this.chatType,
             relatedId: this.relatedId
           })
+          this.$emit('conversation-changed', conversation.id)
           
           return conversation.id
         }
@@ -574,7 +608,29 @@ export default {
     },
     
     showContextMenu() {
-      this.showMenu = true
+      // 使用 uni.showActionSheet 替换原有菜单
+      const itemList = ['历史会话', '新建会话', '清空对话', '导出对话']
+      
+      uni.showActionSheet({
+        itemList,
+        success: (res) => {
+          const index = res.tapIndex
+          switch (index) {
+            case 0:
+              this.showConversationHistory()
+              break
+            case 1:
+              this.createNewConversation()
+              break
+            case 2:
+              this.clearContext()
+              break
+            case 3:
+              this.exportChat()
+              break
+          }
+        }
+      })
       this.$emit('menu-show')
     },
     
@@ -704,6 +760,160 @@ export default {
       if (this.scrollThrottleTimer) {
         clearTimeout(this.scrollThrottleTimer)
         this.scrollThrottleTimer = null
+      }
+    },
+    
+    // 会话管理方法
+    async loadConversations() {
+      try {
+        const conversations = await chatApi.getConversationsByTypeAndId(this.chatType, this.relatedId)
+        this.conversations = conversations || []
+      } catch (error) {
+        console.error('加载会话列表失败:', error)
+        this.conversations = []
+      }
+    },
+    
+    showConversationHistory() {
+      if (this.conversations.length === 0) {
+        uni.showToast({
+          title: '暂无历史会话',
+          icon: 'none'
+        })
+        return
+      }
+      
+      const itemList = this.conversations.map(conv => {
+        const preview = conv.title || this.getConversationPreview(conv)
+        const time = this.formatConversationTime(conv.updated_at)
+        return `${preview} (${time})`
+      })
+      
+      uni.showActionSheet({
+        itemList,
+        success: (res) => {
+          const conversation = this.conversations[res.tapIndex]
+          this.selectConversation(conversation)
+        }
+      })
+    },
+    
+    async createNewConversation() {
+      try {
+        const title = this.getDefaultConversationTitle()
+        const conversationParams = {
+          type: this.chatType,
+          relatedId: this.relatedId,
+          title
+        }
+        
+        // 对于项目聊天，需要传递projectId
+        if (this.chatType === 'project') {
+          conversationParams.projectId = this.relatedId
+        }
+        
+        const response = await chatApi.createConversation(conversationParams)
+        
+        this.conversationId = response.id
+        this.clearMessages()
+        await this.loadConversations()
+        
+        // 通知父组件会话ID变化
+        this.$emit('conversation-changed', response.id)
+        
+        uni.showToast({
+          title: '新会话已创建',
+          icon: 'success'
+        })
+      } catch (error) {
+        console.error('创建新会话失败:', error)
+        uni.showToast({
+          title: '创建会话失败',
+          icon: 'error'
+        })
+      }
+    },
+    
+    async selectConversation(conversation) {
+      try {
+        this.conversationId = conversation.id
+        await this.loadChatHistory(conversation.id)
+        
+        // 通知父组件会话ID变化
+        this.$emit('conversation-changed', conversation.id)
+        
+        uni.showToast({
+          title: '会话已切换',
+          icon: 'success'
+        })
+      } catch (error) {
+        console.error('切换会话失败:', error)
+        uni.showToast({
+          title: '切换会话失败',
+          icon: 'error'
+        })
+      }
+    },
+    
+    async exportChat() {
+      try {
+        if (this.messages.length === 0) {
+          uni.showToast({
+            title: '暂无对话内容',
+            icon: 'none'
+          })
+          return
+        }
+        
+        const chatContent = this.messages.map(msg => {
+          const time = this.formatTime(msg.timestamp)
+          const role = msg.type === 'user' ? '用户' : 'AI助手'
+          return `[${time}] ${role}: ${msg.content}`
+        }).join('\n\n')
+        
+        // 复制到剪贴板
+        uni.setClipboardData({
+          data: chatContent,
+          success: () => {
+            uni.showToast({
+              title: '对话已复制到剪贴板',
+              icon: 'success'
+            })
+          }
+        })
+      } catch (error) {
+        console.error('导出对话失败:', error)
+        uni.showToast({
+          title: '导出失败',
+          icon: 'error'
+        })
+      }
+    },
+    
+    getConversationPreview(conversation) {
+      if (conversation.title) return conversation.title
+      if (conversation.first_message) {
+        return conversation.first_message.length > 20 
+          ? conversation.first_message.substring(0, 20) + '...'
+          : conversation.first_message
+      }
+      return '新对话'
+    },
+    
+    formatConversationTime(timestamp) {
+      const date = new Date(timestamp)
+      const now = new Date()
+      const diffTime = now - date
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+      
+      if (diffDays === 0) {
+        return this.formatTime(date)
+      } else if (diffDays === 1) {
+        return '昨天'
+      } else if (diffDays < 7) {
+        return `${diffDays}天前`
+      } else {
+        return date.toLocaleDateString()
       }
     }
   }

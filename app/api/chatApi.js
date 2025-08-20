@@ -264,6 +264,12 @@ class ChatApi {
       }
       
       const result = await dbService.insert('chat_messages', messageData)
+      
+      // 更新会话的最后更新时间
+      await this.updateConversation(conversationId, {
+        updated_at: now
+      })
+      
       return result
     } catch (error) {
       console.error('保存消息失败:', error)
@@ -285,6 +291,7 @@ class ChatApi {
         'SELECT * FROM chat_messages WHERE conversation_id = ? ORDER BY timestamp ASC LIMIT ?',
         [conversationId, limit]
       )
+      
       return messages
     } catch (error) {
       console.error('获取对话消息失败:', error)

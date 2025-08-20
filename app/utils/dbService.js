@@ -695,7 +695,11 @@ class DBService {
     if (keys.length > 0) {
       setClauses.push(...keys.map(key => `${key} = ?`))
     }
-    setClauses.push('updated_at = CURRENT_TIMESTAMP')
+    
+    // 只有当data中没有updated_at字段时，才自动添加
+    if (!keys.includes('updated_at')) {
+      setClauses.push('updated_at = CURRENT_TIMESTAMP')
+    }
     
     const sql = `UPDATE ${table} SET ${setClauses.join(', ')} WHERE ${where}`
     

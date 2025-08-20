@@ -29,6 +29,7 @@
       @menu-show="showMenu = true"
       @menu-hide="showMenu = false"
       @chat-init="initChat"
+      @conversation-changed="handleConversationChanged"
     >
       <!-- 项目上下文信息插槽 -->
       <template #contextInfo="{ contextData, toggleContext }">
@@ -65,128 +66,20 @@
         </view>
       </template>
 
-      <!-- 项目特定的上下文菜单 -->
-      <template #contextMenu="{ hideMenu }">
-        <view class="menu-item" @click="showConversationHistory">
-          <nut-icon name="message" size="16" color="#165DFF"></nut-icon>
-          <text>历史会话</text>
-        </view>
-        <view class="menu-item" @click="createNewConversation">
-          <nut-icon name="plus" size="16" color="#00B42A"></nut-icon>
-          <text>新建会话</text>
-        </view>
-        <view class="menu-item" @click="convertToKnowledge">
-          <nut-icon name="star" size="16" color="#FF7D00"></nut-icon>
-          <text>转为知识</text>
-        </view>
-        <view class="menu-item" @click="showLogCountConfig">
-          <nut-icon name="setting" size="16" color="#86909C"></nut-icon>
-          <text>设置日志数量</text>
-        </view>
-        <view class="menu-item" @click="clearContext">
-          <nut-icon name="delete" size="16" color="#F53F3F"></nut-icon>
-          <text>清空当前对话</text>
-        </view>
-        <view class="menu-item" @click="exportChat">
-          <nut-icon name="download" size="16" color="#00B42A"></nut-icon>
-          <text>导出对话</text>
-        </view>
-      </template>
+
     </ChatComponent>
 
-
-
-
-    <!-- 会话列表弹窗 -->
-    <nut-popup 
-      v-model:visible="showConversationList" 
-      position="bottom"
-      :style="{ height: '70%' }"
-      round
-    >
-      <view class="conversation-list">
-        <view class="popup-header">
-          <view class="header-content">
-            <nut-icon name="message" size="20" color="#165DFF"></nut-icon>
-            <text class="popup-title">历史会话</text>
-            <view class="conversation-count">{{ conversations.length }}条</view>
-          </view>
-          <nut-icon name="close" size="20" color="#86909C" @click="showConversationList = false"></nut-icon>
-        </view>
-        
-        <view class="conversation-actions">
-          <nut-button 
-            type="primary" 
-            size="small" 
-            @click="createNewConversation"
-            class="new-conversation-btn"
-          >
-            <nut-icon name="plus" size="14"></nut-icon>
-            新建会话
-          </nut-button>
-        </view>
-        
-        <scroll-view class="conversation-scroll" scroll-y>
-          <view 
-            class="conversation-item" 
-            v-for="conversation in conversations" 
-            :key="conversation.id"
-            @click="selectConversation(conversation)"
-            :class="{ active: conversation.id === currentConversationId }"
-          >
-            <view class="conversation-main">
-              <view class="conversation-header">
-                <view class="conversation-title-wrapper">
-                  <nut-icon 
-                    name="message" 
-                    size="16" 
-                    :color="conversation.id === currentConversationId ? '#165DFF' : '#86909C'"
-                  ></nut-icon>
-                  <text class="conversation-title">{{ conversation.title || '未命名会话' }}</text>
-                  <view 
-                    v-if="conversation.id === currentConversationId" 
-                    class="current-badge"
-                  >
-                    当前
-                  </view>
-                </view>
-                <view class="conversation-meta">
-                  <text class="conversation-time">{{ formatConversationTime(conversation.updated_at) }}</text>
-                </view>
-              </view>
-              
-              <view class="conversation-preview">
-                <text class="preview-text">{{ getConversationPreview(conversation) }}</text>
-              </view>
-            </view>
-            
-            <view class="conversation-actions-btn">
-              <nut-icon 
-                name="delete" 
-                size="18" 
-                color="#F53F3F" 
-                @click.stop="deleteConversation(conversation)"
-                class="delete-btn"
-              ></nut-icon>
-            </view>
-          </view>
-          
-          <view v-if="conversations.length === 0" class="empty-state">
-            <nut-icon name="message" size="48" color="#C9CDD4"></nut-icon>
-            <text class="empty-title">暂无历史会话</text>
-            <text class="empty-desc">开始新的对话，创建你的第一个会话</text>
-            <nut-button 
-              type="primary" 
-              size="small" 
-              @click="createNewConversation"
-              class="empty-action-btn"
-            >
-              立即开始
-            </nut-button>
-          </view>
-        </scroll-view>
+    <!-- 业务功能悬浮按钮 -->
+    <view class="business-actions">
+      <view class="business-btn" @click="convertToKnowledge">
+        <nut-icon name="star" size="20" color="#165DFF"></nut-icon>
+        <!-- <text class="business-text">转为知识</text> -->
       </view>
-    </nut-popup>
+      <view class="business-btn" @click="showLogCountConfig">
+        <nut-icon name="setting" size="20" color="#165DFF"></nut-icon>
+        <!-- <text class="business-text">设置日志</text> -->
+      </view>
+    </view>
 
     <!-- 日志数量配置弹窗 -->
     <nut-popup 
@@ -352,12 +245,7 @@ export default {
         problems: []
       },
 
-      currentConversationId: null,
       enableStream: true,
-      
-      // 会话管理
-      conversations: [],
-      showConversationList: false,
       logCount: 5, // 可配置的日志数量
       showLogConfig: false,
       tempLogCount: 5,
@@ -392,20 +280,26 @@ export default {
       uni.navigateBack()
     },
     
-    // ChatComponent事件处理
-    async handleMessageSent(eventData) {
-      // 保存用户消息到数据库
-      await this.saveMessageToHistory('user', eventData.message.content)
-    },
-    
-    async handleMessageReceived(eventData) {
-      // 保存AI消息到数据库
-      await this.saveMessageToHistory('assistant', eventData.message.content)
-    },
+
     
     async handleActionClicked(action) {
       // 处理AI消息中的操作按钮点击
       await this.handleAIAction(action)
+    },
+    
+    handleMessageSent(event) {
+      // 处理消息发送事件
+      console.log('消息已发送:', event)
+    },
+    
+    handleMessageReceived(event) {
+      // 处理消息接收事件
+      console.log('消息已接收:', event)
+    },
+    
+    handleConversationChanged(conversationId) {
+      this.currentConversationId = conversationId
+      console.log('会话切换:', conversationId)
     },
     
     // 处理项目特定的操作按钮点击
@@ -488,7 +382,12 @@ export default {
         this.recentLogCount = this.contextData.recentLogs.length
         
         // 加载或创建对话
-        await this.loadOrCreateConversation()
+        if (this.$refs.chatComponent) {
+          const conversationId = await this.$refs.chatComponent.createOrLoadConversation()
+          if (conversationId) {
+            this.currentConversationId = conversationId
+          }
+        }
         
       } catch (error) {
         console.error('初始化聊天失败:', error)
@@ -512,76 +411,7 @@ export default {
       await this.initChat()
     },
     
-    async loadOrCreateConversation() {
-      try {
-        // 尝试获取该项目的最新对话
-        const conversations = await chatApi.getConversationsByProject(this.projectId)
-        
-        if (conversations.length > 0) {
-          // 使用最新的对话
-          this.currentConversationId = conversations[0].id
-          // 加载历史消息
-          await this.loadChatHistory()
-        } else {
-          // 创建新对话
-          const conversation = await chatApi.createConversation({
-            projectId: this.projectId,
-            title: `${this.projectName} - 聊天记录`,
-            createdAt: new Date().toISOString()
-          })
-          this.currentConversationId = conversation.id
-        }
-      } catch (error) {
-        console.error('加载或创建对话失败:', error)
-        uni.showToast({
-          title: '加载对话失败',
-          icon: 'none'
-        })
-      }
-    },
-    
-    async loadChatHistory() {
-      try {
-        if (!this.currentConversationId) return
-        
-        const messages = await chatApi.getMessagesByConversation(this.currentConversationId)
-        
-        // 转换数据库消息格式为UI消息格式并通过ChatComponent更新
-        const formattedMessages = messages.map(msg => ({
-          type: msg.role === 'user' ? 'user' : 'ai',
-          content: msg.content,
-          timestamp: msg.timestamp,
-          actions: msg.role === 'assistant' ? this.extractActions(msg.content) : undefined
-        }))
-        
-        // 通过ChatComponent更新消息列表
-        if (this.$refs.chatComponent) {
-          this.$refs.chatComponent.messages = formattedMessages
-        }
 
-      } catch (error) {
-        console.error('加载聊天历史失败:', error)
-        uni.showToast({
-          title: '加载历史失败',
-          icon: 'none'
-        })
-      }
-    },
-    
-    async saveMessageToHistory(role, content) {
-      try {
-        if (!this.currentConversationId) return
-        
-        await chatApi.addMessage({
-          conversationId: this.currentConversationId,
-          role: role,
-          content: content,
-          timestamp: new Date().toISOString()
-        })
-      } catch (error) {
-        console.error('保存消息失败:', error)
-      }
-    },
     
 
     
@@ -798,7 +628,7 @@ export default {
           break
         case 'retry':
           // 重新发送最后一条用户消息
-          const lastUserMessage = this.messages.filter(m => m.type === 'user').pop()
+          const lastUserMessage = (this.messages || []).filter(m => m.type === 'user').pop()
           if (lastUserMessage) {
             this.inputText = lastUserMessage.content
             this.sendMessage()
@@ -961,7 +791,7 @@ export default {
       try {
         // 获取项目的里程碑列表
         const milestones = await projectApi.getProjectMilestones(this.projectId)
-        const pendingMilestones = milestones.filter(m => m.status !== 'completed')
+        const pendingMilestones = (milestones || []).filter(m => m.status !== 'completed')
         
         if (pendingMilestones.length === 0) {
           uni.showToast({
@@ -1031,198 +861,9 @@ export default {
       })
     },
     
-    async loadMoreContext() {
-      this.showMenu = false
-      try {
-        if (!this.currentConversationId) {
-          uni.showToast({
-            title: '暂无历史记录',
-            icon: 'none'
-          })
-          return
-        }
-        
-        // 获取更多历史消息（分页加载）
-        const offset = this.messages.length
-        const limit = 20
-        const moreMessages = await chatApi.getMessagesByConversation(
-          this.currentConversationId, 
-          { offset, limit }
-        )
-        
-        if (moreMessages.length === 0) {
-          uni.showToast({
-            title: '暂无更多记录',
-            icon: 'none'
-          })
-          return
-        }
-        
-        // 将新消息添加到消息列表开头
-        const newMessages = moreMessages.map(msg => ({
-          type: msg.role === 'user' ? 'user' : 'ai',
-          content: msg.content,
-          timestamp: msg.createdAt,
-          actions: msg.role === 'assistant' ? this.extractActions(msg.content) : undefined
-        }))
-        
-        this.messages = [...newMessages, ...this.messages]
-        
-        uni.showToast({
-          title: `加载了${moreMessages.length}条记录`,
-          icon: 'success'
-        })
-      } catch (error) {
-        console.error('加载历史记录失败:', error)
-        uni.showToast({
-          title: '加载失败',
-          icon: 'none'
-        })
-      }
-    },
+
     
-    async clearContext() {
-      this.showMenu = false
-      uni.showModal({
-        title: '确认清空',
-        content: '确定要清空所有对话记录吗？',
-        success: async (res) => {
-          if (res.confirm) {
-            try {
-              // 清空数据库中的消息
-              if (this.currentConversationId) {
-                await chatApi.clearMessages(this.currentConversationId)
-              }
-              
-              // 通过ChatComponent清空UI中的消息
-              if (this.$refs.chatComponent) {
-                this.$refs.chatComponent.messages = []
-              }
-              
-              uni.showToast({
-                title: '对话已清空',
-                icon: 'success'
-              })
-            } catch (error) {
-              console.error('清空对话失败:', error)
-              uni.showToast({
-                title: '清空失败',
-                icon: 'none'
-              })
-            }
-          }
-        }
-      })
-    },
-    
-    exportChat() {
-      this.showMenu = false
-      uni.showToast({
-        title: '导出功能开发中',
-        icon: 'none'
-      })
-    },
-    
-    // 会话管理方法
-    showConversationHistory() {
-      this.showMenu = false
-      this.showConversationList = true
-    },
-    
-    async createNewConversation() {
-      this.showMenu = false
-      try {
-        // 创建新会话
-        const newConversation = await chatApi.createConversation({
-          projectId: this.projectId,
-          title: '新对话'
-        })
-        this.currentConversationId = newConversation.id
-        
-        // 通过ChatComponent清空消息列表
-        if (this.$refs.chatComponent) {
-          this.$refs.chatComponent.messages = []
-        }
-        
-        // 重新加载会话列表
-        this.conversations = await chatApi.getConversationsByProject(this.projectId)
-        
-        uni.showToast({
-          title: '新会话已创建',
-          icon: 'success'
-        })
-      } catch (error) {
-        console.error('创建新会话失败:', error)
-        uni.showToast({
-          title: '创建失败',
-          icon: 'none'
-        })
-      }
-    },
-    
-    async selectConversation(conversation) {
-      try {
-        this.currentConversationId = conversation.id
-        this.showConversationList = false
-        
-        // 加载选中会话的消息
-        const messages = await chatApi.getMessages(conversation.id)
-        
-        // 通过ChatComponent更新消息列表
-        if (this.$refs.chatComponent) {
-          this.$refs.chatComponent.messages = messages.map(msg => ({
-            type: msg.role === 'user' ? 'user' : 'ai',
-            content: msg.content,
-            timestamp: msg.timestamp || msg.created_at,
-            actions: msg.role === 'assistant' ? this.extractActions(msg.content) : undefined
-          }))
-        }
-        
-        uni.showToast({
-          title: '会话已切换',
-          icon: 'success'
-        })
-      } catch (error) {
-        console.error('切换会话失败:', error)
-        uni.showToast({
-          title: '切换失败',
-          icon: 'none'
-        })
-      }
-    },
-    
-    async deleteConversation(conversation) {
-      uni.showModal({
-        title: '确认删除',
-        content: `确定要删除会话"${conversation.title}"吗？`,
-        success: async (res) => {
-          if (res.confirm) {
-            try {
-              await chatApi.deleteConversation(conversation.id)
-              
-              // 重新加载会话列表
-              this.conversations = await chatApi.getConversationsByProject(this.projectId)
-              
-              // 如果删除的是当前会话，创建新会话
-              if (this.currentConversationId === conversation.id) {
-                await this.createNewConversation()
-              }
-              
-              uni.showToast({
-                title: '会话已删除',
-                icon: 'success'
-              })
-            } catch (error) {
-              console.error('删除会话失败:', error)
-              uni.showToast({
-                title: '删除失败',
-                icon: 'none'
-              })
-            }
-          }
-        }
-      })
-    },
+
     
     async showLogCountConfig() {
       this.showMenu = false
@@ -1266,7 +907,9 @@ export default {
           this.selectedLogs = []
         } else {
           // 手动选择模式：使用选中的日志
-          this.selectedLogs = this.selectedLogIndexes.map(index => this.availableLogs[index])
+          this.selectedLogs = this.selectedLogIndexes
+            .map(index => this.availableLogs[index])
+            .filter(log => log !== undefined)
           this.contextData.recentLogs = this.selectedLogs
           this.logCount = this.selectedLogs.length
         }
@@ -1890,7 +1533,8 @@ ${chatContent}
       color: #86909c;
       border-radius: 8rpx;
       transition: all 0.3s;
-      
+      min-width: 300rpx;
+
       &.active {
         background-color: #ffffff;
         color: #165dff;
@@ -1969,6 +1613,7 @@ ${chatContent}
   border: 1rpx solid #e5e6eb;
   border-radius: 12rpx;
   margin-bottom: 24rpx;
+  min-width: 600rpx;
   background-color: #ffffff;
   
   .log-item {
@@ -2324,5 +1969,53 @@ ${chatContent}
 .create-btn:hover {
   transform: translateY(-2rpx);
   box-shadow: 0 6px 20px rgba(22, 93, 255, 0.4);
+}
+
+/* 业务功能悬浮按钮样式 */
+.business-actions {
+  position: fixed;
+  right: 30rpx;
+  bottom: 200rpx;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.action-btn {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24rpx;
+  font-weight: 500;
+  box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  border: none;
+  outline: none;
+}
+
+.action-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2);
+}
+
+.knowledge-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.knowledge-btn:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+.log-btn {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.log-btn:hover {
+  background: linear-gradient(135deg, #e881e9 0%, #e3455a 100%);
 }
 </style>
