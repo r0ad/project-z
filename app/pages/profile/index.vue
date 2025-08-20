@@ -275,6 +275,9 @@
 			<view class="promo-modal">
 				<view class="promo-header">
 					<text class="promo-title">推广码管理</text>
+					<view class="close-btn" @click="closePromoModal">
+						<nut-icon name="close" size="20" color="#86909C"></nut-icon>
+					</view>
 				</view>
 				<view class="promo-content">
 				
@@ -365,14 +368,14 @@
 					</view>
 				</view>
 				
-				<!-- 操作按钮 -->
-				<view class="promo-actions">
+				<!-- 主要操作按钮 -->
+				<view class="promo-main-actions">
 					<nut-button 
 						type="primary" 
 						@click="applyPromoCode"
 						:loading="promoLoading"
 						:disabled="!promoCode || !promoCode.trim()"
-						class="action-btn"
+						class="main-action-btn"
 					>
 						应用推广码
 					</nut-button>
@@ -382,38 +385,55 @@
 						type="danger" 
 						@click="removePromoCode"
 						:loading="promoLoading"
-						class="action-btn"
+						class="main-action-btn"
 					>
 						移除推广码
 					</nut-button>
+				</view>
+				
+				<!-- 高级功能区域 -->
+				<view class="promo-advanced-section">
+					<view class="advanced-header" @click="showAdvancedOptions = !showAdvancedOptions">
+						<text class="advanced-title">高级功能</text>
+						<nut-icon 
+							:name="showAdvancedOptions ? 'arrow-up' : 'arrow-down'" 
+							size="16" 
+							color="#86909C"
+						></nut-icon>
+					</view>
 					
-					<nut-button 
-						v-if="promoStatus && promoStatus.hasBackup"
-						type="warning" 
-						@click="restoreBackupConfig"
-						:loading="promoLoading"
-						class="action-btn"
-					>
-						恢复备份
-					</nut-button>
-					
-					<nut-button 
-						type="success" 
-						@click="generatePromoFromCurrentConfig"
-						:loading="promoLoading"
-						class="action-btn"
-					>
-						<nut-icon name="magic" size="16" color="#ffffff"></nut-icon>
-						根据当前配置生成
-					</nut-button>
-					
-					<nut-button 
-						type="default" 
-						@click="showPromoContactInfo"
-						class="action-btn"
-					>
-						获取推广码
-					</nut-button>
+					<view class="advanced-actions" v-show="showAdvancedOptions">
+						<nut-button 
+							v-if="promoStatus && promoStatus.hasBackup"
+							type="warning" 
+							@click="restoreBackupConfig"
+							:loading="promoLoading"
+							class="advanced-btn"
+							size="small"
+						>
+							恢复备份
+						</nut-button>
+						
+						<nut-button 
+							type="success" 
+							@click="generatePromoFromCurrentConfig"
+							:loading="promoLoading"
+							class="advanced-btn"
+							size="small"
+						>
+							<nut-icon name="magic" size="14" color="#ffffff"></nut-icon>
+							生成推广码
+						</nut-button>
+						
+						<nut-button 
+							type="default" 
+							@click="showPromoContactInfo"
+							class="advanced-btn"
+							size="small"
+						>
+							获取推广码
+						</nut-button>
+					</view>
 				</view>
 				
 				<!-- 结果显示 -->
@@ -493,6 +513,7 @@ export default {
 			showPromoModal: false,
 			promoCode: '',
 			useCompressed: true, // 默认使用压缩版
+			showAdvancedOptions: false, // 控制高级功能展开/折叠
 			promoStatus: {
 				hasPromoCode: false,
 				expired: false,
@@ -2537,7 +2558,9 @@ export default {
 	top: 0;
 	z-index: 10;
 	background-color: #ffffff;
-	text-align: center;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 	padding: 40rpx 40rpx 24rpx 40rpx;
 	border-bottom: 2rpx solid #F2F3F5;
 	border-radius: 20rpx 20rpx 0 0;
@@ -2547,6 +2570,22 @@ export default {
 	font-size: 32rpx;
 	font-weight: bold;
 	color: #1D2129;
+}
+
+.close-btn {
+	width: 60rpx;
+	height: 60rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background-color: #F8F9FA;
+	transition: all 0.3s ease;
+}
+
+.close-btn:active {
+	background-color: #E5E6EB;
+	transform: scale(0.9);
 }
 
 .promo-content {
@@ -2652,19 +2691,61 @@ export default {
 	line-height: 1.4;
 }
 
-.promo-actions {
+.promo-main-actions {
 	display: flex;
 	flex-direction: column;
 	gap: 16rpx;
-	margin-bottom: 32rpx;
+	margin-bottom: 24rpx;
 }
 
-.action-btn {
+.main-action-btn {
 	width: 100%;
 	height: 80rpx;
 	border-radius: 12rpx;
 	font-size: 28rpx;
 	font-weight: 500;
+}
+
+.promo-advanced-section {
+	margin-bottom: 32rpx;
+	border: 2rpx solid #F2F3F5;
+	border-radius: 16rpx;
+	overflow: hidden;
+}
+
+.advanced-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 24rpx;
+	background-color: #F8F9FA;
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.advanced-header:active {
+	background-color: #F2F3F5;
+}
+
+.advanced-title {
+	font-size: 28rpx;
+	color: #4E5969;
+	font-weight: 500;
+}
+
+.advanced-actions {
+	padding: 24rpx;
+	background-color: #ffffff;
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.advanced-btn {
+	width: 100%;
+	height: 64rpx;
+	border-radius: 8rpx;
+	font-size: 26rpx;
 }
 
 .promo-result {
