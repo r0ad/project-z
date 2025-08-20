@@ -2586,7 +2586,7 @@ export default {
 	max-height: 80vh;
 	background-color: #ffffff;
 	border-radius: 20rpx;
-	min-width: 500rpx;
+	min-width: 700rpx;
 }
 
 .promo-header {
