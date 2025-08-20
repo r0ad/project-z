@@ -1,5 +1,5 @@
 /**
- * 推广码加密解密工具类
+ * 分享码加密解密工具类
  * 实现简单的对称加密算法，兼容uniapp环境
  */
 
@@ -151,9 +151,9 @@ class CryptoUtils {
   }
 
   /**
-   * 加密推广码数据
-   * @param {Object} promoData 推广码数据对象
-   * @returns {string} 加密后的推广码
+   * 加密分享码数据
+   * @param {Object} promoData 分享码数据对象
+   * @returns {string} 加密后的分享码
    */
   encryptPromoCode(promoData) {
     try {
@@ -163,20 +163,20 @@ class CryptoUtils {
       // 使用通用加密方法
       return this.encrypt(jsonStr)
     } catch (error) {
-      console.error('推广码加密失败:', error)
-      throw new Error('推广码加密失败')
+      console.error('分享码加密失败:', error)
+      throw new Error('分享码加密失败')
     }
   }
 
   /**
-   * 解密推广码
-   * @param {string} encryptedCode 加密的推广码
-   * @returns {Object} 解密后的推广码数据对象
+   * 解密分享码
+   * @param {string} encryptedCode 加密的分享码
+   * @returns {Object} 解密后的分享码数据对象
    */
   decryptPromoCode(encryptedCode) {
     try {
       if (!encryptedCode || encryptedCode.trim() === '') {
-        throw new Error('推广码不能为空')
+        throw new Error('分享码不能为空')
       }
       
       // 使用通用解密方法
@@ -192,18 +192,18 @@ class CryptoUtils {
       
       return promoData
     } catch (error) {
-      console.error('推广码解密失败:', encryptedCode, error)
-      throw new Error('推广码格式错误或已损坏: ' + error.message)
+      console.error('分享码解密失败:', encryptedCode, error)
+      throw new Error('分享码格式错误或已损坏: ' + error.message)
     }
   }
 
   /**
-   * 生成推广码
+   * 生成分享码
    * @param {string} provider AI供应商
    * @param {string} apiKey API密钥
    * @param {string} modelName 模型名称
    * @param {number} validDays 有效天数
-   * @returns {string} 生成的推广码
+   * @returns {string} 生成的分享码
    */
   generatePromoCode(provider, apiKey, modelName, validDays) {
     const promoData = {
@@ -314,12 +314,12 @@ class CryptoUtils {
   }
 
   /**
-   * 生成压缩版推广码
+   * 生成压缩版分享码
    * @param {string} provider 供应商
    * @param {string} apiKey API密钥
    * @param {string} modelName 模型名称
    * @param {number} validDays 有效天数
-   * @returns {string} 压缩版推广码
+   * @returns {string} 压缩版分享码
    */
   generateCompressedPromoCode(provider, apiKey, modelName, validDays) {
     const now = Math.floor(Date.now() / 1000) // 秒级时间戳
@@ -338,14 +338,14 @@ class CryptoUtils {
   }
 
   /**
-   * 验证压缩版推广码
-   * @param {string} promoCode 压缩版推广码
+   * 验证压缩版分享码
+   * @param {string} promoCode 压缩版分享码
    * @returns {Object} 验证结果
    */
   validateCompressedPromoCode(promoCode) {
     try {
       if (!promoCode.startsWith('v2_')) {
-        return { valid: false, error: '不是压缩版推广码格式' }
+        return { valid: false, error: '不是压缩版分享码格式' }
       }
       
       const base58Part = promoCode.substring(3)
@@ -370,7 +370,7 @@ class CryptoUtils {
       if (!promoData.p || !promoData.k || !promoData.m || !promoData.e) {
         return {
           valid: false,
-          error: '推广码数据不完整'
+          error: '分享码数据不完整'
         }
       }
       
@@ -379,7 +379,7 @@ class CryptoUtils {
       if (now > promoData.e) {
         return {
           valid: false,
-          error: '推广码已过期'
+          error: '分享码已过期'
         }
       }
       
@@ -398,17 +398,17 @@ class CryptoUtils {
         remainingDays: remainingDays
       }
     } catch (error) {
-      console.error('压缩版推广码验证失败:', error)
+      console.error('压缩版分享码验证失败:', error)
       return {
         valid: false,
-        error: '推广码格式错误或已损坏'
+        error: '分享码格式错误或已损坏'
       }
     }
   }
 
   /**
-   * 通用推广码验证（兼容新旧格式）
-   * @param {string} promoCode 推广码
+   * 通用分享码验证（兼容新旧格式）
+   * @param {string} promoCode 分享码
    * @returns {Object} 验证结果
    */
   validatePromoCodeUniversal(promoCode) {
@@ -421,14 +421,14 @@ class CryptoUtils {
   }
 
   /**
-   * 验证推广码是否有效（原版格式）
-   * @param {string} promoCode 推广码
+   * 验证分享码是否有效（原版格式）
+   * @param {string} promoCode 分享码
    * @returns {Object} 验证结果
    */
   validatePromoCode(promoCode) {
     try {
       const promoData = this.decryptPromoCode(promoCode)
-      console.log('解密后的推广码数据:', promoData)
+      console.log('解密后的分享码数据:', promoData)
       console.log('数据字段检查:', {
         provider: !!promoData.provider,
         apiKey: !!promoData.apiKey,
@@ -440,7 +440,7 @@ class CryptoUtils {
       if (!promoData.provider || !promoData.apiKey || !promoData.model || !promoData.expiresAt) {
         return {
           valid: false,
-          error: '推广码数据不完整'
+          error: '分享码数据不完整'
         }
       }
       
@@ -449,7 +449,7 @@ class CryptoUtils {
       if (now > promoData.expiresAt) {
         return {
           valid: false,
-          error: '推广码已过期',
+          error: '分享码已过期',
           expired: true
         }
       }

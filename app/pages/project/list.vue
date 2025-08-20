@@ -30,7 +30,7 @@
 						class="ai-config-btn promo-btn"
 					>
 						<nut-icon name="gift" size="14"></nut-icon>
-						使用推广码
+						使用分享码
 					</nut-button>
 					<nut-button 
 						type="default" 
@@ -183,7 +183,7 @@ export default {
 			})
 		},
 		
-		// 跳转到推广码页面
+		// 跳转到分享码页面
 		goToPromoCode() {
 			uni.navigateTo({
 				url: '/pages/profile/index?tab=promo'
@@ -246,7 +246,7 @@ export default {
 			if (!this.isAIConfigured) {
 				uni.showActionSheet({
 					title: '创建项目需要AI支持，请选择配置方式',
-					itemList: ['使用推广码', '手动配置AI'],
+					itemList: ['使用分享码', '手动配置AI'],
 					success: (res) => {
 						if (res.tapIndex === 0) {
 							this.goToPromoCode()
@@ -267,7 +267,7 @@ export default {
 			if (!this.isAIConfigured) {
 				uni.showActionSheet({
 					title: '查看项目详情需要AI支持，请选择配置方式',
-					itemList: ['使用推广码', '手动配置AI'],
+					itemList: ['使用分享码', '手动配置AI'],
 					success: (res) => {
 						if (res.tapIndex === 0) {
 							this.goToPromoCode()

@@ -264,7 +264,7 @@
 			</view>
 		</nut-popup>
 
-		<!-- 推广码弹窗 -->
+		<!-- 分享码弹窗 -->
 		<nut-popup 
 			v-model:visible="showPromoModal" 
 			position="center" 
@@ -274,7 +274,7 @@
 		>
 			<view class="promo-modal">
 				<view class="promo-header">
-					<text class="promo-title">推广码管理</text>
+					<text class="promo-title">分享码管理</text>
 					<view class="close-btn" @click="closePromoModal">
 						<nut-icon name="close" size="20" color="#86909C"></nut-icon>
 					</view>
@@ -283,6 +283,18 @@
 				
 				<!-- 当前状态显示 -->
 				<view class="promo-status" v-if="promoStatus">
+					<view class="status-header">
+						<text class="status-title">推广码状态</text>
+						<nut-button 
+							type="primary" 
+							size="small" 
+							@click="refreshPromoStatus"
+							:loading="promoLoading"
+							class="refresh-btn"
+						>
+							刷新
+						</nut-button>
+					</view>
 					<view class="status-item" v-if="promoStatus.hasPromoCode && !promoStatus.expired">
 						<text class="status-label">当前状态:</text>
 						<text class="status-value active">已激活</text>
@@ -310,12 +322,12 @@
 				<!-- 输入区域 -->
 				<view class="promo-input-section">
 					<view class="input-label">
-						<text>推广码</text>
+						<text>分享码</text>
 					</view>
 					<nut-textarea  
 						:autosize="{ maxHeight: `200rpx`, minHeight: `100rpx` }"
 						v-model="promoCode" 
-						placeholder="请输入推广码"
+						placeholder="请输入分享码"
 						:disabled="promoLoading"
 						class="promo-input"
 					/>
@@ -324,7 +336,7 @@
 				<!-- 有效期选择区域 -->
 				<view class="promo-validity-section">
 					<view class="input-label">
-						<text>推广码有效期</text>
+						<text>分享码有效期</text>
 					</view>
 					<nut-cell 
 						title="有效期选择" 
@@ -352,7 +364,7 @@
 				<!-- 压缩版选项 -->
 				<view class="promo-compress-section" v-if="false">
 					<view class="input-label">
-						<text>推广码格式</text>
+						<text>分享码格式</text>
 					</view>
 					<nut-cell 
 						title="使用压缩版" 
@@ -364,7 +376,7 @@
 						</template>
 					</nut-cell>
 					<view class="compress-tip">
-						<text class="tip-text">💡 压缩版推广码长度减少60-80%，更便于复制分享</text>
+						<text class="tip-text">💡 压缩版分享码长度减少60-80%，更便于复制分享</text>
 					</view>
 				</view>
 				
@@ -377,7 +389,7 @@
 						:disabled="!promoCode || !promoCode.trim()"
 						class="main-action-btn"
 					>
-						应用推广码
+						应用分享码
 					</nut-button>
 					
 					<nut-button 
@@ -387,7 +399,7 @@
 						:loading="promoLoading"
 						class="main-action-btn"
 					>
-						移除推广码
+						移除分享码
 					</nut-button>
 				</view>
 				
@@ -422,7 +434,7 @@
 							size="small"
 						>
 							<nut-icon name="magic" size="14" color="#ffffff"></nut-icon>
-							生成推广码
+							生成分享码
 						</nut-button>
 						
 						<nut-button 
@@ -431,7 +443,7 @@
 							class="advanced-btn"
 							size="small"
 						>
-							获取推广码
+							获取分享码
 						</nut-button>
 					</view>
 				</view>
@@ -509,7 +521,7 @@ export default {
 			backupFileList: [],
 			selectedBackupFile: null,
 			showBackupFileSelector: false,
-			// 推广码相关
+			// 分享码相关
 			showPromoModal: false,
 			promoCode: '',
 			useCompressed: true, // 默认使用压缩版
@@ -577,7 +589,7 @@ export default {
 						icon: 'scan',
 						iconColor: '#FF7D00',
 						iconBg: '#FF7D0020',
-						title: '推广码',
+						title: '分享码',
 						subtitle: '一键配置AI模型',
 						type: 'action',
 						handler: 'showPromoCodeModal'
@@ -647,7 +659,7 @@ export default {
 	onLoad(options) {
 		// 处理页面参数
 		if (options.tab === 'promo') {
-			// 延迟显示推广码弹窗，确保页面加载完成
+			// 延迟显示分享码弹窗，确保页面加载完成
 			this.$nextTick(() => {
 				setTimeout(() => {
 					this.showPromoCodeModal()
@@ -676,7 +688,7 @@ export default {
 	beforeDestroy() {
 			// 移除用户状态变化监听器
 			userStore.removeListener(this.handleUserStateChange)
-			// 销毁推广码管理器
+			// 销毁分享码管理器
 			promoManager.destroy()
 		},
 	methods: {
@@ -925,18 +937,20 @@ export default {
 			})
 		},
 
-		// ==================== 推广码相关方法 ====================
+		// ==================== 分享码相关方法 ====================
 		
 		/**
-		 * 显示推广码弹窗
+		 * 显示分享码弹窗
 		 */
-		showPromoCodeModal() {
+		async showPromoCodeModal() {
 			this.showPromoModal = true
 			this.promoResultText = '等待操作...'
+			// 刷新推广码状态
+			await this.loadPromoStatus()
 		},
 
 		/**
-		 * 关闭推广码弹窗
+		 * 关闭分享码弹窗
 		 */
 		closePromoModal() {
 			this.showPromoModal = false
@@ -945,7 +959,7 @@ export default {
 		},
 
 		/**
-		 * 加载推广码状态
+		 * 加载分享码状态
 		 */
 		async loadPromoStatus() {
 			try {
@@ -958,37 +972,59 @@ export default {
 					if (status.hasPromoCode && !status.expired) {
 						promoMenuItem.subtitle = `${status.provider} - ${promoManager.formatRemainingTime(status.remainingDays)}`
 					} else if (status.expired) {
-						promoMenuItem.subtitle = '推广码已过期'
+						promoMenuItem.subtitle = '分享码已过期'
 					} else {
 						promoMenuItem.subtitle = '一键配置AI模型'
 					}
 				}
 			} catch (error) {
-				console.error('加载推广码状态失败:', error)
+				console.error('加载分享码状态失败:', error)
 			}
 		},
 
 		/**
-		 * 应用推广码
+		 * 刷新推广码状态
+		 */
+		async refreshPromoStatus() {
+			this.promoLoading = true
+			try {
+				await this.loadPromoStatus()
+				uni.showToast({
+					title: '状态已刷新',
+					icon: 'success'
+				})
+			} catch (error) {
+				console.error('刷新推广码状态失败:', error)
+				uni.showToast({
+					title: '刷新失败',
+					icon: 'error'
+				})
+			} finally {
+				this.promoLoading = false
+			}
+		},
+
+		/**
+		 * 应用分享码
 		 */
 		async applyPromoCode(event) {
 			if (!this.promoCode.trim()) {
 				uni.showToast({
-					title: '请输入推广码',
+					title: '请输入分享码',
 					icon: 'none'
 				})
 				return
 			}
 
 			this.promoLoading = true
-			this.promoResultText = '正在验证推广码...'
+			this.promoResultText = '正在验证分享码...'
 
 			try {
 				const result = await promoManager.applyPromoCode(this.promoCode)
-				console.log('应用推广码结果:', result)
+				console.log('应用分享码结果:', result)
 				
 				if (result.success) {
-					this.promoResultText = `推广码应用成功！\n供应商: ${result.config.provider}\n模型: ${result.config.model}\n剩余天数: ${result.remainingDays}天`
+					this.promoResultText = `分享码应用成功！\n供应商: ${result.config.provider}\n模型: ${result.config.model}\n剩余天数: ${result.remainingDays}天`
 					
 					// 重新加载状态
 					await this.loadPromoStatus()
@@ -999,11 +1035,11 @@ export default {
 					this.promoResultText = `应用失败: ${result.error}`
 					
 					if (result.expired) {
-						this.promoResultText += '\n\n推广码已过期，请联系微信号 codetrend 重新申请。'
+						this.promoResultText += '\n\n分享码已过期，请联系微信号 codetrend 重新申请。'
 					}
 				}
 			} catch (error) {
-				console.error('应用推广码失败:', error)
+				console.error('应用分享码失败:', error)
 				this.promoResultText = `应用失败: ${error.message}`
 			} finally {
 				this.promoLoading = false
@@ -1011,22 +1047,22 @@ export default {
 		},
 
 		/**
-		 * 移除推广码
+		 * 移除分享码
 		 */
 		async removePromoCode(event) {
 			uni.showModal({
-				title: '移除推广码',
-				content: '确定要移除当前推广码吗？这将恢复您之前的AI配置。',
+				title: '移除分享码',
+				content: '确定要移除当前分享码吗？这将恢复您之前的AI配置。',
 				success: async (res) => {
 					if (res.confirm) {
 						this.promoLoading = true
-						this.promoResultText = '正在移除推广码...'
+						this.promoResultText = '正在移除分享码...'
 
 						try {
 							const result = await promoManager.removePromoCode()
 							
 							if (result.success) {
-								this.promoResultText = '推广码已移除，配置已恢复'
+								this.promoResultText = '分享码已移除，配置已恢复'
 								
 								// 重新加载状态
 								await this.loadPromoStatus()
@@ -1034,7 +1070,7 @@ export default {
 								this.promoResultText = `移除失败: ${result.error}`
 							}
 						} catch (error) {
-							console.error('移除推广码失败:', error)
+							console.error('移除分享码失败:', error)
 							this.promoResultText = `移除失败: ${error.message}`
 						} finally {
 							this.promoLoading = false
@@ -1079,13 +1115,13 @@ export default {
 		},
 
 		/**
-		 * 获取推广码联系信息
+		 * 获取分享码联系信息
 		 */
 		showPromoContactInfo(event) {
 			const contactInfo = promoManager.getContactInfo()
 			
 			uni.showModal({
-				title: '获取推广码',
+				title: '获取分享码',
 				content: `${contactInfo.description}\n\n${contactInfo.instructions.join('\n')}`,
 				confirmText: '复制微信号',
 				cancelText: '知道了',
@@ -1116,7 +1152,7 @@ export default {
 		},
 
 		/**
-		 * 根据当前AI配置生成推广码
+		 * 根据当前AI配置生成分享码
 		 */
 		async generatePromoFromCurrentConfig(event) {
 			try {
@@ -1131,9 +1167,9 @@ export default {
 					return
 				}
 
-				this.promoResultText = `正在为 ${activeConfig.provider} - ${activeConfig.model} 生成推广码...`
+				this.promoResultText = `正在为 ${activeConfig.provider} - ${activeConfig.model} 生成分享码...`
 
-				// 调用Node.js推广码生成工具
+				// 调用Node.js分享码生成工具
 				const result = await this.callPromoGenerator(activeConfig)
 				
 				if (result.success) {
@@ -1145,7 +1181,7 @@ export default {
 							data: result.promoCode,
 							success: () => {
 								uni.showToast({
-									title: '推广码已复制到剪贴板',
+									title: '分享码已复制到剪贴板',
 									icon: 'success'
 								})
 							}
@@ -1154,20 +1190,20 @@ export default {
 						console.error('复制到剪贴板失败:', copyError)
 					}
 					
-					this.promoResultText = `推广码生成成功！\n供应商: ${activeConfig.provider}\n模型: ${activeConfig.model}\n有效期: ${this.selectedValidityText}\n格式: ${result.format || '标准版'}\n长度: ${result.promoCode.length} 字符\n\n推广码已自动填入上方输入框并复制到剪贴板，点击"应用推广码"即可使用。`
+					this.promoResultText = `分享码生成成功！\n供应商: ${activeConfig.provider}\n模型: ${activeConfig.model}\n有效期: ${this.selectedValidityText}\n格式: ${result.format || '标准版'}\n长度: ${result.promoCode.length} 字符\n\n分享码已自动填入上方输入框并复制到剪贴板，点击"应用分享码"即可使用。`
 				} else {
 					this.promoResultText = `生成失败: ${result.error || '未知错误'}`
 				}
 			} catch (error) {
-				console.error('生成推广码失败:', error)
-				this.promoResultText = `生成失败: ${error.message || '网络错误，请检查Node.js推广码生成工具是否正常运行'}`
+				console.error('生成分享码失败:', error)
+				this.promoResultText = `生成失败: ${error.message || '网络错误，请检查Node.js分享码生成工具是否正常运行'}`
 			} finally {
 				this.promoLoading = false
 			}
 		},
 
 		/**
-		 * 调用Node.js推广码生成工具
+		 * 调用Node.js分享码生成工具
 		 */
 		async callPromoGenerator(config) {
 			try {
@@ -1183,20 +1219,20 @@ export default {
 				]
 
 				// 使用uni.request调用本地Node.js服务（如果有的话）
-				// 或者直接生成推广码（简化版本）
+				// 或者直接生成分享码（简化版本）
 				return await this.generatePromoCodeLocally(config)
 			} catch (error) {
-				console.error('调用推广码生成工具失败:', error)
+				console.error('调用分享码生成工具失败:', error)
 				throw error
 			}
 		},
 
 		/**
-		 * 本地生成推广码（简化版本）
+		 * 本地生成分享码（简化版本）
 		 */
 		async generatePromoCodeLocally(config) {
 			try {
-				// 导入推广码生成相关工具
+				// 导入分享码生成相关工具
 				const cryptoUtils = (await import('@/utils/cryptoUtils.js')).default
 				
 				// 获取选择的有效期
@@ -1205,7 +1241,7 @@ export default {
 				let promoCode
 				
 				if (this.useCompressed) {
-					// 生成压缩版推广码
+					// 生成压缩版分享码
 					promoCode = cryptoUtils.generateCompressedPromoCode(
 						config.provider,
 						config.api_key,
@@ -1213,7 +1249,7 @@ export default {
 						validDays
 					)
 				} else {
-					// 生成标准版推广码（兼容旧版）
+					// 生成标准版分享码（兼容旧版）
 					const promoData = {
 						provider: config.provider,
 						model: config.model,
@@ -1233,7 +1269,7 @@ export default {
 					format: this.useCompressed ? '压缩版' : '标准版'
 				}
 			} catch (error) {
-				console.error('本地生成推广码失败:', error)
+				console.error('本地生成分享码失败:', error)
 				return {
 					success: false,
 					error: error.message
@@ -2542,7 +2578,7 @@ export default {
 	font-size: 40rpx;
 }
 
-/* 推广码弹窗样式 */
+/* 分享码弹窗样式 */
 .promo-modal {
 	display: flex;
 	flex-direction: column;
@@ -2599,6 +2635,27 @@ export default {
 	padding: 24rpx;
 	background-color: #F8F9FA;
 	border-radius: 16rpx;
+}
+
+.status-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20rpx;
+	padding-bottom: 16rpx;
+	border-bottom: 2rpx solid #E5E6EB;
+}
+
+.status-title {
+	font-size: 28rpx;
+	font-weight: bold;
+	color: #1D2129;
+}
+
+.refresh-btn {
+	padding: 8rpx 16rpx !important;
+	height: 56rpx !important;
+	font-size: 24rpx !important;
 }
 
 .status-item {

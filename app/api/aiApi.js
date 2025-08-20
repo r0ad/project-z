@@ -8,6 +8,7 @@ import dbService from '@/utils/dbService.js'
 import userStore from '@/utils/userStore.js'
 import DateUtils from '@/utils/dateUtils.js'
 import OpenAIAPI from '@/uni_modules/openai-chat/js_sdk/openai-api.js'
+import promoApi from '@/api/promoApi.js'
 
 class AiApi {
   constructor() {
@@ -307,6 +308,17 @@ class AiApi {
     try {
       await dbService.delete('ai_config', 'provider = ? AND user_id = ?', [provider, userId])
       console.log('AI配置删除成功:', provider)
+      
+      // 检查推广码状态，如果删除的配置与推广码相关，需要同步更新
+      try {
+        const promoStatus = await promoApi.getPromoCodeStatus()
+        if (promoStatus.hasPromoCode && promoStatus.provider === provider) {
+          console.log('检测到删除的配置与推广码相关，清除推广码状态')
+          await promoApi.clearPromoConfig()
+        }
+      } catch (promoError) {
+        console.warn('检查推广码状态失败:', promoError)
+      }
       
       // 如果删除的是激活配置，需要重新初始化
       const activeConfig = await this.getActiveAIConfig(userId)

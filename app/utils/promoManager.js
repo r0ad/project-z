@@ -1,6 +1,6 @@
 /**
- * 推广码管理工具类
- * 提供推广码的统一管理接口
+ * 分享码管理工具类
+ * 提供分享码的统一管理接口
  */
 
 import promoApi from '@/api/promoApi.js'
@@ -14,7 +14,7 @@ class PromoManager {
   }
 
   /**
-   * 初始化推广码管理器
+   * 初始化分享码管理器
    * @returns {Promise<void>}
    */
   async init() {
@@ -23,16 +23,16 @@ class PromoManager {
         return
       }
 
-      // 启动时检查推广码有效期
+      // 启动时检查分享码有效期
       await this.checkAndHandleExpiry()
       
       // 设置定期检查
       this.startPeriodicCheck()
       
       this.initialized = true
-      console.log('推广码管理器初始化完成')
+      console.log('分享码管理器初始化完成')
     } catch (error) {
-      console.error('推广码管理器初始化失败:', error)
+      console.error('分享码管理器初始化失败:', error)
       throw error
     }
   }
@@ -49,7 +49,7 @@ class PromoManager {
       try {
         await this.checkAndHandleExpiry()
       } catch (error) {
-        console.error('定期检查推广码失败:', error)
+        console.error('定期检查分享码失败:', error)
       }
     }, this.CHECK_INTERVAL_MS)
   }
@@ -65,7 +65,7 @@ class PromoManager {
   }
 
   /**
-   * 检查并处理推广码过期
+   * 检查并处理分享码过期
    * @returns {Promise<Object>} 检查结果
    */
   async checkAndHandleExpiry() {
@@ -73,7 +73,7 @@ class PromoManager {
       const expiryResult = await promoApi.checkPromoCodeExpiry()
       
       if (expiryResult.expired) {
-        // 推广码已过期，显示提示
+        // 分享码已过期，显示提示
         await this.showExpiryNotification(expiryResult.expiredAt)
         
         return {
@@ -94,7 +94,7 @@ class PromoManager {
         hasPromoCode: expiryResult.hasPromoCode
       }
     } catch (error) {
-      console.error('检查推广码过期失败:', error)
+      console.error('检查分享码过期失败:', error)
       return {
         expired: false,
         error: error.message
@@ -111,8 +111,8 @@ class PromoManager {
     const expiredDate = new Date(expiredAt).toLocaleDateString()
     
     uni.showModal({
-      title: '推广码已过期',
-      content: `您的推广码已于 ${expiredDate} 过期，AI配置已恢复为原始设置。如需继续使用，请联系微信号 codetrend 重新申请推广码。`,
+      title: '分享码已过期',
+      content: `您的分享码已于 ${expiredDate} 过期，AI配置已恢复为原始设置。如需继续使用，请联系微信号 codetrend 重新申请分享码。`,
       showCancel: false,
       confirmText: '知道了'
     })
@@ -125,16 +125,16 @@ class PromoManager {
    */
   async showExpiryWarning(remainingDays) {
     uni.showModal({
-      title: '推广码即将过期',
-      content: `您的推广码将在 ${remainingDays} 天后过期，请及时联系微信号 codetrend 续期。`,
+      title: '分享码即将过期',
+      content: `您的分享码将在 ${remainingDays} 天后过期，请及时联系微信号 codetrend 续期。`,
       showCancel: false,
       confirmText: '知道了'
     })
   }
 
   /**
-   * 应用推广码
-   * @param {string} promoCode 推广码
+   * 应用分享码
+   * @param {string} promoCode 分享码
    * @returns {Promise<Object>} 应用结果
    */
   async applyPromoCode(promoCode) {
@@ -142,12 +142,12 @@ class PromoManager {
       if (!promoCode || !promoCode.trim()) {
         return {
           success: false,
-          error: '请输入推广码'
+          error: '请输入分享码'
         }
       }
 
       // 显示加载提示
-      uni.showLoading({ title: '验证推广码...' })
+      uni.showLoading({ title: '验证分享码...' })
       
       const result = await promoApi.applyPromoCode(promoCode.trim())
       
@@ -156,7 +156,7 @@ class PromoManager {
       if (result.success) {
         // 应用成功，显示成功提示
         uni.showToast({
-          title: '推广码应用成功',
+          title: '分享码应用成功',
           icon: 'success',
           duration: 2000
         })
@@ -168,21 +168,21 @@ class PromoManager {
       return result
     } catch (error) {
       uni.hideLoading()
-      console.error('应用推广码失败:', error)
+      console.error('应用分享码失败:', error)
       return {
         success: false,
-        error: '应用推广码失败: ' + error.message
+        error: '应用分享码失败: ' + error.message
       }
     }
   }
 
   /**
-   * 移除推广码
+   * 移除分享码
    * @returns {Promise<Object>} 移除结果
    */
   async removePromoCode() {
     try {
-      uni.showLoading({ title: '移除推广码...' })
+      uni.showLoading({ title: '移除分享码...' })
       
       const result = await promoApi.removePromoCode()
       
@@ -190,7 +190,7 @@ class PromoManager {
       
       if (result.success) {
         uni.showToast({
-          title: '推广码已移除',
+          title: '分享码已移除',
           icon: 'success',
           duration: 2000
         })
@@ -202,23 +202,23 @@ class PromoManager {
       return result
     } catch (error) {
       uni.hideLoading()
-      console.error('移除推广码失败:', error)
+      console.error('移除分享码失败:', error)
       return {
         success: false,
-        error: '移除推广码失败: ' + error.message
+        error: '移除分享码失败: ' + error.message
       }
     }
   }
 
   /**
-   * 获取推广码状态
+   * 获取分享码状态
    * @returns {Promise<Object>} 状态信息
    */
   async getStatus() {
     try {
       return await promoApi.getPromoCodeStatus()
     } catch (error) {
-      console.error('获取推广码状态失败:', error)
+      console.error('获取分享码状态失败:', error)
       return {
         hasPromoCode: false,
         error: error.message
@@ -227,15 +227,15 @@ class PromoManager {
   }
 
   /**
-   * 验证推广码格式
-   * @param {string} promoCode 推广码
+   * 验证分享码格式
+   * @param {string} promoCode 分享码
    * @returns {Promise<Object>} 验证结果
    */
   async validateFormat(promoCode) {
     try {
       return await promoApi.validatePromoCode(promoCode)
     } catch (error) {
-      console.error('验证推广码格式失败:', error)
+      console.error('验证分享码格式失败:', error)
       return {
         success: false,
         error: '验证失败: ' + error.message
@@ -244,7 +244,7 @@ class PromoManager {
   }
 
   /**
-   * 获取推广码详细信息
+   * 获取分享码详细信息
    * @returns {Promise<Object>} 详细信息
    */
   async getDetails() {
@@ -265,7 +265,7 @@ class PromoManager {
         remainingDays: expiryCheck.remainingDays
       }
     } catch (error) {
-      console.error('获取推广码详细信息失败:', error)
+      console.error('获取分享码详细信息失败:', error)
       return {
         hasPromoCode: false,
         error: error.message
@@ -336,18 +336,18 @@ class PromoManager {
   }
 
   /**
-   * 获取推广码联系信息
+   * 获取分享码联系信息
    * @returns {Object} 联系信息
    */
   getContactInfo() {
     return {
       wechat: 'codetrend',
-      description: '联系微信号获取推广码',
+      description: '联系微信号获取分享码',
       instructions: [
         '1. 添加微信号：codetrend',
-        '2. 说明需要申请推广码',
+        '2. 说明需要申请分享码',
         '3. 提供使用场景和需求',
-        '4. 获取专属推广码'
+        '4. 获取专属分享码'
       ]
     }
   }

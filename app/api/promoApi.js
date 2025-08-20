@@ -1,6 +1,6 @@
 /**
- * 推广码API
- * 提供推广码的验证、存储、管理等功能
+ * 分享码API
+ * 提供分享码的验证、存储、管理等功能
  */
 
 import cryptoUtils from '@/utils/cryptoUtils.js'
@@ -14,8 +14,8 @@ class PromoApi {
   }
 
   /**
-   * 验证推广码
-   * @param {string} promoCode 推广码
+   * 验证分享码
+   * @param {string} promoCode 分享码
    * @returns {Promise<Object>} 验证结果
    */
   async validatePromoCode(promoCode) {
@@ -23,11 +23,11 @@ class PromoApi {
       if (!promoCode || typeof promoCode !== 'string') {
         return {
           success: false,
-          error: '推广码不能为空'
+          error: '分享码不能为空'
         }
       }
 
-      // 使用加密工具验证推广码（支持标准版和压缩版）
+      // 使用加密工具验证分享码（支持标准版和压缩版）
       const validation = cryptoUtils.validatePromoCodeUniversal(promoCode)
       
       if (!validation.valid) {
@@ -44,22 +44,22 @@ class PromoApi {
         remainingDays: validation.remainingDays
       }
     } catch (error) {
-      console.error('验证推广码失败:', error)
+      console.error('验证分享码失败:', error)
       return {
         success: false,
-        error: '推广码验证失败: ' + error.message
+        error: '分享码验证失败: ' + error.message
       }
     }
   }
 
   /**
-   * 应用推广码配置
-   * @param {string} promoCode 推广码
+   * 应用分享码配置
+   * @param {string} promoCode 分享码
    * @returns {Promise<Object>} 应用结果
    */
   async applyPromoCode(promoCode) {
     try {
-      // 先验证推广码
+      // 先验证分享码
       const validation = await this.validatePromoCode(promoCode)
       if (!validation.success) {
         return validation
@@ -95,7 +95,7 @@ class PromoApi {
       // 保存AI配置到数据库
       await dbService.insert('ai_config', aiConfig)
 
-      // 保存推广码信息到本地存储
+      // 保存分享码信息到本地存储
       const promoConfig = {
         code: promoCode,
         appliedAt: Date.now(),
@@ -107,15 +107,15 @@ class PromoApi {
 
       return {
         success: true,
-        message: '推广码应用成功',
+        message: '分享码应用成功',
         config: aiConfig,
         remainingDays: validation.remainingDays
       }
     } catch (error) {
-      console.error('应用推广码失败:', error)
+      console.error('应用分享码失败:', error)
       return {
         success: false,
-        error: '应用推广码失败: ' + error.message
+        error: '应用分享码失败: ' + error.message
       }
     }
   }
@@ -222,47 +222,47 @@ class PromoApi {
   }
 
   /**
-   * 保存推广码配置
-   * @param {Object} config 推广码配置
+   * 保存分享码配置
+   * @param {Object} config 分享码配置
    * @returns {Promise<void>}
    */
   async savePromoConfig(config) {
     try {
       uni.setStorageSync(this.STORAGE_KEY, config)
     } catch (error) {
-      console.error('保存推广码配置失败:', error)
+      console.error('保存分享码配置失败:', error)
       throw error
     }
   }
 
   /**
-   * 获取推广码配置
-   * @returns {Promise<Object|null>} 推广码配置
+   * 获取分享码配置
+   * @returns {Promise<Object|null>} 分享码配置
    */
   async getPromoConfig() {
     try {
       return uni.getStorageSync(this.STORAGE_KEY) || null
     } catch (error) {
-      console.error('获取推广码配置失败:', error)
+      console.error('获取分享码配置失败:', error)
       return null
     }
   }
 
   /**
-   * 清除推广码配置
+   * 清除分享码配置
    * @returns {Promise<void>}
    */
   async clearPromoConfig() {
     try {
       uni.removeStorageSync(this.STORAGE_KEY)
     } catch (error) {
-      console.error('清除推广码配置失败:', error)
+      console.error('清除分享码配置失败:', error)
       throw error
     }
   }
 
   /**
-   * 检查推广码是否过期
+   * 检查分享码是否过期
    * @returns {Promise<Object>} 检查结果
    */
   async checkPromoCodeExpiry() {
@@ -280,7 +280,7 @@ class PromoApi {
       const expired = now > promoConfig.expiresAt
       
       if (expired) {
-        // 推广码已过期，清除相关配置
+        // 分享码已过期，清除相关配置
         await this.handleExpiredPromoCode()
         
         return {
@@ -299,7 +299,7 @@ class PromoApi {
         config: promoConfig
       }
     } catch (error) {
-      console.error('检查推广码过期失败:', error)
+      console.error('检查分享码过期失败:', error)
       return {
         hasPromoCode: false,
         expired: false,
@@ -309,12 +309,12 @@ class PromoApi {
   }
 
   /**
-   * 处理过期的推广码
+   * 处理过期的分享码
    * @returns {Promise<void>}
    */
   async handleExpiredPromoCode() {
     try {
-      // 清除推广码配置
+      // 清除分享码配置
       await this.clearPromoConfig()
       
       // 尝试恢复备份的AI配置
@@ -325,15 +325,15 @@ class PromoApi {
         uni.removeStorageSync('ai_config')
       }
       
-      console.log('已处理过期的推广码')
+      console.log('已处理过期的分享码')
     } catch (error) {
-      console.error('处理过期推广码失败:', error)
+      console.error('处理过期分享码失败:', error)
       throw error
     }
   }
 
   /**
-   * 获取推广码状态信息
+   * 获取分享码状态信息
    * @returns {Promise<Object>} 状态信息
    */
   async getPromoCodeStatus() {
@@ -361,7 +361,7 @@ class PromoApi {
         hasBackup: !!backup
       }
     } catch (error) {
-      console.error('获取推广码状态失败:', error)
+      console.error('获取分享码状态失败:', error)
       return {
         hasPromoCode: false,
         hasBackup: false,
@@ -371,7 +371,7 @@ class PromoApi {
   }
 
   /**
-   * 移除推广码配置并恢复原配置
+   * 移除分享码配置并恢复原配置
    * @returns {Promise<Object>} 移除结果
    */
   async removePromoCode() {
@@ -381,7 +381,7 @@ class PromoApi {
       if (!promoConfig) {
         return {
           success: false,
-          error: '没有找到推广码配置'
+          error: '没有找到分享码配置'
         }
       }
 
@@ -390,25 +390,25 @@ class PromoApi {
       // 确保数据库已初始化
       await dbService.initDB()
       
-      // 删除推广码相关的AI配置（根据provider匹配）
+      // 删除分享码相关的AI配置（根据provider匹配）
       await dbService.delete('ai_config', 'user_id = ? AND provider = ?', [userId, promoConfig.provider])
       
       // 恢复备份配置
       const restoreResult = await this.restoreBackupAIConfig()
       
-      // 清除推广码配置
+      // 清除分享码配置
       await this.clearPromoConfig()
       
       return {
         success: true,
-        message: '推广码已移除',
+        message: '分享码已移除',
         restored: restoreResult.success
       }
     } catch (error) {
-      console.error('移除推广码失败:', error)
+      console.error('移除分享码失败:', error)
       return {
         success: false,
-        error: '移除推广码失败: ' + error.message
+        error: '移除分享码失败: ' + error.message
       }
     }
   }

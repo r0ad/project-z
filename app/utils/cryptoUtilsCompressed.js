@@ -1,6 +1,6 @@
 /**
- * 推广码压缩版加密解密工具类
- * 实现多种压缩方案，大幅减少推广码长度
+ * 分享码压缩版加密解密工具类
+ * 实现多种压缩方案，大幅减少分享码长度
  */
 
 class CompressedCryptoUtils {
@@ -189,8 +189,8 @@ class CompressedCryptoUtils {
   }
 
   /**
-   * 压缩推广码数据结构
-   * @param {Object} promoData 原始推广码数据
+   * 压缩分享码数据结构
+   * @param {Object} promoData 原始分享码数据
    * @returns {Object} 压缩后的数据结构
    */
   compressPromoData(promoData) {
@@ -210,7 +210,7 @@ class CompressedCryptoUtils {
   }
 
   /**
-   * 解压缩推广码数据结构
+   * 解压缩分享码数据结构
    * @param {Object} compressedData 压缩后的数据结构
    * @returns {Object} 原始数据结构
    */
@@ -229,12 +229,12 @@ class CompressedCryptoUtils {
   }
 
   /**
-   * 生成压缩版推广码
+   * 生成压缩版分享码
    * @param {string} provider AI供应商
    * @param {string} apiKey API密钥
    * @param {string} modelName 模型名称
    * @param {number} validDays 有效天数
-   * @returns {string} 生成的压缩推广码
+   * @returns {string} 生成的压缩分享码
    */
   generateCompressedPromoCode(provider, apiKey, modelName, validDays) {
     const promoData = {
@@ -265,8 +265,8 @@ class CompressedCryptoUtils {
   }
 
   /**
-   * 验证压缩版推广码
-   * @param {string} promoCode 推广码
+   * 验证压缩版分享码
+   * @param {string} promoCode 分享码
    * @returns {Object} 验证结果
    */
   validateCompressedPromoCode(promoCode) {
@@ -287,7 +287,7 @@ class CompressedCryptoUtils {
       if (compressedData.v !== this.version) {
         return {
           valid: false,
-          error: '推广码版本不匹配'
+          error: '分享码版本不匹配'
         }
       }
       
@@ -298,7 +298,7 @@ class CompressedCryptoUtils {
       if (!promoData.provider || !promoData.apiKey || !promoData.model) {
         return {
           valid: false,
-          error: '推广码数据不完整'
+          error: '分享码数据不完整'
         }
       }
       
@@ -307,7 +307,7 @@ class CompressedCryptoUtils {
       if (now > promoData.expiresAt) {
         return {
           valid: false,
-          error: '推广码已过期',
+          error: '分享码已过期',
           expired: true
         }
       }
@@ -320,14 +320,14 @@ class CompressedCryptoUtils {
     } catch (error) {
       return {
         valid: false,
-        error: '推广码格式错误或已损坏: ' + error.message
+        error: '分享码格式错误或已损坏: ' + error.message
       }
     }
   }
 
   /**
    * 兼容性方法：同时支持新旧格式
-   * @param {string} promoCode 推广码
+   * @param {string} promoCode 分享码
    * @returns {Object} 验证结果
    */
   validatePromoCodeUniversal(promoCode) {
@@ -345,7 +345,7 @@ class CompressedCryptoUtils {
     } catch (error) {
       return {
         valid: false,
-        error: '推广码格式不支持或已损坏'
+        error: '分享码格式不支持或已损坏'
       }
     }
   }
@@ -359,11 +359,11 @@ class CompressedCryptoUtils {
    * @returns {Object} 压缩效果对比
    */
   testCompressionRatio(provider, apiKey, modelName, validDays) {
-    // 生成原始格式推广码
+    // 生成原始格式分享码
     const oldCrypto = require('./cryptoUtils.js')
     const oldCode = oldCrypto.generatePromoCode(provider, apiKey, modelName, validDays)
     
-    // 生成压缩格式推广码
+    // 生成压缩格式分享码
     const newCode = this.generateCompressedPromoCode(provider, apiKey, modelName, validDays)
     
     const compressionRatio = ((oldCode.length - newCode.length) / oldCode.length * 100).toFixed(1)

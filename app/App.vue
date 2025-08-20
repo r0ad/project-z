@@ -23,13 +23,13 @@ export default {
 			}
 		}
 		
-		// 初始化推广码检查
+		// 初始化分享码检查
 		try {
 			const appStartup = new AppStartup()
 			await appStartup.init()
-			console.log('推广码检查初始化成功')
+			console.log('分享码检查初始化成功')
 		} catch (error) {
-			console.error('推广码检查初始化失败:', error)
+			console.error('分享码检查初始化失败:', error)
 		}
 		
 		// #ifdef APP-PLUS
