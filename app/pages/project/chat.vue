@@ -629,6 +629,7 @@ export default {
         case 'retry':
           // 重新发送最后一条用户消息
           const lastUserMessage = (this.messages || []).filter(m => m.type === 'user').pop()
+          console.log('lastUserMessage', lastUserMessage)
           if (lastUserMessage) {
             this.inputText = lastUserMessage.content
             this.sendMessage()

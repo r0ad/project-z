@@ -827,7 +827,7 @@ export default {
 /* 表单弹窗样式 */
 .config-form {
 	padding: 32rpx;
-	height: 100%;
+	height: 1100rpx;
 	display: flex;
 	flex-direction: column;
 }
