@@ -42,7 +42,11 @@
           </view>
           
           <view class="message-content">
-            <view class="message-bubble" :class="message.type === 'user' ? 'user-bubble' : 'ai-bubble'">
+            <view 
+              class="message-bubble" 
+              :class="message.type === 'user' ? 'user-bubble' : 'ai-bubble'"
+              @longpress="copyMessage(message.content)"
+            >
               <text class="message-text">{{ message.content }}</text>
               
               <!-- 流式输出指示器 -->
@@ -111,17 +115,17 @@
     <!-- 输入区域 -->
     <view class="input-area">
       <view class="input-container">
-        <nut-input
+        <nut-textarea
           v-model="inputText"
           :placeholder="inputPlaceholder"
+          :autosize="{ maxHeight: '200rpx', minHeight: '80rpx' }"
           :border="false"
           class="chat-input"
           @confirm="sendMessage"
+          @keydown="handleKeyDown"
         />
         <view class="input-actions">
-          <view class="voice-btn" @click="toggleVoiceInput" v-if="enableVoice">
-            <nut-icon name="voice" size="20" color="#86909C"></nut-icon>
-          </view>
+          
           <nut-button 
             type="primary"
             size="small"
@@ -129,7 +133,20 @@
             @click="sendMessage"
             class="send-btn"
           >
-            {{ isStreaming ? '生成中...' : '发送' }}
+            <nut-icon 
+              v-if="!isStreaming" 
+              name="right" 
+              size="20" 
+              color="#ffffff"
+              style="display: flex; align-items: center; justify-content: center;"
+            ></nut-icon>
+            <nut-icon 
+              v-else 
+              name="loading" 
+              size="20" 
+              color="#ffffff"
+              style="display: flex; align-items: center; justify-content: center;"
+            ></nut-icon>
           </nut-button>
         </view>
       </view>
@@ -915,6 +932,43 @@ export default {
       } else {
         return date.toLocaleDateString()
       }
+    },
+    
+    // 复制消息内容
+    copyMessage(content) {
+      try {
+        uni.setClipboardData({
+          data: content,
+          success: () => {
+            uni.showToast({
+              title: '消息已复制',
+              icon: 'success',
+              duration: 1500
+            })
+          },
+          fail: () => {
+            uni.showToast({
+              title: '复制失败',
+              icon: 'error'
+            })
+          }
+        })
+      } catch (error) {
+        console.error('复制消息失败:', error)
+        uni.showToast({
+          title: '复制失败',
+          icon: 'error'
+        })
+      }
+    },
+    
+    // 处理键盘事件
+    handleKeyDown(event) {
+      // Ctrl+Enter 或 Cmd+Enter 发送消息
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault()
+        this.sendMessage()
+      }
     }
   }
 }
@@ -1120,11 +1174,12 @@ export default {
 
 .input-container {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 16rpx;
   background-color: #F2F3F5;
-  border-radius: 48rpx;
+  border-radius: 24rpx;
   padding: 16rpx 24rpx;
+  min-height: 80rpx;
 }
 
 .chat-input {
@@ -1155,10 +1210,21 @@ export default {
 }
 
 .send-btn {
-  padding: 16rpx 32rpx !important;
+  width: 64rpx !important;
   height: 64rpx !important;
+  padding: 0 !important;
   border-radius: 32rpx !important;
-  font-size: 28rpx !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 64rpx !important;
+  line-height: 1 !important;
+}
+
+.send-btn .nut-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .context-menu {

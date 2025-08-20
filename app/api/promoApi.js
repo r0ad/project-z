@@ -71,8 +71,18 @@ class PromoApi {
       // 确保数据库已初始化
       await dbService.initDB()
 
-      // 备份当前AI配置
-      await this.backupCurrentAIConfig()
+      // 检查是否已存在相同provider的配置
+      const existingConfig = await dbService.query(
+        'SELECT * FROM ai_config WHERE user_id = ? AND provider = ?', 
+        [userId, promoData.provider]
+      )
+
+      // 备份当前AI配置（仅在首次应用或配置有变化时备份）
+      if (existingConfig.length === 0 || 
+          existingConfig[0].api_key !== promoData.apiKey || 
+          existingConfig[0].model !== promoData.model) {
+        await this.backupCurrentAIConfig()
+      }
 
       // 先将所有现有配置设为非激活状态
       await dbService.update('ai_config', { is_active: 0 }, 'user_id = ?', [userId])
@@ -88,12 +98,15 @@ class PromoApi {
         max_tokens: promoData.maxTokens || 2000,
         temperature: promoData.temperature || 0.7,
         is_active: 1,
-        created_at: Date.now(),
+        created_at: existingConfig.length > 0 ? existingConfig[0].created_at : Date.now(),
         updated_at: Date.now()
       }
 
-      // 保存AI配置到数据库
-      await dbService.insert('ai_config', aiConfig)
+      // 使用INSERT OR REPLACE避免UNIQUE约束冲突
+      await dbService.executeSql(
+        'INSERT OR REPLACE INTO ai_config (user_id, provider, base_url, api_key, model, timeout, max_tokens, temperature, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [aiConfig.user_id, aiConfig.provider, aiConfig.base_url, aiConfig.api_key, aiConfig.model, aiConfig.timeout, aiConfig.max_tokens, aiConfig.temperature, aiConfig.is_active, aiConfig.created_at, aiConfig.updated_at]
+      )
 
       // 保存分享码信息到本地存储
       const promoConfig = {
