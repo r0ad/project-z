@@ -45,9 +45,10 @@
 			</view>
 			
 			<!-- 快捷提示 -->
-			<view class="tip-card" v-if="isAIConfigured">
+			<view class="tip-card" v-if="isAIConfigured && showQuickTip">
 				<nut-icon name="tips" color="#165DFF" size="16"></nut-icon>
 				<text class="tip-text">点击项目卡片进入详情，或使用右上角按钮创建新项目</text>
+				<nut-icon name="close" color="#165DFF" size="16" @click="closeQuickTip" class="close-tip-icon"></nut-icon>
 			</view>
 
 			<!-- 项目列表 -->
@@ -143,12 +144,14 @@ export default {
 			projectList: [],
 			loading: false,
 			refreshing: false,
-			isAIConfigured: false
+			isAIConfigured: false,
+			showQuickTip: true
 		}
 	},
 	onLoad() {
 		this.checkAIConfiguration()
 		this.loadProjects()
+		this.checkQuickTipStatus()
 	},
 	onShow() {
 		// 页面显示时刷新数据
@@ -346,6 +349,27 @@ export default {
 				pending: '待开始'
 			}
 			return statusMap[status] || '未知'
+		},
+		
+		// 检查快捷提示显示状态
+		checkQuickTipStatus() {
+			try {
+				const tipClosed = uni.getStorageSync('project_list_tip_closed')
+				this.showQuickTip = !tipClosed
+			} catch (error) {
+				console.error('检查提示状态失败:', error)
+				this.showQuickTip = true
+			}
+		},
+		
+		// 关闭快捷提示
+		closeQuickTip() {
+			try {
+				uni.setStorageSync('project_list_tip_closed', true)
+				this.showQuickTip = false
+			} catch (error) {
+				console.error('关闭提示失败:', error)
+			}
 		}
 	}
 }
@@ -378,6 +402,18 @@ export default {
 	color: #165DFF;
 	line-height: 1.5;
 	flex: 1;
+}
+
+.close-tip-icon {
+	padding: 10rpx;
+	border-radius: 50%;
+	background-color: rgba(22, 93, 255, 0.1);
+	transition: all 0.3s ease;
+}
+
+.close-tip-icon:active {
+	background-color: rgba(22, 93, 255, 0.2);
+	transform: scale(0.9);
 }
 
 /* AI配置提示卡片样式 */

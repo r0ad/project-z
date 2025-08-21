@@ -297,7 +297,7 @@ export default {
 }
 
 .page-content {
-	padding: 16px;
+	padding-top: calc(120rpx + var(--status-bar-height));
 }
 
 .form-section {

@@ -4,14 +4,16 @@
 		<view class="custom-navbar">
 			<view class="navbar-content">
 				<text class="navbar-title">我的</text>
-				<!-- <nut-icon name="setting" size="20" color="#86909C" @click="openSettings"></nut-icon> -->
+				<view class="navbar-actions">
+					<nut-icon name="people" size="20" color="#165DFF" @click="showUserSwitcher"></nut-icon>
+				</view>
 			</view>
 		</view>
 
 		<!-- 页面内容 -->
 		<view class="page-content">
 			<!-- 用户信息卡片 -->
-			<view class="user-card">
+			<view class="user-card" @click="editProfile">
 				<view class="user-info">
 					<view class="avatar-section">
 						<view class="user-avatar">
@@ -25,9 +27,9 @@
 					<view class="user-details">
 						<view class="user-name-row">
 							<text class="user-name">{{ userInfo.name }}</text>
-							<view class="user-switch-link" @click="showUserSwitcher">
-								<nut-icon name="switch" size="14" color="#165DFF"></nut-icon>
-								<text class="switch-text">切换</text>
+							<view class="user-actions">
+								<!-- <nut-icon name="edit" size="24" color="#165DFF" @click.stop="editProfile"></nut-icon> -->
+								<nut-icon name="more-x" size="24" color="#165DFF" @click.stop="showUserSwitcher"></nut-icon>
 							</view>
 						</view>
 						<text class="user-title">{{ userInfo.title }}</text>
@@ -49,7 +51,6 @@
 						</view>
 					</view>
 				</view>
-				<nut-icon name="right" size="16" color="#C9CDD4" @click="editProfile"></nut-icon>
 			</view>
 
 			<!-- 功能菜单 -->
@@ -1845,6 +1846,22 @@ export default {
 	color: #1D2129;
 }
 
+.navbar-actions {
+	display: flex;
+	align-items: center;
+	gap: 32rpx;
+}
+
+.navbar-actions nut-icon {
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.navbar-actions nut-icon:active {
+	transform: scale(0.9);
+	opacity: 0.7;
+}
+
 .page-content {
 	padding: calc(var(--status-bar-height) + 120rpx) 32rpx 32rpx;
 }
@@ -1858,6 +1875,13 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	transition: all 0.3s ease;
+	cursor: pointer;
+}
+
+.user-card:active {
+	transform: scale(0.98);
+	background-color: #F7F8FA;
 }
 
 .user-info {
@@ -2401,6 +2425,21 @@ export default {
 	align-items: center;
 	justify-content: space-between;
 	margin-bottom: 8rpx;
+}
+
+.user-actions {
+	display: flex;
+	gap: 28rpx;
+}
+
+.user-actions nut-icon {
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.user-actions nut-icon:active {
+	transform: scale(0.9);
+	opacity: 0.7;
 }
 
 .user-switch-link {
