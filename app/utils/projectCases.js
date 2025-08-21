@@ -3,7 +3,7 @@ export const projectCases = {
   // 技术开发类
   tech: {
     name: '技术开发',
-    icon: 'code',
+    icon: 'service',
     color: '#165DFF',
     cases: [
       {
@@ -32,7 +32,7 @@ export const projectCases = {
   // 学习成长类
   learning: {
     name: '学习成长',
-    icon: 'reading',
+    icon: 'star',
     color: '#FF6B35',
     cases: [
       {
@@ -61,7 +61,7 @@ export const projectCases = {
   // 创业项目类
   startup: {
     name: '创业项目',
-    icon: 'rocket',
+    icon: 'dongdong',
     color: '#00D68F',
     cases: [
       {
