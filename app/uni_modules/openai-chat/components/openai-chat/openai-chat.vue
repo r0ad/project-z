@@ -207,6 +207,7 @@ export default {
 			enableStream: true,
 			isStreaming: false,
 			streamContent: '',
+			streamUpdateTimer: null,
 			
 			// 函数调用
 			enableFunctions: false
@@ -374,11 +375,25 @@ export default {
 					this.isStreaming = true
 					this.streamContent = ''
 					
+					// 启动定时更新机制，确保UI实时刷新
+					this.streamUpdateTimer = setInterval(() => {
+						if (this.isStreaming) {
+							this.$forceUpdate()
+						}
+					}, 50) // 每50ms强制更新一次
+					
 					this.openaiAPI.chatCompletionStream(
 					messages,
 					(chunk) => {
 						if (chunk === '[DONE]') {
 							this.isStreaming = false
+							
+							// 清除定时器
+							if (this.streamUpdateTimer) {
+								clearInterval(this.streamUpdateTimer)
+								this.streamUpdateTimer = null
+							}
+							
 							if (this.streamContent) {
 								this.addMessage('assistant', this.streamContent)
 								this.streamContent = ''
@@ -386,9 +401,21 @@ export default {
 							// 流式完成后确保滚动到底部
 							this.scrollToBottom(true)
 						} else {
+							// 强制实时更新机制 - 方法1：直接赋值
 							this.streamContent += chunk
-							// 节流滚动：每100ms最多滚动一次
-							this.throttledScrollToBottom()
+							
+							// 强制实时更新机制 - 方法2：强制触发响应式更新
+							this.$forceUpdate()
+							
+							// 立即滚动
+							this.$nextTick(() => {
+								this.throttledScrollToBottom()
+							})
+							
+							// 调试日志（随机输出）
+							if (Math.random() < 0.1) {
+								console.log('[UI] 流式内容更新:', this.streamContent.length + '字符')
+							}
 						}
 					},
 						(result) => {
@@ -396,6 +423,13 @@ export default {
 						},
 						(error) => {
 							this.isStreaming = false
+							
+							// 清除定时器
+							if (this.streamUpdateTimer) {
+								clearInterval(this.streamUpdateTimer)
+								this.streamUpdateTimer = null
+							}
+							
 							this.streamContent = ''
 							this.showError(error.error?.message || '发送失败')
 						},

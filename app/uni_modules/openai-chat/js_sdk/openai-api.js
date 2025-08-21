@@ -1,14 +1,18 @@
 /**
  * OpenAI API 工具类
- * 使用 uni.request 实现跨平台兼容的 OpenAI API 调用
+ * 使用 uni.request 和原生流式请求实现跨平台兼容的 OpenAI API 调用
  * 支持功能：
- * - 基础聊天完成（流式/非流式）
+ * - 基础聊天完成（真实流式/非流式）
  * - 历史对话管理
  * - 函数调用（Function Calling）
  * - 图像生成
  * - 文本嵌入
  * - 语音转文字
  */
+
+// 导入HTTP请求工具和事件总线
+import { streamRequest, httpRequest, getStreamSupport } from '@/uni_modules/http-request/js_sdk/index.js'
+import { eventBus, EVENTS } from '@/uni_modules/http-request/js_sdk/eventBus.js'
 
 class OpenAIAPI {
 	constructor(config = {}) {
@@ -38,6 +42,14 @@ class OpenAIAPI {
 	updateConfig(newConfig) {
 		this.config = { ...this.config, ...newConfig }
 		console.log('[OpenAI API] 配置已更新:', this.config)
+	}
+	
+	/**
+	 * 获取流式请求支持信息
+	 * @returns {Object} 支持情况信息
+	 */
+	getStreamSupport() {
+		return getStreamSupport()
 	}
 	
 	/**
@@ -191,7 +203,7 @@ class OpenAIAPI {
 	}
 	
 	/**
-	 * 流式聊天完成（模拟实现）
+	 * 流式聊天完成（真实流式实现）
 	 * @param {Array} messages 消息数组
 	 * @param {Function} onData 数据回调
 	 * @param {Function} onComplete 完成回调
@@ -199,143 +211,142 @@ class OpenAIAPI {
 	 * @param {Object} options 选项
 	 */
 	chatCompletionStream(messages, onData, onComplete, onError, options = {}) {
-		console.log('[OpenAI API] 开始流式聊天完成（模拟）')
-		console.log('[OpenAI API] 消息:', messages)
-		console.log('[OpenAI API] 选项:', options)
+		console.log('[OpenAI API] 开始流式聊天，消息数量:', messages.length)
+		
+		// 检查流式请求支持情况
+		const streamSupport = getStreamSupport()
+		console.log('[OpenAI API] 流式支持:', streamSupport.supported, '平台:', streamSupport.platform)
 		
 		// 处理历史对话
 		let finalMessages = messages
 		if (options.useHistory && this.currentConversationId) {
 			const history = this.getConversationHistory()
-			console.log('[OpenAI API] 当前历史对话:', history)
-			
-			// 合并历史消息和新消息，避免重复
 			const historyWithoutLast = history.slice(0, -1)
 			finalMessages = [...historyWithoutLast, ...messages]
-			console.log('[OpenAI API] 合并历史对话后的消息:', finalMessages)
+			console.log('[OpenAI API] 合并历史，最终消息数:', finalMessages.length)
 		}
 		
 		// 构建请求数据
 		const requestData = {
 			model: this.config.model,
 			messages: finalMessages,
-			stream: false
+			stream: true
 		}
 		
 		// 添加函数调用支持
 		if (options.enableFunctions && this.functions.size > 0) {
 			requestData.functions = this.getFunctionDefinitions()
 			requestData.function_call = 'auto'
-			console.log('[OpenAI API] 启用函数调用，可用函数:', requestData.functions)
+			console.log('[OpenAI API] 启用函数调用，函数数量:', this.functions.size)
 		}
-		console.log('[OpenAI API] 流式模拟 - 请求完整报文:', requestData)
 		
-		// 使用uni.request进行流式请求（模拟实现）
-		uni.request({
+		console.log('[OpenAI API] 请求配置:', {
+			model: requestData.model,
+			messageCount: requestData.messages.length,
+			stream: requestData.stream,
+			functions: requestData.functions ? requestData.functions.length : 0
+		})
+		
+		// 数据传递状态监控
+		let accumulatedContent = ''
+		let chunkCount = 0
+		let lastDataTime = Date.now()
+		let firstDataTime = null
+		let lastUsage = null
+		let lastModel = null
+		
+		// 使用事件驱动的真实流式请求
+		console.log('[OpenAI API v2] 启动事件驱动流式请求')
+		
+		// 订阅事件，实现零延迟数据处理
+		let requestStartTime = Date.now()
+		
+		const handleStreamData = (chunk) => {
+			const currentTime = Date.now()
+			
+			if (chunk && chunk !== '[DONE]') {
+				chunkCount++
+				if (!firstDataTime) {
+					firstDataTime = currentTime
+					console.log('[OpenAI API v2] 首次收到数据，零延迟！')
+				}
+				lastDataTime = currentTime
+				
+				// 累积内容
+				accumulatedContent += chunk
+				
+				// 定期报告传递状态
+				if (chunkCount % 20 === 0) {
+					const totalTime = currentTime - firstDataTime
+					const avgChunkSize = accumulatedContent.length / chunkCount
+					console.log('[OpenAI API v2] 实时数据状态 - 块数:', chunkCount, '总长度:', accumulatedContent.length, '平均块大小:', Math.round(avgChunkSize), '总耗时:', totalTime, 'ms')
+				}
+				
+				// 立即调用用户回调，零延迟
+				try {
+					if (typeof onData === 'function') {
+						onData(chunk)
+					}
+				} catch (error) {
+					console.error('[OpenAI API v2] onData回调错误:', error)
+				}
+			}
+		}
+		
+		const handleStreamEnd = (endData) => {
+			if (firstDataTime) {
+				const totalTime = Date.now() - firstDataTime
+				console.log('[OpenAI API v2] 流式完成 - 总块数:', chunkCount, '总长度:', accumulatedContent.length, '总耗时:', totalTime, 'ms', '平均速率:', Math.round(accumulatedContent.length / totalTime * 1000), '字符/秒')
+			}
+		}
+		
+		// 发起流式请求
+		streamRequest({
 			url: `${this.config.baseUrl}/chat/completions`,
 			method: 'POST',
-			header: {
+			headers: {
 				'Content-Type': 'application/json',
 				'Authorization': `Bearer ${this.config.apiKey}`
 			},
-			data: requestData,
-			timeout: this.config.timeout,
-			success: (response) => {
-				console.log('[OpenAI API] 流式响应 - 收到完整响应:', response)
-				
-				if (response.statusCode === 200 && response.data) {
-					const result = response.data
-					
-					if (result.choices && result.choices.length > 0) {
-						const choice = result.choices[0]
-						const message = choice.message
-						const content = message.content || ''
-						console.log('[OpenAI API] 流式模拟 - 开始分块发送内容:', content)
-						
-						// 保存用户消息到历史
-						if (options.useHistory && this.currentConversationId) {
-							messages.forEach(msg => {
-								this.addMessageToHistory(msg.role, msg.content, msg.function_call)
-							})
-							// 保存助手回复到历史
-							this.addMessageToHistory('assistant', content, message.function_call)
-						}
-						
-						// 将内容按词分割，模拟流式发送（一次返回多个字符）
-						const words = content.split('')
-						let index = 0
-						const chunkSize = 25 // 每次返回6个字符
-						
-						const sendNextChunk = () => {
-							if (index < words.length) {
-								// 一次取多个字符
-								const chunk = words.slice(index, index + chunkSize).join('')
-								
-								try {
-									if (typeof onData === 'function') {
-										onData(chunk)
-									}
-								} catch (error) {
-									console.error('[OpenAI API] 流式模拟 - onData回调执行错误:', error)
-								}
-								
-								index += chunkSize
-								setTimeout(sendNextChunk, 50) // 50ms间隔，模拟多字符返回
-							} else {
-								console.log('[OpenAI API] 流式模拟 - 发送完成')
-								
-								// 发送结束标记
-								try {
-									if (typeof onData === 'function') {
-										onData('[DONE]')
-									}
-								} catch (error) {
-									console.error('[OpenAI API] 流式模拟 - onData结束回调执行错误:', error)
-								}
-								
-								// 调用完成回调
-								try {
-									if (typeof onComplete === 'function') {
-										onComplete({
-											content: content,
-											usage: result.usage,
-											model: result.model
-										})
-									}
-								} catch (error) {
-									console.error('[OpenAI API] 流式模拟 - onComplete回调执行错误:', error)
-								}
-							}
-						}
-						
-						sendNextChunk()
-					} else {
-						console.error('[OpenAI API] 流式模拟 - 响应格式错误:', result)
-						if (typeof onError === 'function') {
-							onError({
-								error: { message: '响应格式错误' },
-								response: response
-							})
-						}
-					}
-				} else {
-					console.error('[OpenAI API] 流式模拟 - HTTP错误:', response)
-					if (typeof onError === 'function') {
-						onError({
-							error: response.data || { message: `HTTP ${response.statusCode}` },
-							response: response
-						})
-					}
-				}
-			},
-			fail: (error) => {
-				console.error('[OpenAI API] 流式模拟 - 请求失败:', error)
-				if (typeof onError === 'function') {
-					onError({
-						error: { message: error.errMsg || '网络请求失败' },
-						originalError: error
+			data: requestData
+		},
+		handleStreamData, // 使用事件处理函数
+		// onComplete: 请求完成
+		() => {
+			console.log('[OpenAI API] 真实流式 - 请求完成，累积内容:', accumulatedContent)
+			
+			// 保存用户消息到历史
+			if (options.useHistory && this.currentConversationId) {
+				messages.forEach(msg => {
+					this.addMessageToHistory(msg.role, msg.content, msg.function_call)
+				})
+				// 保存助手回复到历史
+				this.addMessageToHistory('assistant', accumulatedContent)
+			}
+			
+			// 调用完成回调
+			try {
+				if (typeof onComplete === 'function') {
+					onComplete({
+						content: accumulatedContent,
+						usage: lastUsage,
+						model: lastModel || this.config.model
 					})
 				}
+			} catch (error) {
+				console.error('[OpenAI API] 真实流式 - onComplete回调执行错误:', error)
+			}
+		},
+		// onError: 处理错误
+		(error) => {
+			console.error('[OpenAI API] 真实流式 - 请求失败:', error)
+			
+			try {
+				if (typeof onError === 'function') {
+					onError(error)
+				}
+			} catch (callbackError) {
+				console.error('[OpenAI API] 真实流式 - onError回调执行错误:', callbackError)
 			}
 		})
 	}

@@ -599,7 +599,7 @@ class DBService {
         })
       }
       
-      console.log('执行SQL:', finalSql)
+      // console.log('执行SQL:', finalSql)
       
       plus.sqlite.executeSql({
         name: this.dbName,
@@ -645,7 +645,7 @@ class DBService {
         })
       }
       
-      console.log('执行查询SQL:', finalSql)
+      // console.log('执行查询SQL:', finalSql)
       
       plus.sqlite.selectSql({
         name: this.dbName,
