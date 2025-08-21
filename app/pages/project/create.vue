@@ -8,54 +8,184 @@
 
     <!-- 页面内容 -->
     <view class="page-content">
-      <!-- 表单区域 -->
-      <view class="form-container">
-        <view class="form-item">
-          <view class="form-label">项目名称</view>
-          <nut-input
-            v-model="formData.name"
-            placeholder="输入项目名称"
-            :border="false"
-            class="custom-input"
-          />
+      <!-- 步骤指示器 -->
+      <view class="step-indicator">
+        <view 
+          v-for="(step, index) in steps" 
+          :key="index"
+          :class="['step-item', { 
+            'active': currentStep === index, 
+            'completed': currentStep > index 
+          }]"
+        >
+          <view class="step-number">{{ index + 1 }}</view>
+          <view class="step-label">{{ step.label }}</view>
+        </view>
+      </view>
+
+      <!-- 步骤内容区域 -->
+      <view class="step-content">
+        <!-- 步骤1：选择项目类型或使用模板 -->
+        <view v-if="currentStep === 0" class="step-section">
+          <view class="section-title">选择创建方式</view>
+          <view class="section-desc">你可以从模板开始，或者从头创建项目</view>
+          
+          <view class="creation-options">
+            <view 
+              :class="['option-card', { 'selected': creationMode === 'template' }]"
+              @click="selectCreationMode('template')"
+            >
+              <nut-icon name="category" size="24" color="#165DFF"></nut-icon>
+              <view class="option-title">使用模板</view>
+              <view class="option-desc">从精选模板快速开始</view>
+            </view>
+            
+            <view 
+              :class="['option-card', { 'selected': creationMode === 'scratch' }]"
+              @click="selectCreationMode('scratch')"
+            >
+              <nut-icon name="add" size="24" color="#FF6B35"></nut-icon>
+              <view class="option-title">从头创建</view>
+              <view class="option-desc">自定义所有项目信息</view>
+            </view>
+          </view>
+
+          <!-- 模板选择区域 -->
+          <view v-if="creationMode === 'template'" class="template-section">
+            <view class="template-categories">
+              <view 
+                v-for="category in categories" 
+                :key="category.key"
+                :class="['category-item', { 'active': selectedCategory === category.key }]"
+                @click="selectCategory(category.key)"
+              >
+                <view class="category-icon" :style="{ color: category.color }">
+                  <nut-icon :name="category.icon" size="18"></nut-icon>
+                </view>
+                <text class="category-name">{{ category.name }}</text>
+              </view>
+            </view>
+            
+            <view v-if="selectedCategory" class="template-list">
+              <view 
+                v-for="(caseItem, index) in getCasesByCategory(selectedCategory)" 
+                :key="index"
+                :class="['template-item', { 'selected': selectedTemplate?.name === caseItem.name }]"
+                @click="selectTemplate(caseItem)"
+              >
+                <view class="template-title">{{ caseItem.name }}</view>
+                <view class="template-goal">{{ caseItem.goal }}</view>
+              </view>
+            </view>
+          </view>
         </view>
 
-        <view class="form-item">
-          <view class="form-label">目标关键词</view>
-          <nut-input
-            v-model="formData.goal"
-            placeholder="输入目标关键词，如'30天开发小程序'"
-            :border="false"
-            class="custom-input"
-          />
+        <!-- 步骤2：项目基本信息 -->
+        <view v-else-if="currentStep === 1" class="step-section">
+          <view class="section-title">项目基本信息</view>
+          <view class="section-desc">设置项目的名称和核心目标</view>
+          
+          <view class="form-group">
+            <view class="form-item">
+              <view class="form-label">项目名称</view>
+              <nut-input
+                v-model="formData.name"
+                placeholder="例如：AI智能助手小程序"
+                :border="false"
+                class="custom-input"
+                @input="updatePreview"
+              />
+            </view>
+
+            <view class="form-item">
+              <view class="form-label">目标关键词</view>
+              <nut-input
+                v-model="formData.goal"
+                placeholder="例如：30天内开发完成并上线"
+                :border="false"
+                class="custom-input"
+                @input="updatePreview"
+              />
+            </view>
+          </view>
         </view>
 
-        <view class="form-item">
-          <view class="form-label">项目描述</view>
-          <nut-textarea
-            v-model="formData.description"
-            placeholder="详细描述项目内容和预期成果（可选）"
-            :rows="4"
-            :border="false"
-            class="custom-textarea"
-          />
+        <!-- 步骤3：项目详情 -->
+        <view v-else-if="currentStep === 2" class="step-section">
+          <view class="section-title">项目详情</view>
+          <view class="section-desc">补充项目描述，让AI更好地理解你的项目</view>
+          
+          <view class="form-group">
+            <view class="form-item">
+              <view class="form-label">项目描述 <text class="optional">(可选)</text></view>
+              <nut-textarea
+                v-model="formData.description"
+                placeholder="详细描述项目功能、目标用户、预期效果等..."
+                :rows="4"
+                :border="false"
+                class="custom-textarea"
+                @input="updatePreview"
+              />
+            </view>
+          </view>
         </view>
 
-        <!-- AI提示 -->
-        <view class="ai-tip">
-          <nut-icon name="tips" size="16" color="#165DFF"></nut-icon>
-          <text class="tip-text">AI将根据您的输入生成符合SMART原则的目标和关键节点</text>
+        <!-- 步骤4：确认创建 -->
+        <view v-else-if="currentStep === 3" class="step-section">
+          <view class="section-title">确认项目信息</view>
+          <view class="section-desc">请检查项目信息，确认无误后创建项目</view>
+          
+          <!-- 项目预览卡片 -->
+          <view class="preview-card">
+            <view class="preview-header">
+              <view class="project-name">{{ formData.name || '未设置项目名称' }}</view>
+              <view v-if="selectedTemplate" class="template-badge">
+                基于模板：{{ selectedTemplate.name }}
+              </view>
+            </view>
+            <view class="project-goal">{{ formData.goal || '未设置目标' }}</view>
+            <view v-if="formData.description" class="project-desc">{{ formData.description }}</view>
+            
+            <!-- AI增强提示 -->
+            <view class="ai-enhancement">
+              <nut-icon name="star" size="16" color="#FF6B35"></nut-icon>
+              <text class="ai-text">AI将为你生成SMART目标和关键节点</text>
+            </view>
+          </view>
         </view>
       </view>
 
       <!-- 底部操作区 -->
       <view class="bottom-actions">
         <nut-button
+          v-if="currentStep > 0"
+          type="default"
+          size="large"
+          @click="prevStep"
+          class="action-btn prev-btn"
+        >
+          上一步
+        </nut-button>
+        
+        <nut-button
+          v-if="currentStep < 3"
+          type="primary"
+          size="large"
+          :disabled="!canNextStep"
+          @click="nextStep"
+          class="action-btn next-btn"
+        >
+          下一步
+        </nut-button>
+        
+        <nut-button
+          v-if="currentStep === 3"
           type="primary"
           size="large"
           :loading="creating"
+          :disabled="!canCreate"
           @click="createProject"
-          class="create-btn"
+          class="action-btn create-btn"
         >
           {{ creating ? '创建中...' : '创建项目' }}
         </nut-button>
@@ -68,6 +198,7 @@
 import projectApi from '@/api/projectApi.js'
 import aiApi from '@/api/aiApi.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import { getCaseCategories, getCasesByCategory } from '@/utils/projectCases.js'
 
 export default {
   components: {
@@ -80,12 +211,66 @@ export default {
         goal: '',
         description: ''
       },
-      creating: false
+      creating: false,
+      showTemplatePopup: false,
+      categories: [],
+      selectedCategory: '',
+      currentCases: []
+    }
+  },
+  computed: {
+    canCreate() {
+      return this.formData.name.trim() && this.formData.goal.trim()
+    }
+  },
+  mounted() {
+    this.loadCategories()
+  },
+  watch: {
+    showTemplatePopup(newVal) {
+      // 弹窗打开时，如果没有选中分类则默认选中第一个
+      if (newVal && !this.selectedCategory && this.categories.length > 0) {
+        this.selectCategory(this.categories[0].key)
+      }
     }
   },
   methods: {
     goBack() {
       uni.navigateBack()
+    },
+    
+    // 加载案例分类
+    loadCategories() {
+      this.categories = getCaseCategories()
+    },
+    
+    // 选择分类
+    selectCategory(categoryKey) {
+      this.selectedCategory = categoryKey
+      this.currentCases = getCasesByCategory(categoryKey)
+    },
+    
+    // 根据分类获取案例
+    getCasesByCategory(categoryKey) {
+      return getCasesByCategory(categoryKey)
+    },
+    
+    // 选择模板
+    selectTemplate(caseData) {
+      // 自动填充表单数据
+      this.formData.name = caseData.name
+      this.formData.goal = caseData.goal
+      this.formData.description = caseData.description
+      
+      // 关闭弹窗
+      this.showTemplatePopup = false
+      
+      // 显示成功提示
+      uni.showToast({
+        title: '模板已应用',
+        icon: 'success',
+        duration: 1500
+      })
     },
     
     async createProject() {
@@ -235,7 +420,7 @@ export default {
 }
 
 .page-content {
-  padding: calc(var(--status-bar-height) + 146rpx) 32rpx 32rpx;
+  padding: calc(var(--status-bar-height) + 146rpx) 32rpx 120rpx;
   min-height: calc(100vh - 200rpx);
   display: flex;
   flex-direction: column;
@@ -243,10 +428,39 @@ export default {
 
 .form-container {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 48rpx;
 }
 
 .form-item {
-  margin-bottom: 48rpx;
+  .form-label-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16rpx;
+    
+    .form-label {
+      font-size: 28rpx;
+      color: #4e5969;
+      font-weight: 500;
+    }
+    
+    .template-trigger {
+      display: flex;
+      align-items: center;
+      gap: 8rpx;
+      padding: 8rpx 16rpx;
+      background-color: rgba(22, 93, 255, 0.1);
+      border-radius: 20rpx;
+      border: 1rpx solid rgba(22, 93, 255, 0.3);
+      
+      .template-text {
+        font-size: 24rpx;
+        color: #165dff;
+      }
+    }
+  }
   
   .form-label {
     font-size: 28rpx;
@@ -280,25 +494,26 @@ export default {
 }
 
 .ai-tip {
-  display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-  background-color: #f2f6ff;
-  border: 2rpx solid #d4e7ff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  margin-bottom: 48rpx;
-  
-  .tip-text {
-    font-size: 24rpx;
-    color: #4e5969;
-    line-height: 1.5;
-    flex: 1;
+    background-color: #f7f8fa;
+    border-radius: 8rpx;
+    padding: 16rpx 20rpx;
+    margin-top: 24rpx;
+    
+    .tip-text {
+      font-size: 24rpx;
+      color: #86909c;
+      text-align: center;
+    }
   }
-}
 
 .bottom-actions {
-  padding: 32rpx 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24rpx 32rpx;
+  background-color: #ffffff;
+  border-top: 2rpx solid #e5e6eb;
   
   .create-btn {
     width: 100%;
@@ -306,6 +521,26 @@ export default {
     border-radius: 16rpx;
     font-size: 32rpx;
     font-weight: 600;
+    
+    &:disabled {
+      background-color: #f2f3f5;
+      color: #c9cdd4;
+    }
   }
 }
+
+// 模板弹窗样式
+:deep(.nut-popup) {
+  .nut-popup__content {
+    border-radius: 24rpx 24rpx 0 0;
+  }
+}
+
+.template-popup {
+    :deep(.nut-popup__content) {
+      height: 85vh;
+      max-height: 700rpx;
+      background: #fff;
+    }
+  }
 </style>
