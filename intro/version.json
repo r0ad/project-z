@@ -16,7 +16,7 @@
   },
   {
       "version": "1.0.3",
-      "comment": "1. AI会话界面优化，支持Markdown格式。",
+      "comment": "1. AI会话界面优化，支持Markdown格式。2. 项目创建过程优化。",
       "date": "20250820"
   }
 ]
