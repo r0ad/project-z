@@ -101,39 +101,39 @@ let {"code-data-index":codeDataIndex,"class":className} = attrs
 
 <style lang="scss" scoped>
 .ua__markdown {
-	  font-size: 14px;line-height: 1.5; word-break: break-all;
+	  font-size: 28rpx;line-height: 1.5; word-break: break-all;
 	  h1,h2,h3,h4,h5,h6 {
 	       font-family: inherit;font-weight: 500;line-height: 1.1;color: inherit;
 	    }
-	  h1,h2,h3 {margin-top: 20px;margin-bottom: 10px}
-	   h4,h5,h6 {margin-top: 10px;margin-bottom: 10px}
-	    .h1,h1 {font-size: 36px
+	  h1,h2,h3 {margin-top: 40rpx;margin-bottom: 20rpx}
+	   h4,h5,h6 {margin-top: 20rpx;margin-bottom: 20rpx}
+	    .h1,h1 {font-size: 72rpx
 	    }
-	   .h2,h2 {font-size: 30px
+	   .h2,h2 {font-size: 60rpx
 	    }
-	  .h3,h3 {font-size: 24px
+	  .h3,h3 {font-size: 48rpx
 	    }
-	  .h4,h4 {font-size: 18px
+	  .h4,h4 {font-size: 36rpx
 	    }
-	    .h5,h5 {font-size: 14px
+	    .h5,h5 {font-size: 28rpx
 	    }
-	  .h6,h6 {font-size: 12px
+	  .h6,h6 {font-size: 24rpx
 	    }
 	 a {
 	     background-color: transparent;color: #2196f3;
 	        text-decoration: none;
 	    }
 	 hr, ::v-deep .hr {
-	   margin-top: 20px;margin-bottom: 20px; border: 0; border-top: 1px solid #e5e5e5;
+	   margin-top: 40rpx;margin-bottom: 40rpx; border: 0; border-top: 2rpx solid #e5e5e5;
 	    }
 	    img { max-width: 35%;
 	    }
-	  p {margin: 0 0 10px}
+	  p {margin: 0 0 20rpx}
 	  em {
 	      font-style: italic; font-weight: inherit;
 	    }
 	 ol,ul {
-	        margin-top: 0; margin-bottom: 10px;padding-left: 40px;
+	        margin-top: 0; margin-bottom: 20rpx;padding-left: 80rpx;
 	    }
 	  ol ol,ol ul,ul ol,ul ul {margin-bottom: 0;
 	    }
@@ -142,7 +142,7 @@ let {"code-data-index":codeDataIndex,"class":className} = attrs
 	   ol ol ol, ul ul ol {list-style-type: lower-alpha;
 	    }
 	 dl {
-	    margin-top: 0;margin-bottom: 20px;
+	    margin-top: 0;margin-bottom: 40rpx;
 	    }
 	  dt {font-weight: 600;
 	    }
@@ -151,25 +151,25 @@ let {"code-data-index":codeDataIndex,"class":className} = attrs
 	 .task-list-item { list-style-type: none;
 	    }
 	 .task-list-item input {
-	        margin: 0 .2em .25em -1.6em;vertical-align: middle;
+	        margin: 0 .2em .25em -3.2em;vertical-align: middle;
 	    }
 	    pre {
 	       position: relative; z-index: 11;
 	    }
 	    code,kbd,pre,samp { font-family: Menlo,Monaco,Consolas,"Courier New",monospace;}
 	    code:not(.hljs) {
-	    padding: 2px 4px;font-size: 90%;color: #c7254e;background-color: #ffe7ee;border-radius: 4px;
+	    padding: 4rpx 8rpx;font-size: 90%;color: #c7254e;background-color: #ffe7ee;border-radius: 8rpx;
 	    }
 code:empty {display: none;
 		}
 	  pre code.hljs {
-	      color: var(--vg__text-1); border-radius: 16px; background: var(--vg__bg-1);font-size: 12px;
+	      color: var(--vg__text-1); border-radius: 32rpx; background: var(--vg__bg-1);font-size: 24rpx;
 	    }
 .markdown-wrap {
-			font-size: 12px;margin-bottom: 10px;
+			font-size: 24rpx;margin-bottom: 20rpx;
 		}
-	    pre.code-block-wrapper {background: #2b2b2b;color: #f8f8f2;border-radius: 4px;overflow-x: auto;
-	        padding: 1em;
+	    pre.code-block-wrapper {background: #2b2b2b;color: #f8f8f2;border-radius: 8rpx;overflow-x: auto;
+	        padding: 2em;
 	        position: relative;
 	    }
 	   pre.code-block-wrapper code {
@@ -180,14 +180,14 @@ code:empty {display: none;
 	        border-radius: 0;
 	    }
 	    .code-block-header__copy {
-	        font-size: 16px;margin-left: 5px;
+	        font-size: 32rpx;margin-left: 10rpx;
 	    }
 	 abbr[data-original-title],abbr[title] {
-	        cursor: help;border-bottom: 1px dotted #777;
+	        cursor: help;border-bottom: 2rpx dotted #777;
 	    }
 	    blockquote {
-	     padding: 10px 20px;margin: 0 0 20px;font-size: 17.5px;
-	        border-left: 5px solid #e5e5e5;
+	     padding: 20rpx 40rpx;margin: 0 0 40rpx;font-size: 35rpx;
+	        border-left: 10rpx solid #e5e5e5;
 	    }
 	 blockquote ol:last-child,blockquote p:last-child,blockquote ul:last-child {
 	        margin-bottom: 0
@@ -199,8 +199,8 @@ code:empty {display: none;
 	        content: '\2014 \00A0'
 	    }
 	    .blockquote-reverse,blockquote.pull-right {
-	        padding-right: 15px; padding-left: 0;
-	     text-align: right;border-right: 5px solid #eee;border-left: 0
+	        padding-right: 30rpx; padding-left: 0;
+	     text-align: right;border-right: 10rpx solid #eee;border-left: 0
 	    }
 	  .blockquote-reverse .small:before,.blockquote-reverse footer:before,.blockquote-reverse small:before,blockquote.pull-right .small:before,blockquote.pull-right footer:before,blockquote.pull-right small:before {
 	        content: ''
@@ -213,22 +213,22 @@ code:empty {display: none;
 	        -webkit-column-count: 2;
 	     column-count: 2
 	    }
-	    .footnotes-list {padding-left: 2em}
+	    .footnotes-list {padding-left: 4em}
 	   table, ::v-deep .table {
-	    border-spacing: 0;border-collapse: collapse; width: 100%;max-width: 65em; overflow: auto;margin-top: 0;
-	        margin-bottom: 16px;
+	    border-spacing: 0;border-collapse: collapse; width: 100%;max-width: 130em; overflow: auto;margin-top: 0;
+	        margin-bottom: 32rpx;
 	    }
 	  table tr, ::v-deep .table .tr {
-	   border-top: 1px solid #e5e5e5;
+	   border-top: 2rpx solid #e5e5e5;
 	    }
 	    table th, table td, ::v-deep .table .th, ::v-deep .table .td {
-	  padding: 6px 13px;border: 1px solid #e5e5e5;
+	  padding: 12rpx 26rpx;border: 2rpx solid #e5e5e5;
 	    }
 	    table th, ::v-deep .table .th {
 	      font-weight: 600;background-color: #eee;
 	    }
 	    .hljs[class*=language-]:before {
-	    position: absolute; z-index: 3;top: .8em; right: 1em; font-size: .8em; color: #999;
+	    position: absolute; z-index: 3;top: 1.6em; right: 2em; font-size: 1.6em; color: #999;
 	    }
 	    .hljs[class~=language-js]:before {
      content: "js"
@@ -246,8 +246,8 @@ code:empty {display: none;
     content: "vue"
 }
 .hljs[class~=language-css]:before {
-    content: "css"
-}
+        content: "css"
+    }
     .hljs[class~=language-sass]:before {
         content: "sass"
     }
@@ -255,8 +255,8 @@ code:empty {display: none;
         content: "scss"
     }
 .hljs[class~=language-less]:before {
-    content: "less"
-}
+        content: "less"
+    }
     .hljs[class~=language-stylus]:before {
         content: "stylus"
     }
@@ -282,7 +282,7 @@ code:empty {display: none;
     content: "docker"
 }
 .hljs[class~=language-dockerfile]:before {
-    content: "dockerfile"
+        content: "dockerfile"
 	}
 	.hljs[class~=language-makefile]:before {
 	    content: "makefile"
