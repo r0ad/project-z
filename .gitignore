@@ -51,3 +51,5 @@ cache
 dist
 app/unpackage/release/apk/*
 project.apk
+app/unpackage/debug/*
+app/unpackage/resources/*
