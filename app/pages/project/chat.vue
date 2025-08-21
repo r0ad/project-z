@@ -72,11 +72,11 @@
     <!-- 业务功能悬浮按钮 -->
     <view class="business-actions">
       <view class="business-btn" @click="convertToKnowledge">
-        <nut-icon name="star" size="14" color="#165DFF"></nut-icon>
+        <nut-icon name="star" size="24" color="#165DFF"></nut-icon>
         <!-- <text class="business-text">转为知识</text> -->
       </view>
       <view class="business-btn" @click="showLogCountConfig">
-        <nut-icon name="setting" size="14" color="#165DFF"></nut-icon>
+        <nut-icon name="setting" size="24" color="#165DFF"></nut-icon>
         <!-- <text class="business-text">设置日志</text> -->
       </view>
     </view>
