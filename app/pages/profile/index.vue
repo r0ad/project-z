@@ -1233,6 +1233,16 @@ export default {
 		 */
 		async generatePromoCodeLocally(config) {
 			try {
+				// 检查当前配置是否来自分享码，如果是则不允许生成新的分享码
+				const promoConfig = await promoApi.getPromoConfig()
+				console.log("promoConfig",promoConfig,config)
+				if (promoConfig && promoConfig.provider === config.provider && promoConfig.modelName === config.model) {
+					return {
+						success: false,
+						error: '当前AI配置是通过分享码创建的，无法基于此配置生成新的分享码。请先移除当前分享码，然后使用原始配置生成新的分享码。'
+					}
+				}
+				
 				// 导入分享码生成相关工具
 				const cryptoUtils = (await import('@/utils/cryptoUtils.js')).default
 				
