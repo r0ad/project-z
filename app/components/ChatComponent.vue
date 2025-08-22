@@ -780,10 +780,10 @@ export default {
       if (isNearBottom) {
         // 在底部或非常接近底部，恢复自动跟随
         this.scrollState = 'AUTO_FOLLOW'
-      } else if (scrollDelta < -5) { // 降低向上滚动阈值
+      } else if (scrollDelta < -100) { // 降低向上滚动阈值
         // 向上滚动，进入浏览模式
         this.scrollState = 'USER_BROWSING'
-      } else if (this.scrollState === 'USER_BROWSING' && scrollDelta > 5 && isNearBottom) {
+      } else if (this.scrollState === 'USER_BROWSING' && scrollDelta > 50 && isNearBottom) {
         // 从浏览模式向下滚动且接近底部，进入返回底部模式
         this.scrollState = 'RETURNING_TO_BOTTOM'
       }
@@ -1137,13 +1137,13 @@ export default {
       
       this.lastScrollEventTime = now
       
-      console.log('添加滚动事件到队列:', {
+      /* console.log('添加滚动事件到队列:', {
         type: eventType,
         force: force,
         data: data,
         queueLength: this.scrollEventQueue.length,
         isProcessing: this.isProcessingScrollEvent
-      })
+      }) */
       
       // 如果没有正在处理事件，立即开始处理
       if (!this.isProcessingScrollEvent) {
@@ -1181,13 +1181,13 @@ export default {
         while (this.scrollEventQueue.length > 0 && processedCount < maxProcessPerCycle) {
           const event = this.scrollEventQueue.shift()
           
-          console.log('处理滚动事件:', {
+          /* console.log('处理滚动事件:', {
             type: event.type,
             force: event.force,
             priority: event.priority,
             queueLength: this.scrollEventQueue.length,
             processedCount: processedCount + 1
-          })
+          }) */
           
           await this.handleScrollEvent(event)
           processedCount++
@@ -1226,7 +1226,7 @@ export default {
           
         case 'stream_update':
           // 流式更新时智能滚动（内容显著变化才滚动）
-          console.log('处理流式更新事件，chunk长度:', data.chunkLength)
+          // console.log('处理流式更新事件，chunk长度:', data.chunkLength)
           if (data.chunkLength > 10) {
             this.throttledScrollToBottom(true)
           }
@@ -1547,15 +1547,16 @@ export default {
 
 .chat-messages {
   flex: 1;
-  padding: 120rpx 40rpx 40rpx 40rpx;
-  /* 设置明确的高度计算：总高度 - 顶部padding - 底部padding - 输入区域高度 */
-  height: calc(100vh - 120rpx - 40rpx - 120rpx - 80rpx - 48rpx - 48rpx - env(safe-area-inset-bottom));
+  padding: 120rpx 40rpx 160rpx 40rpx; /* 增加底部padding避免与输入区域重叠 */
+  /* 精确高度计算：总高度 - 顶部padding - 底部padding - 输入区域总高度 */
+  height: calc(100vh - 120rpx - 160rpx - 200rpx - env(safe-area-inset-bottom));
 }
 
 .message-list {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+  padding-bottom: 70rpx;
 }
 
 .message-item {
