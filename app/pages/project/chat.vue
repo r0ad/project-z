@@ -208,7 +208,7 @@
         </view>
         
         <view class="config-actions">
-          <nut-button type="default" @click="cancelLogConfig" class="action-btn">取消</nut-button>
+          <nut-button type="primary" @click="cancelLogConfig" class="action-btn">取消</nut-button>
           <nut-button type="primary" @click="saveLogCount" class="action-btn">确定</nut-button>
         </view>
       </view>
