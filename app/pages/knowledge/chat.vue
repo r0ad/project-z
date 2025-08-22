@@ -172,8 +172,34 @@ export default {
       }, 1500)
     }
   },
+  
+  onShow() {
+    // 页面显示时通知ChatComponent
+    if (this.$refs.chatComponent) {
+      this.$refs.chatComponent.isPageVisible = true
+      this.$refs.chatComponent.isComponentActive = true
+      // 恢复周期性检查
+      if (!this.$refs.chatComponent.periodicScrollTimer) {
+        this.$refs.chatComponent.startPeriodicScrollCheck()
+      }
+    }
+  },
+  
+  onHide() {
+    // 页面隐藏时通知ChatComponent
+    if (this.$refs.chatComponent) {
+      this.$refs.chatComponent.isPageVisible = false
+      this.$refs.chatComponent.pausePeriodicScrollCheck()
+    }
+  },
+  
   onUnload() {
-    // 清理资源
+    // 页面卸载时彻底清理ChatComponent资源
+    if (this.$refs.chatComponent) {
+      this.$refs.chatComponent.isComponentActive = false
+      this.$refs.chatComponent.isPageVisible = false
+      this.$refs.chatComponent.clearAllScrollResources()
+    }
   },
   methods: {
     goBack() {

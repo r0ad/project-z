@@ -295,6 +295,10 @@ export default {
     lastScrollEventTime: 0, // 上次滚动事件时间
     scrollEventThrottle: 100, // 滚动事件节流时间（毫秒）
     periodicScrollTimer: null, // 周期性滚动检查定时器
+    
+    // 页面可见性状态管理
+    isPageVisible: true, // 页面是否可见
+    isComponentActive: true, // 组件是否活跃
     }
   },
   
@@ -322,14 +326,58 @@ export default {
     
     // 启动周期性滚动检查
     this.startPeriodicScrollCheck()
+    
+    // 设置页面可见性监听
+    this.setupPageVisibilityListeners()
+  },
+  
+  onShow() {
+    console.log('页面onShow，恢复滚动系统')
+    this.isPageVisible = true
+    this.isComponentActive = true
+    // 恢复周期性滚动检查
+    if (!this.periodicScrollTimer) {
+      this.startPeriodicScrollCheck()
+    }
+  },
+  
+  onHide() {
+    console.log('页面onHide，暂停滚动系统')
+    this.isPageVisible = false
+    // 暂停周期性滚动检查但不清除状态
+    this.pausePeriodicScrollCheck()
   },
   
   onUnload() {
-    this.clearScrollTimers()
-    this.clearScrollEventSystem()
+    console.log('页面onUnload，清理所有滚动资源')
+    this.isComponentActive = false
+    this.isPageVisible = false
+    this.clearAllScrollResources()
   },
   
   methods: {
+    // 设置页面可见性监听
+    setupPageVisibilityListeners() {
+      // 监听应用前后台切换
+      uni.onAppShow(() => {
+        if (this.isComponentActive) {
+          console.log('应用回到前台，恢复滚动系统')
+          this.isPageVisible = true
+          if (!this.periodicScrollTimer) {
+            this.startPeriodicScrollCheck()
+          }
+        }
+      })
+      
+      uni.onAppHide(() => {
+        if (this.isComponentActive) {
+          console.log('应用进入后台，暂停滚动系统')
+          this.isPageVisible = false
+          this.pausePeriodicScrollCheck()
+        }
+      })
+    },
+    
     async initChat() {
       // 触发初始化事件，让父组件处理具体的初始化逻辑
       this.$emit('chat-init', {
@@ -869,40 +917,68 @@ export default {
       const query = uni.createSelectorQuery().in(this)
       query.select('#messageScrollView').boundingClientRect()
       query.select('.message-list').boundingClientRect()
+      query.select('.input-area').boundingClientRect() // 添加输入区域查询
       query.exec((res) => {
         console.log('选择器查询结果:', res)
         
         if (res && res[0] && res[1]) {
           const scrollViewHeight = res[0].height
           const contentHeight = res[1].height
+          const inputAreaHeight = res[2] ? res[2].height : 0 // 获取输入区域高度
           const currentScrollTop = this.scrollTop
           
           console.log('滚动元素尺寸:', {
             scrollViewHeight,
             contentHeight,
+            inputAreaHeight,
             currentScrollTop,
             forceScroll
           })
           
           // 如果内容高度大于滚动视图高度，或者强制滚动，则滚动到底部
           if (contentHeight > scrollViewHeight || forceScroll) {
-            let targetScrollTop = Math.max(0, contentHeight - scrollViewHeight)
+            // 精确计算目标滚动位置，考虑输入区域高度和安全区域
+            const safeAreaBottom = uni.getSystemInfoSync().safeAreaInsets?.bottom || 0
             
-            // 强制滚动时，即使内容高度不足也滚动到最大可能位置
-            if (forceScroll && contentHeight <= scrollViewHeight) {
-              targetScrollTop = contentHeight // 滚动到内容底部
-              console.log('强制滚动到内容底部', { 
+            // 根据组件设计规范，增加底部缓冲区确保消息与输入框完美贴合
+            let bottomBuffer = 20 // 基础缓冲区
+            
+            // 动态调整缓冲区大小
+            if (inputAreaHeight > 0) {
+              // 有输入区域时，适当增加缓冲区
+              bottomBuffer = Math.min(30, inputAreaHeight * 0.15) // 最大30px，或输入区域高度的15%
+            }
+            
+            // 加上安全区域的调整
+            if (safeAreaBottom > 0) {
+              bottomBuffer += Math.min(10, safeAreaBottom * 0.3) // 最多额夦10px
+            }
+            
+            // 计算有效的可视区域高度（减去输入区域占用的空间）
+            const effectiveViewHeight = scrollViewHeight - bottomBuffer
+            
+            let targetScrollTop = Math.max(0, contentHeight - effectiveViewHeight+1000)
+            
+            // 强制滚动时，即使内容高度不足也滚动到最佳位置
+            if (forceScroll && contentHeight <= effectiveViewHeight) {
+              targetScrollTop = Math.max(0, contentHeight - effectiveViewHeight + bottomBuffer * 0.8)
+              console.log('强制滚动到精确底部位置', { 
                 contentHeight, 
-                scrollViewHeight,
+                effectiveViewHeight,
+                bottomBuffer,
                 targetScrollTop
               })
             }
             
             const scrollDifference = Math.abs(currentScrollTop - targetScrollTop)
             
-            console.log('滚动诊断:', {
+            console.log('精确滚动计算:', {
               scrollViewHeight,
               contentHeight,
+              inputAreaHeight,
+              safeAreaBottom,
+              bottomBuffer,
+              effectiveViewHeight,
               currentScrollTop,
               targetScrollTop,
               scrollDifference,
@@ -928,10 +1004,12 @@ export default {
           } else {
             // 即使内容高度不足，如果是强制滚动也应该滚动
             if (forceScroll) {
-              const targetScrollTop = contentHeight // 滚动到内容底部
+              const bottomBuffer = 20 // 优化后的缓冲区
+              const targetScrollTop = Math.max(0, contentHeight - scrollViewHeight + bottomBuffer * 0.8+1000)
               console.log('强制滚动（内容高度不足）:', { 
                 contentHeight, 
                 scrollViewHeight,
+                bottomBuffer,
                 targetScrollTop
               })
               this.smoothScrollTo(targetScrollTop)
@@ -1031,20 +1109,24 @@ export default {
       this.$nextTick(() => {
         const query = uni.createSelectorQuery().in(this)
         query.select('.message-list').boundingClientRect()
+        query.select('.input-area').boundingClientRect() // 添加输入区域查询
         query.exec((res) => {
           if (res && res[0]) {
             const currentHeight = res[0].height
+            const inputAreaHeight = res[1] ? res[1].height : 0
             
             console.log('内容高度检测:', {
               currentHeight,
+              inputAreaHeight,
               lastContentHeight: this.lastContentHeight,
               heightDifference: this.lastContentHeight ? currentHeight - this.lastContentHeight : 'first call',
               timestamp: Date.now()
             })
             
-            // 如果高度增加少于50px，不滚动（提高阈值）
-            if (this.lastContentHeight && currentHeight - this.lastContentHeight < 50) {
-              console.log('内容高度增加不足50px，跳过滚动')
+            // 考虑输入区域高度变化，调整滚动触发条件
+            const minHeightChange = inputAreaHeight > 0 ? 30 : 50 // 有输入区域时降低阈值
+            if (this.lastContentHeight && currentHeight - this.lastContentHeight < minHeightChange) {
+              console.log(`内容高度增加不足${minHeightChange}px，跳过滚动`)
               return
             }
             
@@ -1063,6 +1145,7 @@ export default {
     },
     
     clearScrollTimers() {
+      console.log('清理滚动定时器')
       if (this.scrollDebounceTimer) {
         clearTimeout(this.scrollDebounceTimer)
         this.scrollDebounceTimer = null
@@ -1086,16 +1169,33 @@ export default {
     },
     
     clearScrollEventSystem() {
+      console.log('清理事件驱动的滚动系统')
       this.scrollEventQueue = []
       this.isProcessingScrollEvent = false
       this.stopPeriodicScrollCheck()
-      console.log('清理事件驱动的滚动系统')
     },
     
     // 启动周期性滚动检查
     startPeriodicScrollCheck() {
+      if (!this.isComponentActive || !this.isPageVisible) {
+        console.log('组件不活跃或页面不可见，跳过启动周期性检查')
+        return
+      }
+      
+      if (this.periodicScrollTimer) {
+        console.log('周期性滚动检查已存在，跳过重复启动')
+        return
+      }
+      
       console.log('启动周期性滚动检查')
       this.periodicScrollTimer = setInterval(() => {
+        // 检查组件和页面状态
+        if (!this.isComponentActive || !this.isPageVisible) {
+          console.log('组件不活跃或页面不可见，暂停周期性检查')
+          this.pausePeriodicScrollCheck()
+          return
+        }
+        
         // 只有在有内容时才检查
         if (this.messages.length > 0 || this.isStreaming) {
           this.enqueueScrollEvent('periodic_check', false)
@@ -1103,16 +1203,50 @@ export default {
       }, 1000) // 每秒检查一次
     },
     
-    // 停止周期性滚动检查
-    stopPeriodicScrollCheck() {
+    // 暂停周期性滚动检查（保留定时器引用）
+    pausePeriodicScrollCheck() {
       if (this.periodicScrollTimer) {
+        console.log('暂停周期性滚动检查')
         clearInterval(this.periodicScrollTimer)
         this.periodicScrollTimer = null
       }
     },
     
+    // 停止周期性滚动检查
+    stopPeriodicScrollCheck() {
+      if (this.periodicScrollTimer) {
+        console.log('停止周期性滚动检查')
+        clearInterval(this.periodicScrollTimer)
+        this.periodicScrollTimer = null
+      }
+    },
+    
+    // 清理所有滚动相关资源
+    clearAllScrollResources() {
+      console.log('清理所有滚动相关资源')
+      
+      // 清理所有定时器
+      this.clearScrollTimers()
+      
+      // 停止周期性检查
+      this.stopPeriodicScrollCheck()
+      
+      // 清理事件系统
+      this.clearScrollEventSystem()
+      
+      // 标记组件为不活跃
+      this.isComponentActive = false
+      this.isPageVisible = false
+    },
+    
     // 添加滚动事件到队列
     enqueueScrollEvent(eventType, force = false, data = {}) {
+      // 检查组件是否还活跃
+      if (!this.isComponentActive) {
+        console.log('组件已销毁，忽略滚动事件:', eventType)
+        return
+      }
+      
       const now = Date.now()
       
       // 节流控制：相同类型的事件在短时间内只保留一个
@@ -1169,6 +1303,13 @@ export default {
         return
       }
       
+      // 检查组件状态
+      if (!this.isComponentActive) {
+        console.log('组件已销毁，清空滚动事件队列')
+        this.scrollEventQueue = []
+        return
+      }
+      
       this.isProcessingScrollEvent = true
       
       try {
@@ -1179,6 +1320,13 @@ export default {
         const maxProcessPerCycle = 5 // 每个处理周期最多处理5个事件
         
         while (this.scrollEventQueue.length > 0 && processedCount < maxProcessPerCycle) {
+          // 再次检查组件状态
+          if (!this.isComponentActive) {
+            console.log('处理过程中检测到组件已销毁，停止处理')
+            this.scrollEventQueue = []
+            break
+          }
+          
           const event = this.scrollEventQueue.shift()
           
           /* console.log('处理滚动事件:', {
@@ -1199,7 +1347,7 @@ export default {
         }
         
         // 如果还有剩余事件，继续处理
-        if (this.scrollEventQueue.length > 0) {
+        if (this.scrollEventQueue.length > 0 && this.isComponentActive) {
           setTimeout(() => {
             this.processScrollEvents()
           }, 100)
@@ -1214,6 +1362,12 @@ export default {
     
     // 处理单个滚动事件
     async handleScrollEvent(event) {
+      // 检查组件状态
+      if (!this.isComponentActive) {
+        console.log('组件已销毁，跳过滚动事件处理:', event.type)
+        return
+      }
+      
       const { type, force, data } = event
       
       switch (type) {
@@ -1247,8 +1401,10 @@ export default {
           
         case 'periodic_check':
           // 周期性检查是否需要滚动
-          console.log('处理周期性检查事件')
-          this.checkAndScrollIfNeeded()
+          // 移除调试日志，避免在页面离开后输出
+          if (this.isComponentActive && this.isPageVisible) {
+            this.checkAndScrollIfNeeded()
+          }
           break
           
         default:
@@ -1294,46 +1450,50 @@ export default {
       if (this.scrollState === 'AUTO_FOLLOW') {
         // 只有在确实需要滚动时才执行
         this.$nextTick(() => {
-          const scrollView = uni.createSelectorQuery().select('#messageScrollView')
-          scrollView.fields({ scrollOffset: true, size: true }, (res) => {
-            if (res) {
-              const { scrollTop, height: scrollViewHeight } = res
-              // 使用实际的内容高度而不是估算值
-              const contentQuery = uni.createSelectorQuery().select('.message-list')
-              contentQuery.fields({ size: true }, (contentRes) => {
-                if (contentRes) {
-                  const contentHeight = contentRes.height
-                  
-                  console.log('实际内容高度检测:', {
-                    scrollTop,
-                    scrollViewHeight,
-                    contentHeight,
-                    distanceFromBottom: contentHeight - scrollTop - scrollViewHeight,
-                    threshold: this.nearBottomThreshold
-                  })
-                  
-                  // 如果距离底部超过阈值，才执行滚动
-                  const distanceFromBottom = contentHeight - scrollTop - scrollViewHeight
-                  console.log('滚动判断条件:', {
-                    distanceFromBottom,
-                    threshold: this.nearBottomThreshold,
-                    shouldScroll: distanceFromBottom > this.nearBottomThreshold
-                  })
-                  
-                  if (distanceFromBottom > this.nearBottomThreshold || contentHeight < scrollViewHeight) {
-                    // 如果距离底部超过阈值，或者内容高度小于视图高度（内容不足一屏），都执行滚动
-                    console.log('执行滚动：', { 
-                      reason: contentHeight < scrollViewHeight ? 'content_too_short' : 'distance_exceeds_threshold',
-                      contentHeight, 
-                      scrollViewHeight,
-                      distanceFromBottom
-                    })
-                    this.scrollToBottom(false)
-                  }
-                }
-              }).exec()
+          const query = uni.createSelectorQuery().in(this)
+          query.select('#messageScrollView').fields({ scrollOffset: true, size: true })
+          query.select('.message-list').fields({ size: true })
+          query.select('.input-area').boundingClientRect()
+          query.exec((res) => {
+            if (res && res[0] && res[1]) {
+              const { scrollTop, height: scrollViewHeight } = res[0]
+              const contentHeight = res[1].height
+              const inputAreaHeight = res[2] ? res[2].height : 0
+              
+              // 计算精确的底部距离，考虑输入区域高度
+              const dynamicBottomBuffer = inputAreaHeight > 0 ? Math.min(30, inputAreaHeight * 0.15) : 20
+              const effectiveViewHeight = scrollViewHeight - dynamicBottomBuffer
+              const distanceFromBottom = contentHeight - scrollTop - effectiveViewHeight
+              
+              console.log('实际内容高度检测:', {
+                scrollTop,
+                scrollViewHeight,
+                contentHeight,
+                inputAreaHeight,
+                dynamicBottomBuffer,
+                effectiveViewHeight,
+                distanceFromBottom,
+                threshold: this.nearBottomThreshold
+              })
+              
+              console.log('滚动判断条件:', {
+                distanceFromBottom,
+                threshold: this.nearBottomThreshold,
+                shouldScroll: distanceFromBottom > this.nearBottomThreshold
+              })
+              
+              if (distanceFromBottom > this.nearBottomThreshold || contentHeight < effectiveViewHeight) {
+                // 如果距离底部超过阈值，或者内容高度小于有效视图高度，都执行滚动
+                console.log('执行滚动：', { 
+                  reason: contentHeight < effectiveViewHeight ? 'content_too_short' : 'distance_exceeds_threshold',
+                  contentHeight, 
+                  effectiveViewHeight,
+                  distanceFromBottom
+                })
+                this.scrollToBottom(false)
+              }
             }
-          }).exec()
+          })
         })
       }
     },
