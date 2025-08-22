@@ -39,7 +39,7 @@
             :size="rightButton.size || 'small'"
             @click="handleRightButtonClick"
           >
-            <nut-icon v-if="rightButton.icon" :name="rightButton.icon" size="14"></nut-icon>
+            <nut-icon v-if="rightButton.icon" :name="rightButton.icon" size="20"></nut-icon>
             {{ rightButton.text }}
           </nut-button>
           <view v-else-if="rightText" class="right-text" :style="{ color: rightTextColor }">

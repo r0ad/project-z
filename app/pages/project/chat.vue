@@ -3,7 +3,7 @@
     <!-- 自定义导航栏 -->
     <CustomNavbar 
       title="聊项目"
-      right-icon="more"
+			right-icon="more-x"
       left-icon-color="#1D2129"
       right-icon-color="#1D2129"
       @left-click="goBack"
