@@ -19,6 +19,11 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* 锚点定位偏移修复 */
+        section[id] {
+            scroll-margin-top: 80px;
+        }
+        
         body {
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
@@ -163,9 +168,42 @@
                 <a href="#features" class="block py-2 text-gray-600">功能特色</a>
                 <a href="#workflow" class="block py-2 text-gray-600">工作流程</a>
                 <a href="#download" class="block py-2 text-blue-600 font-medium">立即体验</a>
+                <a href="#changelog" class="block py-2 text-gray-600">更新日志</a>
+                <a href="#help" class="block py-2 text-gray-600">使用帮助</a>
             </div>
         </div>
 
+        <!-- Tab导航 -->
+        <!-- <nav class="bg-white border-b sticky top-16 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex space-x-8 border-b">
+                    <button 
+                        @click="activeTab = 'home'" 
+                        :class="{'border-b-2 border-blue-500 text-blue-600': activeTab === 'home', 'text-gray-500 hover:text-gray-700': activeTab !== 'home'}"
+                        class="py-3 px-1 font-medium text-base whitespace-nowrap"
+                    >
+                        首页
+                    </button>
+                    <button 
+                        @click="activeTab = 'changelog'" 
+                        :class="{'border-b-2 border-blue-500 text-blue-600': activeTab === 'changelog', 'text-gray-500 hover:text-gray-700': activeTab !== 'changelog'}"
+                        class="py-3 px-1 font-medium text-base whitespace-nowrap"
+                    >
+                        更新日志
+                    </button>
+                    <button 
+                        @click="activeTab = 'help'" 
+                        :class="{'border-b-2 border-blue-500 text-blue-600': activeTab === 'help', 'text-gray-500 hover:text-gray-700': activeTab !== 'help'}"
+                        class="py-3 px-1 font-medium text-base whitespace-nowrap"
+                    >
+                        使用帮助
+                    </button>
+                </div>
+            </div>
+        </nav> -->
+
+        <!-- 首页内容 -->
+        <div v-if="activeTab === 'home'">
         <!-- 英雄区域 -->
         <section class="gradient-bg text-white hero-compact relative overflow-hidden">
             <!-- 浮动背景元素 -->
@@ -208,12 +246,12 @@
                         </div>
                         
                         <div class="flex flex-col sm:flex-row gap-3">
-                            <button @click="scrollToSection('download')" class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:shadow-xl transition-all transform hover:scale-105 neon-glow">
+                            <a href="#download" class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:shadow-xl transition-all transform hover:scale-105 neon-glow inline-block">
                                 <i class="fas fa-download mr-2"></i>立即体验
-                            </button>
-                            <button @click="scrollToSection('features')" class="glass-effect text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/20 transition-all">
+                            </a>
+                            <a href="#features" class="glass-effect text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/20 transition-all inline-block">
                                 <i class="fas fa-play mr-2"></i>了解更多
-                            </button>
+                            </a>
                         </div>
                     </div>
                     
@@ -396,7 +434,132 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </section>
+        </div>
+
+        <!-- 更新日志页面 -->
+        <section v-if="activeTab === 'changelog'" class="py-20 bg-gray-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">更新日志</h2>
+                    <p class="text-xl text-gray-600">持续优化，为您带来更好的使用体验</p>
+                </div>
+                
+                <div class="max-w-3xl mx-auto">
+                    <div v-if="changelog.length === 0" class="text-center py-8">
+                        <div class="text-gray-500">正在加载更新日志...</div>
+                    </div>
+                    <div class="space-y-8" v-if="changelog.length > 0">
+                        <div v-for="(version, index) in changelog" :key="version.version" 
+                             class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                                        v{{ version.version }}
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-semibold text-gray-900">版本 {{ version.version }}</h3>
+                                        <p class="text-sm text-gray-500">{{ version.date }}</p>
+                                    </div>
+                                </div>
+                                <div v-if="index === (changelog.length-1)" class="bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                    最新版本
+                                </div>
+                            </div>
+                            <div class="text-gray-700 space-y-2">
+                                <div class="flex items-start space-x-2">
+                                    <i class="fas fa-check-circle text-green-500 mt-1 text-sm"></i>
+                                    <span class="text-sm">{{ version.comment }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 使用帮助页面 -->
+        <section v-if="activeTab === 'help'" class="py-20 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">使用帮助</h2>
+                    <p class="text-xl text-gray-600">快速上手，充分利用AI项目管理功能</p>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- AI配置帮助 -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mb-4">
+                            <i class="fas fa-robot text-white text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">AI配置指南</h3>
+                        <div class="space-y-4 text-base text-gray-700">
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">支持的AI供应商</h4>
+                                <ul class="space-y-1 text-gray-600">
+                                    <li>• DeepSeek - 推荐，性价比高</li>
+                                    <li>• OpenAI - GPT系列模型</li>
+                                    <li>• Claude - Anthropic模型</li>
+                                    <li>• Gemini - Google模型</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">如何获取API Key</h4>
+                                <ol class="space-y-1 text-gray-600">
+                                    <li>1. 访问对应AI供应商官网</li>
+                                    <li>2. 注册账号并登录</li>
+                                    <li>3. 进入API管理页面</li>
+                                    <li>4. 创建新的API Key</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
                     
+                    <!-- 常用功能 -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg flex items-center justify-center mb-4">
+                            <i class="fas fa-star text-white text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">常用功能</h3>
+                        <div class="space-y-4 text-base text-gray-700">
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">项目创建</h4>
+                                <p class="text-gray-600">输入项目名和目标，AI自动生成SMART目标和里程碑</p>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">语音记录</h4>
+                                <p class="text-gray-600">支持语音输入，AI自动转为文字并分类整理</p>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">AI对话</h4>
+                                <p class="text-gray-600">基于项目上下文与AI对话，获得个性化建议</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 参数说明 -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mb-4">
+                            <i class="fas fa-cog text-white text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">参数说明</h3>
+                        <div class="space-y-3 text-base text-gray-700">
+                            <div>
+                                <strong class="text-gray-900">超时时间：</strong>
+                                <span class="text-gray-600">建议30-60秒，网络慢可设更长</span>
+                            </div>
+                            <div>
+                                <strong class="text-gray-900">最大Token：</strong>
+                                <span class="text-gray-600">控制回复长度，建议2000-4000</span>
+                            </div>
+                            <div>
+                                <strong class="text-gray-900">温度参数：</strong>
+                                <span class="text-gray-600">0-1之间，值越高回复越随机</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -405,41 +568,19 @@
         <footer class="bg-gray-900 text-white py-12">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div>
-                        <div class="flex items-center space-x-3 mb-4">
-                            <div class="w-8 h-8 feature-icon rounded-lg flex items-center justify-center">
-                                <i class="fas fa-rocket text-white"></i>
-                            </div>
-                            <span class="text-xl font-bold">点点 - AI项目管理</span>
-                        </div>
-                        <p class="text-gray-400 mb-4">达成目标，指日可待</p>
-                        <p class="text-gray-400 text-sm">让AI成为您的项目管理助手，提升工作效率，实现目标管理的智能化。</p>
-                    </div>
-                    
-                    <div>
-                        <h3 class="text-lg font-semibold mb-4">产品功能</h3>
-                        <ul class="space-y-2 text-gray-400 text-sm">
-                            <li>• 智能项目创建</li>
-                            <li>• AI日志分析</li>
-                            <li>• 知识库沉淀</li>
-                            <li>• 项目聊天助手</li>
-                            <li>• 进度智能跟踪</li>
-                        </ul>
-                    </div>
-                    
-                    <div>
+                    <div class="md:col-start-2 text-center">
                         <h3 class="text-lg font-semibold mb-4">联系我们</h3>
                         <div class="space-y-2 text-gray-400 text-sm">
                             <p>邮箱: ninenlne#163.com （请将#替换为@）</p>
-                            <p>微信: codetrend</p>
-                            <div class="flex space-x-4 mt-4">
-                                <a href="https://github.com/r0ad" class="text-gray-400 hover:text-white transition-colors">
-                                    <i class="fab fa-github text-xl"></i>
-                                </a>
-                                <span href="javascript:void(0)" onclick="alert('请添加微信: codetrend')" class="text-gray-400 hover:text-white transition-colors">
-                                    <i class="fab fa-weixin text-xl"></i>
-                                </span>
+                            <div class="relative group inline-block z-50">
+                            <span class="hover:text-white transition-colors cursor-pointer">微信: nine很菜</span>
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-[1000]">
+                                <div class="bg-white p-3 rounded-lg shadow-2xl border border-gray-200" style="width: 300px; height: 400px;z-index: 1000;">
+                                    <img src="./img/wechat.jpg" alt="微信二维码" class="w-56 h-64 object-cover rounded" style="width: 100%;height: 100%;z-index: 1000;">
+                                    <div class="text-xs text-gray-600 text-center mt-1" style="margin-top: -20px;">扫码添加微信</div>
+                                </div>
                             </div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -459,14 +600,16 @@
                 return {
                     showMobileMenu: false,
                     currentDate: new Date().toLocaleDateString('zh-CN'),
-                    features: [
-                        {
-                            id: 1,
-                            icon: 'fas fa-rocket',
-                            title: '智能项目创建',
-                            description: 'AI自动生成SMART目标和关键节点，2步完成项目创建',
-                            points: ['AI生成项目目标', '自动规划里程碑', '智能时间估算']
-                        },
+                    activeTab: 'home',
+                changelog: [],
+                features: [
+                    {
+                        id: 1,
+                        icon: 'fas fa-rocket',
+                        title: '智能项目创建',
+                        description: 'AI自动生成SMART目标和关键节点，2步完成项目创建',
+                        points: ['AI生成项目目标', '自动规划里程碑', '智能时间估算']
+                    },
                         {
                             id: 2,
                             icon: 'fas fa-edit',
@@ -570,11 +713,40 @@
                 scrollToSection(sectionId) {
                     const element = document.getElementById(sectionId)
                     if (element) {
-                        element.scrollIntoView({ behavior: 'smooth' })
+                        const offset = 200 // 导航栏高度偏移
+                        const elementPosition = element.offsetTop - offset
+                        window.scrollTo({
+                            top: elementPosition,
+                            behavior: 'smooth'
+                        })
+                    }
+                },
+                async loadChangelog() {
+                    try {
+                        const response = await fetch('/version.json')
+                        const data = await response.json()
+                        this.changelog = data || []
+                    } catch (error) {
+                        console.error('加载更新日志失败:', error)
+                        // 如果加载失败，使用默认数据
+                        this.changelog = [
+                            {
+                                version: "1.0.5",
+                                date: "2025-01-15",
+                                changes: [
+                                    "修复已知bug",
+                                    "优化用户体验",
+                                    "提升AI响应速度"
+                                ]
+                            }
+                        ]
                     }
                 }
             },
             mounted() {
+                // 加载更新日志
+                this.loadChangelog()
+                
                 // 添加滚动动画
                 const observerOptions = {
                     threshold: 0.1,
