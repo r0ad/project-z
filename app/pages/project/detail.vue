@@ -589,6 +589,15 @@
 				</nut-button>
 			</view>
 		</view>
+		
+		<!-- 分享卡片组件 -->
+		<ShareCardComponent
+			v-model:visible="showShareCard"
+			:content-type="shareContentType"
+			:content-data="shareCardData"
+			@share="handleShare"
+			@export="handleExport"
+		/>
 	</view>
 </template>
 
@@ -598,10 +607,12 @@ import logApi from '@/api/logApi.js'
 import aiApi from '@/api/aiApi.js'
 import DateUtils from '@/utils/dateUtils.js'
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import ShareCardComponent from '@/components/ShareCardComponent.vue'
 
 export default {
 	components: {
-		CustomNavbar
+		CustomNavbar,
+		ShareCardComponent
 	},
 	data() {
 		return {
@@ -657,7 +668,11 @@ export default {
 			showDatePicker: false,
 			selectedDate: new Date().toISOString().split('T')[0],
 			minDate: '2020-01-01',
-			maxDate: '2030-12-31'
+			maxDate: '2030-12-31',
+			// 分享相关
+			showShareCard: false,
+			shareContentType: 'project',
+			shareCardData: {}
 		}
 	},
 	onLoad(options) {
@@ -849,9 +864,15 @@ export default {
 		// 显示更多操作菜单
 		showMoreActions() {
 			uni.showActionSheet({
-				itemList: ['删除项目'],
+				itemList: ['分享项目', '分享日志', '分享分析', '删除项目'],
 				success: (res) => {
 					if (res.tapIndex === 0) {
+						this.shareProject()
+					} else if (res.tapIndex === 1) {
+						this.shareCurrentTabContent('log')
+					} else if (res.tapIndex === 2) {
+						this.shareCurrentTabContent('analysis')
+					} else if (res.tapIndex === 3) {
 						this.deleteProject()
 					}
 				}
@@ -887,8 +908,108 @@ export default {
 			})
 		},
 		
-
+		// 分享项目
+		shareProject() {
+			// 准备项目分享数据
+			this.shareContentType = 'project'
+			this.shareCardData = {
+				id: this.projectId,
+				title: this.projectTitle,
+				content: this.projectGoal,
+				goal: this.projectGoal,
+				milestones: this.milestones,
+				progress: this.project.progress || 0,
+				timestamp: this.project.updated_at || new Date().toISOString(),
+				updateTime: this.project.updated_at
+			}
+			this.showShareCard = true
+		},
 		
+		// 分享当前标签页内容
+		shareCurrentTabContent(forceType = null) {
+			const contentType = forceType || this.getCurrentContentType()
+			let shareData = {}
+			
+			switch (contentType) {
+				case 'log':
+					// 分享最新的日志
+					if (this.projectLogs.length > 0) {
+						const latestLog = this.projectLogs[0]
+						shareData = {
+							id: latestLog.id,
+							title: `${this.projectTitle} - 项目日志`,
+							content: latestLog.content,
+							time: latestLog.time,
+							progressText: latestLog.progressText,
+							problemText: latestLog.problemText,
+							planText: latestLog.planText,
+							timestamp: latestLog.createdAt
+						}
+					} else {
+						uni.showToast({
+							title: '暂无日志可分享',
+							icon: 'none'
+						})
+						return
+					}
+					break
+					
+				case 'analysis':
+					// 分享最新的分析
+					if (this.analysisList.length > 0) {
+						const latestAnalysis = this.analysisList[0]
+						shareData = {
+							id: latestAnalysis.id,
+							title: `${this.projectTitle} - AI分析`,
+							content: latestAnalysis.content,
+							analysis: latestAnalysis.content,
+							suggestions: latestAnalysis.suggestions,
+							analysisType: latestAnalysis.analysisType,
+							timestamp: latestAnalysis.createdAt || latestAnalysis.formattedTime
+						}
+					} else {
+						uni.showToast({
+							title: '暂无分析可分享',
+							icon: 'none'
+						})
+						return
+					}
+					break
+					
+				default:
+					// 默认分享项目信息
+					this.shareProject()
+					return
+			}
+			
+			this.shareContentType = contentType
+			this.shareCardData = shareData
+			this.showShareCard = true
+		},
+		
+		// 获取当前标签页的内容类型
+		getCurrentContentType() {
+			switch (this.activeTab) {
+				case 0: return 'project' // 目标与节点
+				case 1: return 'log'     // 项目日志
+				case 2: return 'analysis' // AI分析
+				case 3: return 'analysis' // 总结（作为分析类型处理）
+				default: return 'project'
+			}
+		},
+		
+		// 处理分享结果
+		handleShare(result) {
+			console.log('分享完成:', result)
+			// 这里可以添加分享统计或其他逻辑
+		},
+		
+		// 处理导出结果
+		handleExport(type, data) {
+			console.log('导出完成:', type, data)
+			// 这里可以添加导出统计或其他逻辑
+		},
+
 		// 编辑日志
 		editLog(log) {
 			this.editingLog = log

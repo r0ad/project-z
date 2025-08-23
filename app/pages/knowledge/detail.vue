@@ -97,16 +97,27 @@
 				</nut-button>
 			</view>
 		</view>
+		
+		<!-- 分享卡片组件 -->
+		<ShareCardComponent
+			v-model:visible="showShareCard"
+			content-type="knowledge"
+			:content-data="shareCardData"
+			@share="handleShare"
+			@export="handleExport"
+		/>
 	</view>
 </template>
 
 <script>
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import ShareCardComponent from '@/components/ShareCardComponent.vue'
 import knowledgeApi from '@/api/knowledgeApi.js'
 
 export default {
 	components: {
-		CustomNavbar
+		CustomNavbar,
+		ShareCardComponent
 	},
 	data() {
 		return {
@@ -120,7 +131,9 @@ export default {
 				viewCount: 0
 			},
 			relatedKnowledge: [],
-			isFavorite: false
+			isFavorite: false,
+			showShareCard: false,
+			shareCardData: {}
 		}
 	},
 	onLoad(options) {
@@ -179,10 +192,28 @@ export default {
 	},
 
 		shareKnowledge() {
-			uni.showToast({
-				title: '分享知识',
-				icon: 'none'
-			})
+			// 准备分享数据
+			this.shareCardData = {
+				id: this.knowledgeId,
+				title: this.knowledgeData.title,
+				summary: this.knowledgeData.summary,
+				content: this.knowledgeData.content,
+				tags: this.knowledgeData.tags,
+				timestamp: this.knowledgeData.updateTime,
+				updateTime: this.knowledgeData.updateTime,
+				viewCount: this.knowledgeData.viewCount
+			}
+			this.showShareCard = true
+		},
+		
+		handleShare(result) {
+			console.log('分享完成:', result)
+			// 这里可以添加分享统计或其他逻辑
+		},
+		
+		handleExport(type, data) {
+			console.log('导出完成:', type, data)
+			// 这里可以添加导出统计或其他逻辑
 		},
 		async collectKnowledge() {
 		try {
