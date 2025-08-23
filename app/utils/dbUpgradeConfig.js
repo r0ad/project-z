@@ -9,8 +9,8 @@
  */
 
 const dbUpgradeConfig = {
-  current_version: '1.0.0',
-  upgrade_order: ['1.0.0'],
+  current_version: '1.1.0',
+  upgrade_order: ['1.0.0', '1.1.0'],
   versions: {
     '1.0.0': {
       description: '初始化完整数据库结构',
@@ -233,6 +233,32 @@ const dbUpgradeConfig = {
           type: 'create_index',
           name: 'idx_chat_messages_timestamp',
           sql: 'CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)'
+        }
+      ]
+    },
+    
+    '1.1.0': {
+      description: '分享码系统优化：添加AI配置来源追踪',
+      scripts: [
+        // 扩展ai_config表结构
+        {
+          type: 'alter_table',
+          name: 'ai_config_add_promo_code_id',
+          sql: 'ALTER TABLE ai_config ADD COLUMN promo_code_id TEXT NULL'
+        },
+        
+        // 创建索引以提升查询性能
+        {
+          type: 'create_index',
+          name: 'idx_ai_config_promo_code_id',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_ai_config_promo_code_id ON ai_config(promo_code_id)'
+        },
+        
+        // 创建复合索引用于可编辑配置查询
+        {
+          type: 'create_index',
+          name: 'idx_ai_config_editable',
+          sql: 'CREATE INDEX IF NOT EXISTS idx_ai_config_editable ON ai_config(user_id) WHERE promo_code_id IS NULL'
         }
       ]
     }

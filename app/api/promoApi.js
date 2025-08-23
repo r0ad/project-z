@@ -53,7 +53,27 @@ class PromoApi {
   }
 
   /**
-   * 应用分享码配置
+   * 生成分享码唯一标识符
+   * @param {string} promoCode 分享码
+   * @returns {string} 唯一标识符
+   */
+  generatePromoCodeId(promoCode) {
+    // 使用分享码和时间戳生成唯一ID
+    const timestamp = Date.now()
+    // 使用简单的哈希算法生成短哈希
+    let hash = 0
+    const str = promoCode + timestamp
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // 转换为32位整数
+    }
+    const hashStr = Math.abs(hash).toString(36).substring(0, 12)
+    return `promo_${hashStr}_${timestamp}`
+  }
+
+  /**
+   * 应用分享码配置（优化版）
    * @param {string} promoCode 分享码
    * @returns {Promise<Object>} 应用结果
    */
@@ -67,27 +87,44 @@ class PromoApi {
 
       const promoData = validation.data
       const userId = userStore.getCurrentUserId()
+      const promoCodeId = this.generatePromoCodeId(promoCode)
 
       // 确保数据库已初始化
       await dbService.initDB()
 
-      // 检查是否已存在相同provider的配置
-      const existingConfig = await dbService.query(
-        'SELECT * FROM ai_config WHERE user_id = ? AND provider = ?', 
+      // 检查是否已存在相同provider的分享码配置
+      const existingPromoConfig = await dbService.query(
+        'SELECT * FROM ai_config WHERE user_id = ? AND provider = ? AND promo_code_id IS NOT NULL', 
         [userId, promoData.provider]
       )
 
-      // 备份当前AI配置（仅在首次应用或配置有变化时备份）
-      if (existingConfig.length === 0 || 
-          existingConfig[0].api_key !== promoData.apiKey || 
-          existingConfig[0].model !== promoData.model) {
+      // 如果存在分享码配置，提示用户
+      if (existingPromoConfig.length > 0) {
+        return {
+          success: false,
+          error: `已存在来自分享码的${promoData.provider}配置，请先移除后再应用新的分享码`
+        }
+      }
+
+      // 检查是否已存在相同provider的手动配置
+      const existingManualConfig = await dbService.query(
+        'SELECT * FROM ai_config WHERE user_id = ? AND provider = ? AND promo_code_id IS NULL', 
+        [userId, promoData.provider]
+      )
+
+      // 备份当前激活的AI配置（仅在没有备份或配置有变化时备份）
+      const shouldBackup = existingManualConfig.length === 0 || 
+                          existingManualConfig[0].api_key !== promoData.apiKey || 
+                          existingManualConfig[0].model !== promoData.model
+      
+      if (shouldBackup) {
         await this.backupCurrentAIConfig()
       }
 
       // 先将所有现有配置设为非激活状态
       await dbService.update('ai_config', { is_active: 0 }, 'user_id = ?', [userId])
 
-      // 准备AI配置数据（符合数据库表结构）
+      // 准备AI配置数据（符合优化后的数据库表结构）
       const aiConfig = {
         user_id: userId,
         provider: promoData.provider,
@@ -98,18 +135,20 @@ class PromoApi {
         max_tokens: promoData.maxTokens || 2000,
         temperature: promoData.temperature || 0.7,
         is_active: 1,
-        created_at: existingConfig.length > 0 ? existingConfig[0].created_at : Date.now(),
+        promo_code_id: promoCodeId,  // 核心：设置分享码关联ID
+        created_at: Date.now(),
         updated_at: Date.now()
       }
 
-      // 使用INSERT OR REPLACE避免UNIQUE约束冲突
+      // 使用INSERT OR REPLACE避免UNIQUE约束冲突，并包含新的promo_code_id字段
       await dbService.executeSql(
-        'INSERT OR REPLACE INTO ai_config (user_id, provider, base_url, api_key, model, timeout, max_tokens, temperature, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [aiConfig.user_id, aiConfig.provider, aiConfig.base_url, aiConfig.api_key, aiConfig.model, aiConfig.timeout, aiConfig.max_tokens, aiConfig.temperature, aiConfig.is_active, aiConfig.created_at, aiConfig.updated_at]
+        'INSERT OR REPLACE INTO ai_config (user_id, provider, base_url, api_key, model, timeout, max_tokens, temperature, is_active, promo_code_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [aiConfig.user_id, aiConfig.provider, aiConfig.base_url, aiConfig.api_key, aiConfig.model, aiConfig.timeout, aiConfig.max_tokens, aiConfig.temperature, aiConfig.is_active, aiConfig.promo_code_id, aiConfig.created_at, aiConfig.updated_at]
       )
 
-      // 保存分享码信息到本地存储
+      // 保存分享码信息到本地存储（保持原有兼容性）
       const promoConfig = {
+        id: promoCodeId,  // 添加ID关联
         code: promoCode,
         appliedAt: Date.now(),
         expiresAt: promoData.expiresAt,
@@ -122,6 +161,7 @@ class PromoApi {
         success: true,
         message: '分享码应用成功',
         config: aiConfig,
+        promoCodeId: promoCodeId,
         remainingDays: validation.remainingDays
       }
     } catch (error) {
@@ -384,7 +424,7 @@ class PromoApi {
   }
 
   /**
-   * 移除分享码配置并恢复原配置
+   * 移除分享码配置并恢复原配置（优化版）
    * @returns {Promise<Object>} 移除结果
    */
   async removePromoCode() {
@@ -403,8 +443,27 @@ class PromoApi {
       // 确保数据库已初始化
       await dbService.initDB()
       
-      // 删除分享码相关的AI配置（根据provider匹配）
-      await dbService.delete('ai_config', 'user_id = ? AND provider = ?', [userId, promoConfig.provider])
+      // 基于promo_code_id精确删除分享码相关的AI配置
+      let deletedCount = 0
+      if (promoConfig.id) {
+        // 新版本：使用promo_code_id精确匹配
+        const result = await dbService.delete(
+          'ai_config', 
+          'user_id = ? AND promo_code_id = ?', 
+          [userId, promoConfig.id]
+        )
+        deletedCount = result.changes || 0
+      } else {
+        // 兼容旧版本：使用provider匹配并确保只删除分享码配置
+        const result = await dbService.delete(
+          'ai_config', 
+          'user_id = ? AND provider = ? AND promo_code_id IS NOT NULL', 
+          [userId, promoConfig.provider]
+        )
+        deletedCount = result.changes || 0
+      }
+      
+      console.log(`已删除${deletedCount}个分享码配置`)
       
       // 恢复备份配置
       const restoreResult = await this.restoreBackupAIConfig()
@@ -415,7 +474,9 @@ class PromoApi {
       return {
         success: true,
         message: '分享码已移除',
-        restored: restoreResult.success
+        deletedCount: deletedCount,
+        restored: restoreResult.success,
+        restoreMessage: restoreResult.message
       }
     } catch (error) {
       console.error('移除分享码失败:', error)

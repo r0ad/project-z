@@ -1,4 +1,5 @@
 /**
+/**
  * AI交互API
  * 提供AI模型交互、项目分析、聊天对话等功能
  * 基于openai-chat组件实现
@@ -84,8 +85,139 @@ class AiApi {
   }
 
   /**
-   * 添加AI配置
-   * @param {Object} config - 配置信息
+   * 检查配置是否可编辑（核心权限控制逃辑）
+   * @param {number} configId - 配置ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
+   * @returns {Promise<boolean>}
+   */
+  async canEditConfig(configId, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
+    
+    await this.ensureDBInit()
+    
+    try {
+      const config = await dbService.findOne(
+        'ai_config', 
+        'id = ? AND user_id = ?', 
+        [configId, userId]
+      )
+      
+      if (!config) {
+        return false
+      }
+      
+      // 核心逻辑：promo_code_id存在则不可编辑
+      return !config.promo_code_id
+    } catch (error) {
+      console.error('检查配置编辑权限失败:', error)
+      return false
+    }
+  }
+  
+  /**
+   * 检查配置是否为分享码配置
+   * @param {number} configId - 配置ID
+   * @returns {Promise<boolean>}
+   */
+  async isPromoCodeConfig(configId) {
+    try {
+      const config = await dbService.findOne('ai_config', 'id = ?', [configId])
+      return config && !!config.promo_code_id
+    } catch (error) {
+      console.error('检查分享码配置失败:', error)
+      return false
+    }
+  }
+  
+  /**
+   * 获取可编辑的配置列表
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
+   * @returns {Promise<Array>}
+   */
+  async getEditableConfigs(userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
+    
+    await this.ensureDBInit()
+    
+    try {
+      // 查询promo_code_id为null的配置（可编辑配置）
+      const configs = await dbService.findMany(
+        'ai_config',
+        'user_id = ? AND promo_code_id IS NULL',
+        [userId],
+        'created_at DESC'
+      )
+      
+      return configs
+    } catch (error) {
+      console.error('获取可编辑配置列表失败:', error)
+      return []
+    }
+  }
+  
+  /**
+   * 获取带来源信息的配置列表
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
+   * @returns {Promise<Array>}
+   */
+  async getConfigsWithSource(userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
+    
+    const configs = await this.getAIConfigList(userId)
+    
+    // 为每个配置添加来源信息
+    return configs.map(config => ({
+      ...config,
+      source_type: config.promo_code_id ? 'promo_code' : 'manual',
+      is_editable: !config.promo_code_id
+    }))
+  }
+  
+  /**
+   * 安全的配置更新（检查编辑权限）
+   * @param {number} configId - 配置ID
+   * @param {Object} updates - 更新数据
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
+   * @returns {Promise<Object>}
+   */
+  async updateConfigSafely(configId, updates, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
+    
+    try {
+      // 检查编辑权限
+      const canEdit = await this.canEditConfig(configId, userId)
+      
+      if (!canEdit) {
+        return {
+          success: false,
+          error: '该配置来自分享码，不允许编辑。如需修改，请先移除分享码或创建新的手动配置。'
+        }
+      }
+      
+      // 执行更新
+      await this.updateAIConfig(configId, updates)
+      
+      return {
+        success: true,
+        message: '配置更新成功'
+      }
+    } catch (error) {
+      console.error('安全更新配置失败:', error)
+      return {
+        success: false,
+        error: '更新失败: ' + error.message
+      }
+    }
+  }
+  /*
    * @param {number} userId - 用户ID，如果不提供则使用当前用户
    */
   async addAIConfig(config, userId = null) {
@@ -124,7 +256,7 @@ class AiApi {
   }
 
   /**
-   * 更新AI配置
+   * 更新AI配置（带权限检查）
    * @param {number} id - 配置ID
    * @param {Object} config - 配置信息
    * @param {number} userId - 用户ID，如果不提供则使用当前用户
@@ -137,6 +269,12 @@ class AiApi {
     
     try {
       console.log('更新AI配置:', id, config)
+      
+      // 检查编辑权限（核心安全检查）
+      const canEdit = await this.canEditConfig(id, userId)
+      if (!canEdit) {
+        throw new Error('该配置来自分享码，不允许编辑。如需修改，请先移除分享码或创建新的手动配置。')
+      }
       
       // 如果设置为激活，先将该用户的其他配置设为非激活
       if (config.is_active) {
@@ -152,8 +290,11 @@ class AiApi {
         timeout: parseInt(config.timeout) || 30,
         max_tokens: parseInt(config.max_tokens) || 2000,
         temperature: parseFloat(config.temperature) || 0.7,
-        is_active: config.is_active ? 1 : 0
+        is_active: config.is_active ? 1 : 0,
+        updated_at: Date.now()  // 添加更新时间
       }
+      
+      // 注意：不更新promo_code_id字段，保持来源信息不变
       
       const result = await dbService.update('ai_config', configData, `id = ${id} AND user_id = ${userId}`)
       return result
@@ -1322,6 +1463,115 @@ ${completedMilestones.map(m => `- ${m.title}`).join('\n')}
       return `${weekdays[date.getDay()]} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
     } else {
       return `${date.getMonth() + 1}-${date.getDate()}`
+    }
+  }
+  
+  /**
+   * 检查配置是否可用于生成分享码（防循环生成机制）
+   * @param {number} configId - 配置ID
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
+   * @returns {Promise<Object>} 检查结果
+   */
+  async canGeneratePromoFromConfig(configId, userId = null) {
+    if (!userId) {
+      userId = userStore.getCurrentUserId()
+    }
+    
+    await this.ensureDBInit()
+    
+    try {
+      const config = await dbService.findOne(
+        'ai_config', 
+        'id = ? AND user_id = ?', 
+        [configId, userId]
+      )
+      
+      if (!config) {
+        return {
+          canGenerate: false,
+          reason: '配置不存在或无权限访问'
+        }
+      }
+      
+      // 核心安全检查：来自分享码的配置不能生成新的分享码
+      if (config.promo_code_id) {
+        return {
+          canGenerate: false,
+          reason: '该配置来自分享码，不允许生成新的分享码，以防止循环传播。',
+          configSource: 'promo_code'
+        }
+      }
+      
+      // 额外安全检查：确保配置完整性
+      if (!config.provider || !config.api_key || !config.model) {
+        return {
+          canGenerate: false,
+          reason: '配置信息不完整，无法生成分享码'
+        }
+      }
+      
+      return {
+        canGenerate: true,
+        config: config,
+        configSource: 'manual'
+      }
+    } catch (error) {
+      console.error('检查配置是否可生成分享码失败:', error)
+      return {
+        canGenerate: false,
+        reason: '检查失败: ' + error.message
+      }
+    }
+  }
+  
+  /**
+   * 安全生成分享码（带权限检查）
+   * @param {number} configId - 配置ID
+   * @param {number} validDays - 有效天数
+   * @param {number} userId - 用户ID，如果不提供则使用当前用户
+   * @returns {Promise<Object>} 生成结果
+   */
+  async generatePromoCodeSafely(configId, validDays = 7, userId = null) {
+    try {
+      // 先检查是否可以生成
+      const checkResult = await this.canGeneratePromoFromConfig(configId, userId)
+      
+      if (!checkResult.canGenerate) {
+        return {
+          success: false,
+          error: checkResult.reason,
+          securityBlock: checkResult.configSource === 'promo_code'
+        }
+      }
+      
+      const config = checkResult.config
+      
+      // 引入加密工具
+      const cryptoUtils = (await import('@/utils/cryptoUtils.js')).default
+      
+      // 调用加密工具生成分享码
+      const promoCode = cryptoUtils.generatePromoCode(
+        config.provider,
+        config.api_key,
+        config.model,
+        validDays
+      )
+      
+      return {
+        success: true,
+        promoCode: promoCode,
+        sourceConfig: {
+          provider: config.provider,
+          model: config.model,
+          validDays: validDays
+        }
+      }
+    } catch (error) {
+      console.error('安全生成分享码失败:', error)
+      return {
+        success: false,
+        error: '生成失败: ' + error.message
+      }
     }
   }
 }

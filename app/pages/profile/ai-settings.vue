@@ -48,12 +48,21 @@
 						v-for="(config, index) in configList" 
 						:key="config.id"
 						class="config-item"
-						:class="{ 'active': config.is_active }"
+						:class="{ 
+							'active': config.is_active,
+							'promo-config': config.promo_code_id,
+							'readonly': config.promo_code_id
+						}"
 					>
 						<view class="config-header">
 							<view class="config-info">
 								<text class="config-provider">{{ config.provider }}</text>
 								<text class="config-model">{{ config.model }}</text>
+								<!-- 分享码标识 -->
+								<view class="source-indicator" v-if="config.promo_code_id">
+									<nut-icon name="scan" size="12" color="#FF7D00"></nut-icon>
+									<text class="source-text">分享码</text>
+								</view>
 							</view>
 							<view class="config-actions">
 								<nut-button 
@@ -65,12 +74,26 @@
 									激活
 								</nut-button>
 								<text v-else class="active-badge">当前激活</text>
+												
+								<!-- 编辑按钮 - 只有手动配置可编辑 -->
 								<nut-icon 
+									v-if="isConfigEditable(config)"
 									name="edit" 
 									size="16" 
 									color="#86909C" 
 									@click="editConfig(config)"
 								></nut-icon>
+												
+								<!-- 分享码特殊操作 -->
+								<nut-button 
+									v-if="config.promo_code_id" 
+									size="small" 
+									type="warning"
+									@click="showPromoDetails(config)"
+								>
+									分享码详情
+								</nut-button>
+												
 								<nut-icon 
 									name="del" 
 									size="16" 
@@ -79,6 +102,19 @@
 								></nut-icon>
 							</view>
 						</view>
+										
+						<!-- 分享码配置的额外信息 -->
+						<view v-if="config.promo_code_id" class="promo-info">
+							<view class="promo-meta">
+								<text class="promo-id">分享码ID: {{ config.promo_code_id }}</text>
+								<text class="created-time">应用时间: {{ formatTime(config.created_at) }}</text>
+							</view>
+							<view class="promo-notice">
+								<nut-icon name="notice" size="12" color="#FF7D00"></nut-icon>
+								<text class="notice-text">此配置来自分享码，不可编辑</text>
+							</view>
+						</view>
+										
 						<view class="config-details">
 							<text class="config-url">{{ config.base_url }}</text>
 							<view class="config-params">
@@ -483,8 +519,72 @@ export default {
 			this.selectedModel = []
 			this.onProviderChange(LLMProviders.DEEPSEEK)
 		},
+		// 判断配置是否可编辑（新增核心方法）
+		isConfigEditable(config) {
+			// 无promo_code_id表示手动创建，可编辑
+			return !config.promo_code_id
+		},
+		
+		// 获取配置来源类型显示文本
+		getConfigSourceText(config) {
+			return config.promo_code_id ? '分享码' : '手动创建'
+		},
+		
+		// 获取配置来源图标
+		getConfigSourceIcon(config) {
+			return config.promo_code_id ? 'scan' : 'edit'
+		},
+		
+		// 显示分享码配置详情
+		showPromoDetails(config) {
+			const detailText = `分享码配置详情\n\n` +
+								`供应商: ${config.provider}\n` +
+								`模型: ${config.model}\n` +
+								`分享码ID: ${config.promo_code_id}\n` +
+								`应用时间: ${this.formatTime(config.created_at)}\n\n` +
+								`此配置来自分享码，不可编辑。\n` +
+								`如需修改，请在“我的”页面移除分享码后再试。`
+			
+			uni.showModal({
+				title: '分享码配置',
+				content: detailText,
+				showCancel: false,
+				confirmText: '知道了'
+			})
+		},
+		
+		// 格式化时间显示
+		formatTime(timestamp) {
+			if (!timestamp) return '未知'
+			
+			try {
+				const date = new Date(timestamp)
+				return date.toLocaleString('zh-CN', {
+					year: 'numeric',
+					month: '2-digit',
+					day: '2-digit',
+					hour: '2-digit',
+					minute: '2-digit'
+				})
+			} catch (error) {
+				console.error('时间格式化失败:', error)
+				return '时间格式错误'
+			}
+		},
 		
 		editConfig(config) {
+			// 检查是否为分享码配置
+			if (config.promo_code_id) {
+				uni.showModal({
+					title: '无法编辑',
+					content: '该配置来自分享码，不允许编辑。\n\n如需修改，请在"我的"页面移除分享码后再试，或者创建新的手动配置。',
+					showCancel: false,
+					confirmText: '知道了'
+				})
+				return
+			}
+			
+			// 原有的编辑逻辑
 			this.editingConfig = config
 			// 如果是自定义供应商，将provider值设置到custom_provider_name
 			const isCustom = !Object.values(LLMProviders).includes(config.provider)
@@ -756,6 +856,82 @@ export default {
 .config-item.active {
 	border-color: #165DFF;
 	background-color: #F7F8FF;
+}
+
+/* 分享码配置特殊样式 */
+.config-item.promo-config {
+	border-color: #FF7D00;
+	background-color: #FFF7F0;
+	position: relative;
+}
+
+.config-item.promo-config.active {
+	border-color: #FF7D00;
+	background-color: #FFF2E6;
+}
+
+.config-item.readonly {
+	opacity: 0.9;
+}
+
+/* 分享码标识 */
+.source-indicator {
+	display: flex;
+	align-items: center;
+	gap: 6rpx;
+	margin-top: 8rpx;
+	padding: 4rpx 8rpx;
+	border-radius: 8rpx;
+	background-color: #FF7D0015;
+	border: 1rpx solid #FF7D0030;
+}
+
+.source-text {
+	font-size: 20rpx;
+	color: #FF7D00;
+	font-weight: 500;
+}
+
+/* 分享码信息区域 */
+.promo-info {
+	margin-top: 16rpx;
+	padding: 16rpx;
+	border-radius: 8rpx;
+	background-color: #FFF7F0;
+	border: 1rpx solid #FF7D0030;
+}
+
+.promo-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+	margin-bottom: 12rpx;
+}
+
+.promo-id {
+	font-size: 24rpx;
+	color: #4E5969;
+	font-family: monospace;
+}
+
+.created-time {
+	font-size: 24rpx;
+	color: #86909C;
+}
+
+.promo-notice {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	padding: 8rpx 12rpx;
+	border-radius: 6rpx;
+	background-color: #FF7D0010;
+}
+
+.notice-text {
+	font-size: 24rpx;
+	color: #FF7D00;
+	font-weight: 500;
 }
 
 .config-header {
