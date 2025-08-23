@@ -208,7 +208,7 @@ export default {
         this.adaptedContent = {
           title: '内容加载失败',
           content: '无法获取内容信息',
-          author: 'Project-Z',
+          author: '点点',
           timestamp: new Date().toLocaleDateString(),
           tags: [],
           meta: {}
@@ -373,7 +373,7 @@ export default {
       
       // 底部标识
       text += `━━━━━━━━━━━━━━━━━━━━\n`
-      text += `🔗 来自 Project-Z 知识管理系统`
+      text += `🔗 来自 点点 知识管理系统`
       
       return text
     },
@@ -425,7 +425,7 @@ export default {
       
       // 底部标识
       text += `━━━━━━━━━━━━━━━━━━━━\n`
-      text += `🔗 来自 Project-Z 项目管理系统`
+      text += `🔗 来自 点点 项目管理系统`
       
       return text
     },
@@ -471,7 +471,7 @@ export default {
       
       // 底部标识
       text += `━━━━━━━━━━━━━━━━━━━━\n`
-      text += `🔗 来自 Project-Z 项目日志系统`
+      text += `🔗 来自 点点 项目日志系统`
       
       return text
     },
@@ -514,7 +514,7 @@ export default {
       
       // 底部标识
       text += `━━━━━━━━━━━━━━━━━━━━\n`
-      text += `🔗 来自 Project-Z AI分析系统`
+      text += `🔗 来自 点点 AI分析系统`
       
       return text
     },
@@ -531,7 +531,7 @@ export default {
       
       text += `${this.adaptedContent.content}\n\n`
       text += `📅 ${this.adaptedContent.timestamp}\n`
-      text += `🔗 来自 Project-Z`
+      text += `🔗 来自 点点`
       
       return text
     },
