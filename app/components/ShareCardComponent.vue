@@ -78,7 +78,7 @@
             
             <view class="preview-footer">
               <text class="preview-time">{{ formatPreviewTime(adaptedContent.timestamp) }}</text>
-              <text class="preview-brand">Project-Z</text>
+              <text class="preview-brand">点点</text>
             </view>
           </view>
         </view>
@@ -113,6 +113,7 @@
 <script>
 import { getThemeList } from '@/utils/shareCardThemes.js'
 import { ContentAdapterFactory } from '@/utils/contentAdapters.js'
+import DateUtils from '@/utils/dateUtils.js'
 
 export default {
   name: 'ShareCardComponent',
@@ -549,14 +550,10 @@ export default {
      * 格式化预览时间
      */
     formatPreviewTime(timestamp) {
-      if (!timestamp) return new Date().toLocaleDateString()
+      if (!timestamp) return DateUtils.formatDateTime(new Date())
       
       try {
-        const date = new Date(timestamp)
-        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString('zh-CN', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        })
+        return DateUtils.formatDateTime(timestamp)
       } catch (error) {
         return timestamp
       }
