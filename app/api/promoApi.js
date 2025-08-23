@@ -131,7 +131,7 @@ class PromoApi {
         base_url: promoData.baseUrl || 'https://api.deepseek.com/v1',
         api_key: promoData.apiKey,
         model: promoData.model,
-        timeout: promoData.timeout || 30,
+        timeout: promoData.timeout || 130,
         max_tokens: promoData.maxTokens || 2000,
         temperature: promoData.temperature || 0.7,
         is_active: 1,

@@ -21,7 +21,7 @@ class OpenAIAPI {
 			baseUrl: config.baseUrl || 'https://api.openai.com/v1',
 			apiKey: config.apiKey || '',
 			model: config.model || 'gpt-3.5-turbo',
-			timeout: config.timeout || 30000,
+			timeout: config.timeout || 130000,
 			...config
 		}
 		

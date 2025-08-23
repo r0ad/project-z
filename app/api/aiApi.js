@@ -53,7 +53,7 @@ class AiApi {
         baseUrl: config.base_url || 'https://api.deepseek.com/v1',
         apiKey: config.api_key,
         model: config.model || 'deepseek-chat',
-        timeout: (config.timeout || 30) * 1000
+        timeout: (config.timeout || 130) * 1000
       })
 
       this.isConfigured = true
@@ -287,7 +287,7 @@ class AiApi {
         base_url: config.base_url || '',
         api_key: config.api_key || '',
         model: config.model || '',
-        timeout: parseInt(config.timeout) || 30,
+        timeout: parseInt(config.timeout) || 130,
         max_tokens: parseInt(config.max_tokens) || 2000,
         temperature: parseFloat(config.temperature) || 0.7,
         is_active: config.is_active ? 1 : 0,
@@ -361,7 +361,7 @@ class AiApi {
         base_url: 'https://api.deepseek.com/v1',
         api_key: '',
         model: 'deepseek-chat',
-        timeout: 30,
+        timeout: 130,
         max_tokens: 2000,
         temperature: 0.7
       }
@@ -372,7 +372,7 @@ class AiApi {
         base_url: 'https://api.deepseek.com/v1',
         api_key: '',
         model: 'deepseek-chat',
-        timeout: 30,
+        timeout: 130,
         max_tokens: 2000,
         temperature: 0.7
       }
@@ -401,7 +401,7 @@ class AiApi {
         base_url: config.baseUrl || config.base_url,
         api_key: config.apiKey || config.api_key,
         model: config.model,
-        timeout: parseInt(config.timeout) || 30,
+        timeout: parseInt(config.timeout) || 130,
         max_tokens: parseInt(config.maxTokens || config.max_tokens) || 2000,
         temperature: parseFloat(config.temperature) || 0.7,
         is_active: config.isActive ? 1 : 0,
