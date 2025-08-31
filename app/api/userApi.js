@@ -22,16 +22,22 @@ class UserApi {
 	 * @param {number} userId - 用户ID，默认为1
 	 * @returns {Promise<Object>} 用户信息
 	 */
-	async getCurrentUser(userId = 1) {
+	async getCurrentUser(userId = null) {
 		try {
 			await this.ensureDBInit()
 			
-			// 获取指定用户或第一个用户
+			// 如果没有指定userId，使用当前活跃用户ID
+			if (!userId) {
+				userId = this.getCurrentUserId()
+			}
+			
+			// 获取指定用户
 			let user
-			if (userId && userId !== 1) {
+			if (userId) {
 				user = await dbService.findOne('users', 'id = ?', [userId])
 			}
 			
+			// 如果没有找到用户，获取第一个用户
 			if (!user) {
 				user = await dbService.findOne('users', '1=1', [])
 			}
