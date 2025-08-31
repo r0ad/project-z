@@ -1,0 +1,250 @@
+# uni-app的国际化开发指南
+
+uni-app的国际化,即多语言,分为应用部分和框架部分。
+
+* 应用部分,即开发者自己的代码里涉及的界面部分
+* 框架部分,即uni-app内置组件和API涉及界面的部分
+
+不同端的国际化方案也有差异,uni-app 自 3.1.5起,App 和 H5 支持框架国际化。小程序平台的国际化依赖于小程序平台框架自身。一般而言海外用户更多使用的是App和H5。
+
+可以在HBuilderX新建项目里选择Hello i18n示例或者插件市场查看https://ext.dcloud.net.cn/plugin?id=6462。
+
+## # vue界面和js内容的国际化
+
+vue和js里的内容国际化是与web通行的方案。
+
+main.js 引入并初始化 VueI18n
+
+注意 推荐使用vue-i18n@9.1.9固定版本
+
+```
+// 国际化 json 文件,文件内容详见下面的示例 import en from './en.json' import zhHans from './zh-Hans.json' import zhHant from './zh-Hant.json' const messages = { en, 'zh-Hans': zhHans, 'zh-Hant': zhHant } let i18nConfig = { locale: uni.getLocale(),// 获取已设置的语言 messages } // VUE2 // #ifndef VUE3 import Vue from 'vue' import VueI18n from 'vue-i18n' Vue.use(VueI18n) const i18n = new VueI18n(i18nConfig) Vue.config.productionTip = false App.mpType = 'app' const app = new Vue({ i18n, ...App }) app.$mount() // #endif // VUE3 // #ifdef VUE3 import { createSSRApp } from 'vue' import { createI18n } from 'vue-i18n'// v9.x const i18n = createI18n(i18nConfig) export function createApp() { const app = createSSRApp(App) app.use(i18n) return { app } } // #endif
+```
+
+国际化json文件内容
+
+```
+{ "index.title": "Hello i18n" }
+```
+
+页面模板中使用 $t() 获取,并传递国际化json文件中定义的key,js中使用 this.$t('')
+
+```
+<template> <view class="container"> <view class="title">{{$t('index.title')}}</view> </view> </template> <script> export default { data() { return { } } } </script>
+```
+
+注意:页面中设置语言后需要调用 this.$i18n.locale = 'zh-Hans' 后生效
+
+## # nvue页面国际化
+
+注意:nvue 国际化方案需要在每个页面单独引入uni-i18n。
+
+```
+<script> import { initVueI18n } from '@dcloudio/uni-i18n' // const messages = {} 此处内容省略,和 vue 全局引入的写法一致 const { t } = initVueI18n(messages) export default { data() { return { } } } </script>
+```
+
+## # pages.json 国际化
+
+pages.json不属于vue页面,其中的原生tabbar和原生导航栏里也有文字内容。这部分内容的国际化方案如下:
+
+项目根目录的locale目录下配置语言json文件,locale/语言地区代码.json,如:en.json,zh-Hans.json,zh-Hant.json
+
+```
+├── locale │ ├── en.json │ ├── zh-Hans.json │ └── zh-Hant.json
+```
+
+语言文件示例(zh-Hans.json)
+
+```
+{ "app.name": "Hello uni-app", "index.title": "首页" }
+```
+
+pages.json 示例
+
+```
+{ "pages": [ { "path": "pages/index/index", "style": { "navigationBarTitleText": "%index.title%" // locale目录下 语言地区代码.json 文件中定义的 key,使用 %% 占位 } } ], "tabBar": { "list": [{ "pagePath": "pages/index/index", "text": "%index.home%" } ] } }
+```
+
+pages.json 支持以下属性配置国际化信息
+
+* navigationBarTitleText
+* titleNView->titleText
+* titleNView->searchInput->placeholder
+* tabBar->list->text
+
+注:小程序下不支持这种国际化方案,也可以使用设置tabbar和navigationbar的API来设置文字。或者废弃原生tabbar和navigationbar,使用自定义方式。
+
+## # 框架内置组件和API国际化
+
+uni-app 有内置的基础组件,比如picker,或者与界面相关的API,比如showModal。这些界面包含的文字也需要国际化。
+
+自 3.1.5 版本起,App和H5平台内置的基础组件和接口相关的文字内容支持国际化。
+
+这部分国际化,提供了2种策略,有自动策略,也有自定义方案。
+
+### # 自动适配手机或浏览器语言
+
+uni-app 基础组件和API,内置如下语言:
+
+* 中文简体
+* 中文繁体
+* 英语
+* 法语
+* 西班牙语
+
+内置组件和接口显示会根据系统语言环境自动切换,未支持的系统语言环境会显示为英文。
+
+> uni-ui在1.4.8版本后也支持国际化
+
+### # 自定义国际化内容
+
+如果自动适配语言不满足你的需求,比如需要预置的5种语言外的更多语言。那么可以使用自定义方案。在指定目录创建指定文件,用同名词条来替换,语言地区代码请遵循 BCP47 规范。
+
+项目根目录支持 locale 目录,locale/uni-app.语言地区代码.json,如:uni-app.en.json,uni-app.zh-Hans.json,uni-app.zh-Hant.json
+
+```
+├── locale │ ├── uni-app.en.json │ ├── uni-app.zh-Hans.json │ └── uni-app.zh-Hant.json
+```
+
+uni-app.zh-Hans.json 文件
+
+```
+{ "common": { "uni.app.quit": "再按一次退出应用", "uni.async.error": "连接服务器超时,点击屏幕重试", "uni.showActionSheet.cancel": "取消", "uni.showToast.unpaired": "请注意 showToast 与 hideToast 必须配对使用", "uni.showLoading.unpaired": "请注意 showLoading 与 hideLoading 必须配对使用", "uni.showModal.cancel": "取消", "uni.showModal.confirm": "确定", "uni.chooseImage.cancel": "取消", "uni.chooseImage.sourceType.album": "从相册选择", "uni.chooseImage.sourceType.camera": "拍摄", "uni.chooseVideo.cancel": "取消", "uni.chooseVideo.sourceType.album": "从相册选择", "uni.chooseVideo.sourceType.camera": "拍摄", "uni.previewImage.cancel": "取消", "uni.previewImage.button.save": "保存图像", "uni.previewImage.save.success": "保存图像到相册成功", "uni.previewImage.save.fail": "保存图像到相册失败", "uni.setClipboardData.success": "内容已复制", "uni.scanCode.title": "扫码", "uni.scanCode.album": "相册", "uni.scanCode.fail": "识别失败", "uni.scanCode.flash.on": "轻触照亮", "uni.scanCode.flash.off": "轻触关闭", "uni.startSoterAuthentication.authContent": "指纹识别中...", "uni.picker.done": "完成", "uni.picker.cancel": "取消", "uni.video.danmu": "弹幕", "uni.video.volume": "音量", "uni.button.feedback.title": "问题反馈", "uni.button.feedback.send": "发送" }, "ios": {}, "android": {} }
+```
+
+## # manifest.json 国际化
+
+和 pages.json 一致,在项目根目录增加 locale/uni-app.语言地区代码.json 文件,然后在 manifest.json 中使用 %% 占位
+
+```
+{ "name" : "%app.name%", "appid" : "", "description" : "", "versionName" : "1.0.0", "versionCode" : "100", "locale": "zh-Hans" // 设置默认语言, }
+```
+
+manifest.json 中支持配置应用默认语言,参见上面的示例,默认为auto,跟随系统OS的语言。
+
+## # 小程序国际化
+
+已支持
+
+* 页面
+* 组件
+
+不支持
+
+* pages.json,可以通过调用API来设置,例如更改标题 uni.setNavigationBarTitle()
+* tabbar 不支持动态修改内容,但是可以通过自定义tabbar的方式,详情: https://uniapp.dcloud.net.cn/collocation/pages?id=custom-tab-bar
+
+## # 双向文字流
+
+中东语言的文字大多从右向左 (RTL) 书写。但是,一般而言,最常用的形式为双向 (bidi) 文字 - 混用从左向右和从右向左书写的文字。bidi 文字的一个示例是含有阿拉伯语和英语文字的段落。在 uni-app 中,nvue 页面和 vue 页面以不同的方式控制。
+
+* nvue 页面使用平台原生控件渲染,文字的方向一定程度上可以根据语言自动切换。
+* vue 页面使用 webview 渲染,文字方向需要开发者通过 css 样式进行控制:unicode-bidi、direction。
+
+## # uniCloud国际化
+
+注:大陆以外的终端用户访问uniCloud,开通阿里云的海外加速后可以提高访问速度。详见
+
+### # DB Schema 国际化
+
+> 新增于HBuilderX 3.3.0+
+
+uniCloud的 DB Schema 中涉及字段的显示名称、错误格式提示语,这些也需要国际化。
+
+在项目根目录 uniCloud/database/locale/{数据库表名}/语言地区代码.json 文件,然后在 \*.schema.json 文件中使用 %% 占位
+
+```
+├─uniCloud │ ├─cloudfunctions │ └─database │ │ hello.schema.json │ └─locale │ └─hello │ en.json │ zh-Hans.json
+```
+
+hello.schema.json 文件内容
+
+```
+// 文档教程: https://doc.dcloud.net.cn/uniCloud/schema { "bsonType": "object", "required": [], "permission": { "read": false, "create": false, "update": false, "delete": false }, "properties": { "_id": { "description": "ID" }, "name": { "bsonType": "string", "label": "%name%", "errorMessage": { "format": "{label}%name.format%" } } } }
+```
+
+en.json 文件内容
+
+```
+{ "name": "Name", "name.format": " invalid format" }
+```
+
+zh-Hans 文件内容
+
+```
+{ "name": "姓名", "name.format": "格式无效" }
+```
+
+## # App第三方SDK界面的国际化
+
+uni-app App端sdk国际化依赖于sdk自身,一般而言推荐直接使用适配海外的SDK。
+
+从HBuilder 3.4起,如下海外常用sdk均得到支持。
+
+* H5、App平台 新增 Google地图 详情
+* App平台 新增 支付支持 Paypal、Stripe、Google Pay 详情
+* App平台 新增 登录支持 Google、Facebook 详情
+
+## # 应用名称及iOS隐私提示语的国际化
+
+云打包详见https://ask.dcloud.net.cn/article/35860 离线打包自行在原生工程中配置。
+
+## # 语言API
+
+uni-app内置了一批与国际化相关的API和生命周期。
+
+注意要区分系统语言和应用语言的概念。
+
+* uni.getSystemInfo
+
+可以得到设备OS的语言、运行宿主host的语言以及应用自身的语言。
+
+* uni.getLocale
+
+获取应用当前使用的语言
+
+* uni.setLocale
+
+设置应用语言
+
+* uni.onLocaleChange
+
+当前应用语言发生变化时,触发回调。也就是uni.setLocale执行时。
+
+## # 语言代码
+
+语言代码通常为两个或三个字母,参考ISO 639规范
+
+语言代码-地区代码,地区代码为两个字母,参考ISO 3166-2规范
+
+## # 国际化示例项目
+
+HBuilderX 3.3 起,新建项目可以直接选择hello i18n模板,或者去插件市场查阅https://ext.dcloud.net.cn/plugin?id=6462
+
+注意:
+
+* Android 平台因原生层限制,将自动重启。其他平台均实时变化,包括已打开的所有页面
+* iOS date 类型的 picker 因系统限制无法设置国际化,默认跟随系统语言
+* iOS 新增框架语言需要配置 manifest.json -> app-plus -> locales ,例如: 增加日语 ja,详情见下面的 manifest.json 配置
+
+```
+// manifest.json { "app-plus" : { // 打包后生效 "locales": { "ja": {} } } }
+```
+
+## # 如何新增语言支持
+
+* 项目根目录 locale 目录下新增框架语言支持,uni-app.ja-JP.json 文件,ja-JP 表示语言代码
+* 调用 uni.getLocale() 执行逻辑,manifest.json -> locale || 系统语言,匹配uni内置框架语言和开发者配置的语言 uni-app.\*.json 文件,成功则返回对应的语言码,默认 zh-Hans
+
+## # HBuilderX代码提示
+
+HBuilderX 3.5.2 起,关于i18n国际化,uni-app pages.json和Vue页面 HBuilderX支持i18n相关代码提示、转到定义。
+
+#### # Vue页面 i18n代码提示
+
+#### # pages.json i18n代码提示
+
+#### # hover和转到定义
+
+1. 将光标置于国际化内容上,悬浮框会显示对应的国际化词条内容。
+2. 在国际化词条上,【Alt+鼠标单击】,显示下划线,即可跳转到对应的国际化语言文件。

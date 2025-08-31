@@ -116,17 +116,17 @@ export default {
 				},
 				{
 					question: '数据如何同步？',
-					answer: '应用支持本地存储，所有数据都保存在设备本地。如需备份，可以使用导出功能将数据导出到文件。',
+					answer: '应用支持华为云提供的GitCode云同步功能，所有数据都保存在设备本地。如需备份，可以在GitCode新建一个私人仓库用来存储。',
 					expanded: false
 				},
 				{
 					question: '如何设置AI模型？',
-					answer: '在设置页面的AI设置中，可以配置API密钥、选择模型类型、调整参数等。支持多种主流AI模型。',
+					answer: '建议添加微信获取分享码配置。在设置页面的AI设置中，可以配置API密钥、选择模型类型、调整参数等。支持多种主流AI模型。',
 					expanded: false
 				},
 				{
 					question: '遇到数据库问题怎么办？',
-					answer: '如果遇到数据库相关问题，可以在个人页面使用"数据库升级重试"功能，或联系技术支持获取帮助。',
+					answer: '如果遇到数据库相关问题，可以在个人页面使用"修复应用"功能，或联系技术支持获取帮助。',
 					expanded: false
 				}
 			],
@@ -194,10 +194,10 @@ export default {
 		},
 		copyEmail() {
 			uni.setClipboardData({
-				data: 'support@example.com',
+				data: 'codetrend',
 				success: () => {
 					uni.showToast({
-						title: '邮箱已复制',
+						title: '微信已复制',
 						icon: 'success'
 					})
 				}

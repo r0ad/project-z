@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "nutui-uniapp": "^1.8.4"
+    "nutui-uniapp": "^1.8.4",
+    "vue-i18n": "^9.1.9"
   },
   "devDependencies": {
     "sass": "^1.90.0"

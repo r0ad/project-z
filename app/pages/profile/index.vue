@@ -29,7 +29,8 @@
 							<text class="user-name">{{ userInfo.name }}</text>
 							<view class="user-actions">
 								<!-- <nut-icon name="edit" size="24" color="#165DFF" @click.stop="editProfile"></nut-icon> -->
-								<nut-icon name="more-x" size="24" color="#165DFF" @click.stop="showUserSwitcher"></nut-icon>
+								<nut-icon name="more-x" size="24" color="#165DFF"
+									@click.stop="showUserSwitcher"></nut-icon>
 							</view>
 						</view>
 						<text class="user-title">{{ userInfo.title }}</text>
@@ -56,7 +57,7 @@
 			<!-- 功能菜单 -->
 			<view class="menu-section">
 				<view class="menu-group">
-					<view v-for="(item, index) in menuItems" :key="index" class="menu-item"
+					<view v-for="(item, index) in menuItems" :key="index" class="menu-item" v-show="!item.disabled"
 						:class="{ disabled: item.disabled }" @click="handleMenuClick(item)">
 						<view class="menu-icon" :style="{ backgroundColor: item.iconBg }">
 							<nut-icon :name="item.icon" size="16" :color="item.iconColor"></nut-icon>
@@ -104,7 +105,7 @@
 							<text class="user-item-name">{{ user.username }}</text>
 							<text class="user-item-title">{{ user.title }}</text>
 							<text class="user-item-stats">{{ user.projectCount }}个项目 · {{ user.knowledgeCount
-								}}个知识</text>
+							}}个知识</text>
 						</view>
 						<nut-icon v-if="user.id === userInfo.id" name="check" size="16" color="#165DFF"></nut-icon>
 					</view>
@@ -266,13 +267,9 @@
 		</nut-popup>
 
 		<!-- 分享码弹窗 -->
-		<nut-popup 
-			v-model:visible="showPromoModal" 
-			position="center" 
-			:style="{width: '90%', minWidth: '500rpx', borderRadius: '20rpx', maxHeight: '80vh'}"
-			:closeable="true"
-			@close="closePromoModal"
-		>
+		<nut-popup v-model:visible="showPromoModal" position="center"
+			:style="{ width: '90%', minWidth: '500rpx', borderRadius: '20rpx', maxHeight: '80vh' }" :closeable="true"
+			@close="closePromoModal">
 			<view class="promo-modal">
 				<view class="promo-header">
 					<text class="promo-title">分享码管理</text>
@@ -281,182 +278,127 @@
 					</view>
 				</view>
 				<view class="promo-content">
-				
-				<!-- 当前状态显示 -->
-				<view class="promo-status" v-if="promoStatus">
-					<view class="status-header">
-						<text class="status-title">推广码状态</text>
-						<nut-button 
-							type="primary" 
-							size="small" 
-							@click="refreshPromoStatus"
-							:loading="promoLoading"
-							class="refresh-btn"
-						>
-							刷新
+
+					<!-- 当前状态显示 -->
+					<view class="promo-status" v-if="promoStatus">
+						<view class="status-header">
+							<text class="status-title">推广码状态</text>
+							<nut-button type="primary" size="small" @click="refreshPromoStatus" :loading="promoLoading"
+								class="refresh-btn">
+								刷新
+							</nut-button>
+						</view>
+						<view class="status-item" v-if="promoStatus.hasPromoCode && !promoStatus.expired">
+							<text class="status-label">当前状态:</text>
+							<text class="status-value active">已激活</text>
+						</view>
+						<view class="status-item" v-if="promoStatus.hasPromoCode && promoStatus.expired">
+							<text class="status-label">当前状态:</text>
+							<text class="status-value expired">已过期</text>
+						</view>
+						<view class="status-item" v-if="!promoStatus.hasPromoCode">
+							<text class="status-label">当前状态:</text>
+							<text class="status-value inactive">未激活</text>
+						</view>
+
+						<view class="status-item" v-if="promoStatus.hasPromoCode">
+							<text class="status-label">供应商:</text>
+							<text class="status-value">{{ promoStatus.provider }}</text>
+						</view>
+
+						<view class="status-item" v-if="promoStatus.hasPromoCode && !promoStatus.expired">
+							<text class="status-label">剩余时间:</text>
+							<text class="status-value">{{ promoManager.formatRemainingTime(promoStatus.remainingDays)
+								}}</text>
+						</view>
+					</view>
+
+					<!-- 输入区域 -->
+					<view class="promo-input-section">
+						<view class="input-label">
+							<text>分享码</text>
+						</view>
+						<nut-textarea :autosize="{ maxHeight: `200rpx`, minHeight: `100rpx` }" v-model="promoCode"
+							placeholder="请输入分享码" :disabled="promoLoading" class="promo-input" />
+					</view>
+
+
+
+					<!-- 压缩版选项 -->
+					<view class="promo-compress-section" v-if="false">
+						<view class="input-label">
+							<text>分享码格式</text>
+						</view>
+						<nut-cell title="使用压缩版" :desc="useCompressed ? '压缩版 (长度更短)' : '标准版 (兼容旧版)'"
+							class="compress-cell">
+							<template #link>
+								<nut-switch v-model="useCompressed" size="small"></nut-switch>
+							</template>
+						</nut-cell>
+						<view class="compress-tip">
+							<text class="tip-text">💡 压缩版分享码长度减少60-80%，更便于复制分享</text>
+						</view>
+					</view>
+
+					<!-- 主要操作按钮 -->
+					<view class="promo-main-actions">
+						<nut-button type="primary" @click="applyPromoCode" :loading="promoLoading"
+							:disabled="!promoCode || !promoCode.trim()" class="main-action-btn">
+							应用分享码
+						</nut-button>
+
+						<nut-button v-if="promoStatus && promoStatus.hasPromoCode" type="danger"
+							@click="removePromoCode" :loading="promoLoading" class="main-action-btn">
+							移除分享码
 						</nut-button>
 					</view>
-					<view class="status-item" v-if="promoStatus.hasPromoCode && !promoStatus.expired">
-						<text class="status-label">当前状态:</text>
-						<text class="status-value active">已激活</text>
+
+					<!-- 高级功能区域 -->
+					<view class="promo-advanced-section">
+						<view class="advanced-header" @click="showAdvancedOptions = !showAdvancedOptions">
+							<text class="advanced-title">高级功能</text>
+							<nut-icon :name="showAdvancedOptions ? 'arrow-up' : 'arrow-down'" size="16"
+								color="#86909C"></nut-icon>
+						</view>
+
+						<view class="advanced-actions" v-show="showAdvancedOptions">
+							<!-- 有效期选择区域 -->
+							<view class="input-label">
+								<text>分享码有效期</text>
+							</view>
+							<nut-cell title="有效期选择" :desc="selectedValidityText" @click="showValidityPicker = true"
+								class="validity-cell"></nut-cell>
+
+							<nut-popup v-model:visible="showValidityPicker" position="bottom" safe-area-inset-bottom>
+								<nut-picker v-model="selectedValidityDays" :columns="validityOptions" title="选择有效期"
+									@confirm="onValidityConfirm" @cancel="showValidityPicker = false">
+								</nut-picker>
+							</nut-popup>
+							<nut-button v-if="promoStatus && promoStatus.hasBackup" type="warning"
+								@click="restoreBackupConfig" :loading="promoLoading" class="advanced-btn" size="small">
+								恢复备份
+							</nut-button>
+
+							<nut-button type="success" @click="generatePromoFromCurrentConfig" :loading="promoLoading"
+								class="advanced-btn" size="small">
+								<nut-icon name="magic" size="14" color="#ffffff"></nut-icon>
+								生成分享码
+							</nut-button>
+
+							<nut-button type="default" @click="showPromoContactInfo" class="advanced-btn" size="small">
+								获取分享码
+							</nut-button>
+						</view>
 					</view>
-					<view class="status-item" v-if="promoStatus.hasPromoCode && promoStatus.expired">
-						<text class="status-label">当前状态:</text>
-						<text class="status-value expired">已过期</text>
+
+					<!-- 结果显示 -->
+					<view class="promo-result">
+						<text class="result-text">{{ promoResultText }}</text>
 					</view>
-					<view class="status-item" v-if="!promoStatus.hasPromoCode">
-						<text class="status-label">当前状态:</text>
-						<text class="status-value inactive">未激活</text>
-					</view>
-					
-					<view class="status-item" v-if="promoStatus.hasPromoCode">
-						<text class="status-label">供应商:</text>
-						<text class="status-value">{{ promoStatus.provider }}</text>
-					</view>
-					
-					<view class="status-item" v-if="promoStatus.hasPromoCode && !promoStatus.expired">
-						<text class="status-label">剩余时间:</text>
-						<text class="status-value">{{ promoManager.formatRemainingTime(promoStatus.remainingDays) }}</text>
-					</view>
-				</view>
-				
-				<!-- 输入区域 -->
-				<view class="promo-input-section">
-					<view class="input-label">
-						<text>分享码</text>
-					</view>
-					<nut-textarea  
-						:autosize="{ maxHeight: `200rpx`, minHeight: `100rpx` }"
-						v-model="promoCode" 
-						placeholder="请输入分享码"
-						:disabled="promoLoading"
-						class="promo-input"
-					/>
-				</view>
-				
-				<!-- 有效期选择区域 -->
-				<view class="promo-validity-section">
-					<view class="input-label">
-						<text>分享码有效期</text>
-					</view>
-					<nut-cell 
-						title="有效期选择" 
-						:desc="selectedValidityText" 
-						@click="showValidityPicker = true"
-						class="validity-cell"
-					></nut-cell>
-					
-					<nut-popup 
-						v-model:visible="showValidityPicker" 
-						position="bottom" 
-						safe-area-inset-bottom
-					>
-						<nut-picker 
-							v-model="selectedValidityDays"
-							:columns="validityOptions"
-							title="选择有效期"
-							@confirm="onValidityConfirm"
-							@cancel="showValidityPicker = false"
-						>
-						</nut-picker>
-					</nut-popup>
-				</view>
-				
-				<!-- 压缩版选项 -->
-				<view class="promo-compress-section" v-if="false">
-					<view class="input-label">
-						<text>分享码格式</text>
-					</view>
-					<nut-cell 
-						title="使用压缩版" 
-						:desc="useCompressed ? '压缩版 (长度更短)' : '标准版 (兼容旧版)'" 
-						class="compress-cell"
-					>
-						<template #link>
-							<nut-switch v-model="useCompressed" size="small"></nut-switch>
-						</template>
-					</nut-cell>
-					<view class="compress-tip">
-						<text class="tip-text">💡 压缩版分享码长度减少60-80%，更便于复制分享</text>
-					</view>
-				</view>
-				
-				<!-- 主要操作按钮 -->
-				<view class="promo-main-actions">
-					<nut-button 
-						type="primary" 
-						@click="applyPromoCode"
-						:loading="promoLoading"
-						:disabled="!promoCode || !promoCode.trim()"
-						class="main-action-btn"
-					>
-						应用分享码
-					</nut-button>
-					
-					<nut-button 
-						v-if="promoStatus && promoStatus.hasPromoCode"
-						type="danger" 
-						@click="removePromoCode"
-						:loading="promoLoading"
-						class="main-action-btn"
-					>
-						移除分享码
-					</nut-button>
-				</view>
-				
-				<!-- 高级功能区域 -->
-				<view class="promo-advanced-section">
-					<view class="advanced-header" @click="showAdvancedOptions = !showAdvancedOptions">
-						<text class="advanced-title">高级功能</text>
-						<nut-icon 
-							:name="showAdvancedOptions ? 'arrow-up' : 'arrow-down'" 
-							size="16" 
-							color="#86909C"
-						></nut-icon>
-					</view>
-					
-					<view class="advanced-actions" v-show="showAdvancedOptions">
-						<nut-button 
-							v-if="promoStatus && promoStatus.hasBackup"
-							type="warning" 
-							@click="restoreBackupConfig"
-							:loading="promoLoading"
-							class="advanced-btn"
-							size="small"
-						>
-							恢复备份
-						</nut-button>
-						
-						<nut-button 
-							type="success" 
-							@click="generatePromoFromCurrentConfig"
-							:loading="promoLoading"
-							class="advanced-btn"
-							size="small"
-						>
-							<nut-icon name="magic" size="14" color="#ffffff"></nut-icon>
-							生成分享码
-						</nut-button>
-						
-						<nut-button 
-							type="default" 
-							@click="showPromoContactInfo"
-							class="advanced-btn"
-							size="small"
-						>
-							获取分享码
-						</nut-button>
-					</view>
-				</view>
-				
-				<!-- 结果显示 -->
-				<view class="promo-result">
-					<text class="result-text">{{ promoResultText }}</text>
-				</view>
 				</view>
 			</view>
 		</nut-popup>
-		
+
 		<!-- 自定义tabbar -->
 		<custom-tab-bar current="2"></custom-tab-bar>
 	</view>
@@ -501,7 +443,7 @@ export default {
 			showCreateModal: false,
 			newUser: {
 				username: '',
-				title: '产品经理',
+				title: '创想家',
 				avatar: '👤'
 			},
 			avatarOptions: [],
@@ -568,33 +510,33 @@ export default {
 				{ label: '完成率', value: '0%' }
 			],
 			menuItems: [
-					{
-						icon: 'star',
-						iconColor: '#FFD700',
-						iconBg: '#FFD70020',
-						title: '我的收藏',
-						badge: '0',
-						type: 'navigate',
-						path: '/pages/profile/favorites'
-					},
-					{
-						icon: 'JIMI40',
-						iconColor: '#165DFF',
-						iconBg: '#165DFF20',
-						title: 'AI设置',
-						subtitle: '支持DeepSeek、Kimi、ChatGPT等模型',
-						type: 'navigate',
-						path: '/pages/profile/ai-settings'
-					},
-					{
-						icon: 'scan',
-						iconColor: '#FF7D00',
-						iconBg: '#FF7D0020',
-						title: '分享码',
-						subtitle: '一键配置AI模型',
-						type: 'action',
-						handler: 'showPromoCodeModal'
-					},
+				{
+					icon: 'star',
+					iconColor: '#FFD700',
+					iconBg: '#FFD70020',
+					title: '我的收藏',
+					badge: '0',
+					type: 'navigate',
+					path: '/pages/profile/favorites'
+				},
+				{
+					icon: 'JIMI40',
+					iconColor: '#165DFF',
+					iconBg: '#165DFF20',
+					title: 'AI设置',
+					subtitle: '支持DeepSeek、Kimi、ChatGPT等模型',
+					type: 'navigate',
+					path: '/pages/profile/ai-settings'
+				},
+				{
+					icon: 'scan',
+					iconColor: '#FF7D00',
+					iconBg: '#FF7D0020',
+					title: '分享码',
+					subtitle: '一键配置AI模型',
+					type: 'action',
+					handler: 'showPromoCodeModal'
+				},
 				{
 					icon: 'refresh2',
 					iconColor: '#FF7D00',
@@ -646,9 +588,9 @@ export default {
 					iconColor: '#F53F3F',
 					iconBg: '#F53F3F20',
 					title: '意见反馈',
-					subtitle: '待开发',
-					type: 'disabled',
-					disabled: true,
+					subtitle: '通过微信联系我们',
+					type: 'navigate',
+					disabled: false,
 					path: '/pages/profile/feedback'
 				}
 			],
@@ -670,28 +612,28 @@ export default {
 	},
 
 	async mounted() {
-			// 添加用户状态变化监听器
-			userStore.addListener(this.handleUserStateChange)
+		// 添加用户状态变化监听器
+		userStore.addListener(this.handleUserStateChange)
 
-			await this.loadUserInfo()
-			await this.loadUserData()
-			// await this.loadStatsData()
-			// await this.loadAIStats()
-			await this.loadFavoriteCount()
-			await this.loadAllUsers()
-			this.loadAvatarOptions()
-			this.loadGitCodeConfig()
-			await this.loadPromoStatus()
-			this.version = this.getCurrentVersion()
-			this.checkGlobalUpdateInfo()
-		},
+		await this.loadUserInfo()
+		await this.loadUserData()
+		// await this.loadStatsData()
+		// await this.loadAIStats()
+		await this.loadFavoriteCount()
+		await this.loadAllUsers()
+		this.loadAvatarOptions()
+		this.loadGitCodeConfig()
+		await this.loadPromoStatus()
+		this.version = this.getCurrentVersion()
+		this.checkGlobalUpdateInfo()
+	},
 
 	beforeDestroy() {
-			// 移除用户状态变化监听器
-			userStore.removeListener(this.handleUserStateChange)
-			// 销毁分享码管理器
-			promoManager.destroy()
-		},
+		// 移除用户状态变化监听器
+		userStore.removeListener(this.handleUserStateChange)
+		// 销毁分享码管理器
+		promoManager.destroy()
+	},
 	methods: {
 		// 获取当前应用版本
 		getCurrentVersion() {
@@ -939,7 +881,7 @@ export default {
 		},
 
 		// ==================== 分享码相关方法 ====================
-		
+
 		/**
 		 * 显示分享码弹窗
 		 */
@@ -966,7 +908,7 @@ export default {
 			try {
 				const status = await promoManager.getStatus()
 				this.promoStatus = status
-				
+
 				// 更新菜单项的副标题
 				const promoMenuItem = this.menuItems.find(item => item.handler === 'showPromoCodeModal')
 				if (promoMenuItem) {
@@ -1023,18 +965,18 @@ export default {
 			try {
 				const result = await promoManager.applyPromoCode(this.promoCode)
 				console.log('应用分享码结果:', result)
-				
+
 				if (result.success) {
 					this.promoResultText = `分享码应用成功！\n供应商: ${result.config.provider}\n模型: ${result.config.model}\n剩余天数: ${result.remainingDays}天`
-					
+
 					// 重新加载状态
 					await this.loadPromoStatus()
-					
+
 					// 清空输入框
 					this.promoCode = ''
 				} else {
 					this.promoResultText = `应用失败: ${result.error}`
-					
+
 					if (result.expired) {
 						this.promoResultText += '\n\n分享码已过期，请联系微信号 codetrend 重新申请。'
 					}
@@ -1061,10 +1003,10 @@ export default {
 
 						try {
 							const result = await promoManager.removePromoCode()
-							
+
 							if (result.success) {
 								this.promoResultText = '分享码已移除，配置已恢复'
-								
+
 								// 重新加载状态
 								await this.loadPromoStatus()
 							} else {
@@ -1095,10 +1037,10 @@ export default {
 
 						try {
 							const result = await promoManager.restoreBackup()
-							
+
 							if (result.success) {
 								this.promoResultText = '备份配置恢复成功'
-								
+
 								// 重新加载状态
 								await this.loadPromoStatus()
 							} else {
@@ -1120,7 +1062,7 @@ export default {
 		 */
 		showPromoContactInfo(event) {
 			const contactInfo = promoManager.getContactInfo()
-			
+
 			uni.showModal({
 				title: '获取分享码',
 				content: `${contactInfo.description}\n\n${contactInfo.instructions.join('\n')}`,
@@ -1162,7 +1104,7 @@ export default {
 
 				// 获取当前激活的AI配置
 				const activeConfig = await aiApi.getActiveAIConfig()
-				
+
 				if (!activeConfig || !activeConfig.provider || !activeConfig.model) {
 					this.promoResultText = '未找到有效的AI配置，请先在AI设置中配置并激活一个AI模型'
 					return
@@ -1172,10 +1114,10 @@ export default {
 
 				// 调用Node.js分享码生成工具
 				const result = await this.callPromoGenerator(activeConfig)
-				
+
 				if (result.success) {
 					this.promoCode = result.promoCode
-					
+
 					// 自动复制到剪贴板
 					try {
 						uni.setClipboardData({
@@ -1190,7 +1132,7 @@ export default {
 					} catch (copyError) {
 						console.error('复制到剪贴板失败:', copyError)
 					}
-					
+
 					this.promoResultText = `分享码生成成功！\n供应商: ${activeConfig.provider}\n模型: ${activeConfig.model}\n有效期: ${this.selectedValidityText}\n格式: ${result.format || '标准版'}\n长度: ${result.promoCode.length} 字符\n\n分享码已自动填入上方输入框并复制到剪贴板，点击"应用分享码"即可使用。`
 				} else {
 					this.promoResultText = `生成失败: ${result.error || '未知错误'}`
@@ -1210,7 +1152,7 @@ export default {
 			try {
 				// 获取选择的有效期
 				const validDays = parseInt(this.selectedValidityDays[0]) || 7
-				
+
 				// 构建命令参数
 				const args = [
 					'generate',
@@ -1235,22 +1177,22 @@ export default {
 			try {
 				// 检查当前配置是否来自分享码，如果是则不允许生成新的分享码
 				const promoConfig = await promoApi.getPromoConfig()
-				console.log("promoConfig",promoConfig,config)
+				console.log("promoConfig", promoConfig, config)
 				if (promoConfig && promoConfig.provider === config.provider && promoConfig.modelName === config.model) {
 					return {
 						success: false,
 						error: '当前AI配置是通过分享码创建的，无法基于此配置生成新的分享码。请先移除当前分享码，然后使用原始配置生成新的分享码。'
 					}
 				}
-				
+
 				// 导入分享码生成相关工具
 				const cryptoUtils = (await import('@/utils/cryptoUtils.js')).default
-				
+
 				// 获取选择的有效期
 				const validDays = parseInt(this.selectedValidityDays[0]) || 7
-				
+
 				let promoCode
-				
+
 				if (this.useCompressed) {
 					// 生成压缩版分享码
 					promoCode = cryptoUtils.generateCompressedPromoCode(
@@ -1272,7 +1214,7 @@ export default {
 					}
 					promoCode = cryptoUtils.encrypt(JSON.stringify(promoData))
 				}
-				
+
 				return {
 					success: true,
 					promoCode: promoCode,
@@ -1451,7 +1393,7 @@ export default {
 			// 重置表单
 			this.newUser = {
 				username: '',
-				title: '产品经理',
+				title: '创想家',
 				avatar: '👤'
 			}
 		},
