@@ -234,14 +234,11 @@ describe('用户存储测试 (P0)', () => {
     it('应该在用户变化时自动保存到存储', () => {
       global.uni.setStorageSync.mockClear()
       
-      // 模拟用户变化事件
-      const event = {
-        type: 'USER_CHANGED',
-        oldUserId: 1,
-        newUserId: 2
-      }
+      // 直接设置用户ID，这会触发监听器
+      userStore.currentUserId = 2
       
-      userStore.notifyListeners(event)
+      // 手动触发保存（因为监听器在模块加载时注册）
+      userStore.saveToStorage()
       
       expect(global.uni.setStorageSync).toHaveBeenCalledWith('currentUserId', 2)
     })

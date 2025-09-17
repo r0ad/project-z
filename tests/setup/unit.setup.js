@@ -13,7 +13,16 @@ global.uni = {
   getStorage: jest.fn(),
   setStorage: jest.fn(),
   removeStorage: jest.fn(),
-  clearStorage: jest.fn()
+  clearStorage: jest.fn(),
+  getStorageSync: jest.fn().mockReturnValue('1'),
+  setStorageSync: jest.fn(),
+  removeStorageSync: jest.fn(),
+  clearStorageSync: jest.fn(),
+  navigateTo: jest.fn(),
+  redirectTo: jest.fn(),
+  reLaunch: jest.fn(),
+  switchTab: jest.fn(),
+  navigateBack: jest.fn()
 };
 
 // 模拟 plus 环境

@@ -12,7 +12,7 @@ module.exports = {
 	], // 测试文件目录
 	testPathIgnorePatterns: ['/node_modules/'],
 	setupFilesAfterEnv: ['<rootDir>/tests/setup/unit.setup.js'],
-	moduleNameMapping: {
+	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/$1'
 	}
 }

@@ -110,7 +110,10 @@ class UserStore {
 		try {
 			const savedUserId = uni.getStorageSync('currentUserId')
 			if (savedUserId) {
-				this.currentUserId = parseInt(savedUserId)
+				const parsedUserId = parseInt(savedUserId)
+				if (!isNaN(parsedUserId) && parsedUserId > 0) {
+					this.currentUserId = parsedUserId
+				}
 			}
 		} catch (error) {
 			console.error('加载用户状态失败:', error)

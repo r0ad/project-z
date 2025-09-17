@@ -3,6 +3,24 @@
 ## 🎯 测试目标
 维护 Project-Z 项目的稳定性和开发效率，确保核心功能正常运行，减少生产环境问题。
 
+## 📚 测试方案文档
+
+### 核心文档
+- [测试策略对比分析](TESTING-STRATEGY-COMPARISON.md) - 单元测试 vs E2E测试对比
+- [混合测试策略](HYBRID-TESTING-STRATEGY.md) - 推荐的混合测试方案
+- [实施路线图](IMPLEMENTATION-ROADMAP.md) - 4周实施计划
+
+### 技术指南
+- [单元测试优化方案](UNIT-TESTING-OPTIMIZATION.md) - 当前单元测试优化
+- [E2E测试实施指南](E2E-TESTING-GUIDE.md) - uni-automator E2E测试
+- [ES6模块解决方案](ES6-MODULE-SOLUTION.md) - 模块导入问题解决
+
+### 测试清单
+- [P0核心测试](P0-core-tests.md) - 核心功能测试清单
+- [P1业务测试](P1-business-tests.md) - 业务功能测试清单
+- [P2页面测试](P2-page-tests.md) - 页面功能测试清单
+- [P3工具测试](P3-utility-tests.md) - 工具组件测试清单
+
 ## 📊 测试优先级说明
 
 ### P0 - 核心功能测试（必须）

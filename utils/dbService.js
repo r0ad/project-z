@@ -224,6 +224,13 @@ class DBService {
    * 返回值: -1 表示 v1 < v2, 0 表示 v1 = v2, 1 表示 v1 > v2
    */
   compareVersion(v1, v2) {
+    // 处理undefined或null的情况
+    if (!v1 || !v2) {
+      if (!v1 && !v2) return 0
+      if (!v1) return -1
+      if (!v2) return 1
+    }
+    
     const parts1 = v1.split('.').map(Number)
     const parts2 = v2.split('.').map(Number)
     

@@ -17,7 +17,7 @@ module.exports = {
   ],
   coverageDirectory: '<rootDir>/tests/coverage/app',
   coverageReporters: ['text', 'lcov', 'html'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1'
   }
 };
