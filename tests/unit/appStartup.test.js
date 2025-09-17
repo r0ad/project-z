@@ -218,6 +218,12 @@ describe('应用启动测试 (P0)', () => {
 
     afterEach(() => {
       jest.useRealTimers()
+      jest.clearAllTimers()
+      // 清理可能存在的定时器
+      if (appStartup.checkInterval) {
+        clearInterval(appStartup.checkInterval)
+        appStartup.checkInterval = null
+      }
     })
 
     it('应该能够设置定期检查', () => {
@@ -274,7 +280,7 @@ describe('应用启动测试 (P0)', () => {
       
       await appStartup.manualCheck()
       
-      expect(consoleSpy).toHaveBeenCalledWith('[AppStartup] 手动检查失败:', expect.any(Error))
+      expect(consoleSpy).toHaveBeenCalledWith('[AppStartup] 分享码有效性检查失败:', expect.any(Error))
       
       consoleSpy.mockRestore()
     })

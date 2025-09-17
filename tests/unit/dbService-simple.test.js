@@ -125,9 +125,12 @@ describe('数据库服务简化测试', () => {
   describe('错误处理测试', () => {
     it('应该能够处理数据库打开失败', async () => {
       global.plus.sqlite.isOpenDatabase.mockReturnValue(false)
-      global.plus.sqlite.openDatabase.mockImplementation(({ fail }) => {
-        if (fail) fail(new Error('数据库打开失败'))
-        return Promise.resolve()
+      global.plus.sqlite.openDatabase.mockImplementation((options) => {
+        // 模拟数据库打开失败 - 只调用 fail 回调，不返回 Promise
+        if (options && options.fail) {
+          options.fail(new Error('数据库打开失败'))
+        }
+        // 不返回 Promise，让 openDatabase 直接失败
       })
       
       try {

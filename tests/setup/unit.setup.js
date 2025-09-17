@@ -43,3 +43,15 @@ global.getApp = jest.fn(() => ({
 
 // 设置测试超时
 jest.setTimeout(10000);
+
+// 确保测试后清理异步操作
+afterEach(() => {
+  jest.clearAllTimers();
+  jest.useRealTimers();
+});
+
+// 全局清理
+afterAll(() => {
+  jest.clearAllMocks();
+  jest.restoreAllMocks();
+});
