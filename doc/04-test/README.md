@@ -6,6 +6,9 @@
 ## 📚 测试方案文档
 
 ### 核心文档
+- [UniApp Jest集成完整解决方案](UNIAPP-JEST-INTEGRATION-SOLUTION.md) - 基于思维链的完整解决过程
+- [快速解决方案总结](QUICK-SOLUTION-SUMMARY.md) - 70分钟快速解决指南
+- [思维链解决过程可视化](THINKING-CHAIN-PROCESS.md) - 问题解决的可视化流程图
 - [测试策略对比分析](TESTING-STRATEGY-COMPARISON.md) - 单元测试 vs E2E测试对比
 - [混合测试策略](HYBRID-TESTING-STRATEGY.md) - 推荐的混合测试方案
 - [实施路线图](IMPLEMENTATION-ROADMAP.md) - 4周实施计划
