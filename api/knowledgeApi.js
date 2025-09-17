@@ -164,7 +164,12 @@ class KnowledgeApi {
       console.log('没有指定项目名称，跳过项目关联')
     }
     
-    return knowledgeId
+    return {
+      success: true,
+      data: {
+        id: knowledgeId
+      }
+    }
   }
 
   /**

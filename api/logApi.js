@@ -212,7 +212,7 @@ class LogApi {
     
     return logs.map(log => ({
       ...log,
-      created_at: this.formatDateTime(log.created_at),
+      created_at: DateUtils.formatDateTime(log.created_at),
       hasProgress: !!log.progress_text,
       hasProblem: !!log.problem_text,
       hasPlan: !!log.plan_text

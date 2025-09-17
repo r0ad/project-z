@@ -8,11 +8,6 @@ jest.mock('@/utils/dbService.js')
 jest.mock('@/utils/userStore.js')
 jest.mock('@/utils/dateUtils.js')
 jest.mock('@/utils/cryptoUtils.js')
-jest.mock('@/api/projectApi.js')
-jest.mock('@/api/knowledgeApi.js')
-jest.mock('@/api/favoriteApi.js')
-jest.mock('@/api/logApi.js')
-jest.mock('@/api/promoApi.js')
 
 import dbService from '@/utils/dbService.js'
 import userStore from '@/utils/userStore.js'
@@ -30,40 +25,30 @@ describe('P1 业务功能简化测试', () => {
     DateUtils.getCurrentLocalISOString.mockReturnValue('2024-01-01T10:00:00Z')
     DateUtils.formatDateTime.mockReturnValue('2024-01-01 10:00')
     
+    // Mock dbService 初始化状态
+    dbService.isInitialized = true
+    dbService.initDB = jest.fn().mockResolvedValue(true)
+    
     // Mock uni global object
     global.uni = {
       getStorageSync: jest.fn(),
       setStorageSync: jest.fn(),
       removeStorageSync: jest.fn()
     }
-    
-    // Mock API methods
-    knowledgeApi.getKnowledgeList = jest.fn()
-    knowledgeApi.createKnowledge = jest.fn()
-    knowledgeApi.searchKnowledge = jest.fn()
-    favoriteApi.getFavoritesList = jest.fn()
-    favoriteApi.addFavorite = jest.fn()
-    favoriteApi.removeFavorite = jest.fn()
-    logApi.getProjectLogs = jest.fn()
-    logApi.createLog = jest.fn()
-    logApi.getLogStats = jest.fn()
-    promoApi.validatePromoCode = jest.fn()
-    promoApi.applyPromoCode = jest.fn()
-    promoApi.getPromoCodeStatus = jest.fn()
   })
 
   describe('知识库管理 API 基础功能', () => {
     it('应该能够调用知识库列表查询', async () => {
-      knowledgeApi.getKnowledgeList.mockResolvedValue([])
+      dbService.findMany.mockResolvedValue([])
 
       const result = await knowledgeApi.getKnowledgeList()
 
-      expect(result).toBeDefined()
-      expect(knowledgeApi.getKnowledgeList).toHaveBeenCalled()
+      expect(result).toEqual([])
+      expect(dbService.findMany).toHaveBeenCalled()
     })
 
     it('应该能够调用知识库创建', async () => {
-      knowledgeApi.createKnowledge.mockResolvedValue(123)
+      dbService.insert.mockResolvedValue(123)
 
       const knowledgeData = {
         title: '测试知识',
@@ -73,61 +58,65 @@ describe('P1 业务功能简化测试', () => {
 
       const result = await knowledgeApi.createKnowledge(knowledgeData)
 
-      expect(result).toBeDefined()
-      expect(knowledgeApi.createKnowledge).toHaveBeenCalled()
+      expect(result.data.id).toBe(123)
+      expect(dbService.insert).toHaveBeenCalled()
     })
 
     it('应该能够调用知识库搜索', async () => {
-      knowledgeApi.searchKnowledge.mockResolvedValue([])
+      dbService.findMany.mockResolvedValue([])
 
       const result = await knowledgeApi.searchKnowledge('测试')
 
-      expect(result).toBeDefined()
-      expect(knowledgeApi.searchKnowledge).toHaveBeenCalled()
+      expect(result).toEqual([])
+      expect(dbService.findMany).toHaveBeenCalled()
     })
   })
 
   describe('收藏管理 API 基础功能', () => {
     it('应该能够调用收藏列表查询', async () => {
-      favoriteApi.getFavoritesList.mockResolvedValue([])
+      dbService.findMany.mockResolvedValue([])
 
       const result = await favoriteApi.getFavoritesList()
 
-      expect(result).toBeDefined()
-      expect(favoriteApi.getFavoritesList).toHaveBeenCalled()
+      expect(result).toEqual([])
+      expect(dbService.findMany).toHaveBeenCalled()
     })
 
     it('应该能够调用添加收藏', async () => {
-      favoriteApi.addFavorite.mockResolvedValue(true)
+      dbService.findOne.mockResolvedValue(null) // 没有重复收藏
+      dbService.insert.mockResolvedValue(1)
 
       const result = await favoriteApi.addFavorite('project', 1)
 
-      expect(result).toBeDefined()
-      expect(favoriteApi.addFavorite).toHaveBeenCalled()
+      expect(result).toBe(true)
+      expect(dbService.insert).toHaveBeenCalled()
     })
 
     it('应该能够调用取消收藏', async () => {
-      favoriteApi.removeFavorite.mockResolvedValue(true)
+      dbService.delete.mockResolvedValue({ changes: 1 })
 
       const result = await favoriteApi.removeFavorite('project', 1)
 
-      expect(result).toBeDefined()
-      expect(favoriteApi.removeFavorite).toHaveBeenCalled()
+      expect(result).toBe(true)
+      expect(dbService.delete).toHaveBeenCalled()
     })
   })
 
   describe('日志管理 API 基础功能', () => {
     it('应该能够调用项目日志查询', async () => {
-      logApi.getProjectLogs.mockResolvedValue([])
+      dbService.findMany.mockResolvedValue([])
 
       const result = await logApi.getProjectLogs(1)
 
-      expect(result).toBeDefined()
-      expect(logApi.getProjectLogs).toHaveBeenCalled()
+      expect(result).toEqual([])
+      expect(dbService.findMany).toHaveBeenCalled()
     })
 
     it('应该能够调用创建日志', async () => {
-      logApi.createLog.mockResolvedValue({ id: 123, title: '测试日志' })
+      dbService.findOne
+        .mockResolvedValueOnce({ id: 1, name: '测试项目' }) // 项目存在
+        .mockResolvedValueOnce({ id: 123, content: '测试内容' }) // 日志详情
+      dbService.insert.mockResolvedValue(123)
 
       const logData = {
         title: '测试日志',
@@ -136,65 +125,74 @@ describe('P1 业务功能简化测试', () => {
 
       const result = await logApi.createLog(1, logData)
 
-      expect(result).toBeDefined()
-      expect(logApi.createLog).toHaveBeenCalled()
+      expect(result.id).toBe(123)
+      expect(dbService.insert).toHaveBeenCalled()
     })
 
     it('应该能够调用日志统计', async () => {
-      logApi.getLogStats.mockResolvedValue({ totalLogs: 10 })
+      dbService.count.mockResolvedValue(10)
+      dbService.query
+        .mockResolvedValueOnce([]) // 类型统计
+        .mockResolvedValueOnce([{ count: 5 }]) // 最近7天
+        .mockResolvedValueOnce([{ count: 2 }]) // 问题日志
 
       const result = await logApi.getLogStats(1)
 
-      expect(result).toBeDefined()
-      expect(logApi.getLogStats).toHaveBeenCalled()
+      expect(result.totalLogs).toBe(10)
+      expect(dbService.count).toHaveBeenCalled()
     })
   })
 
   describe('推广功能 API 基础功能', () => {
     it('应该能够调用推广码验证', async () => {
-      promoApi.validatePromoCode.mockResolvedValue({
-        success: true,
+      cryptoUtils.validatePromoCodeUniversal.mockReturnValue({
+        valid: true,
         data: { provider: 'OpenAI' }
       })
 
       const result = await promoApi.validatePromoCode('test_code')
 
-      expect(result).toBeDefined()
       expect(result.success).toBe(true)
-      expect(promoApi.validatePromoCode).toHaveBeenCalled()
+      expect(result.data).toEqual({ provider: 'OpenAI' })
+      expect(cryptoUtils.validatePromoCodeUniversal).toHaveBeenCalled()
     })
 
     it('应该能够调用推广码应用', async () => {
-      promoApi.applyPromoCode.mockResolvedValue({
-        success: true,
-        message: '应用成功'
+      cryptoUtils.validatePromoCodeUniversal.mockReturnValue({
+        valid: true,
+        data: { provider: 'OpenAI', apiKey: 'test-key' }
       })
+      dbService.query.mockResolvedValue([]) // 没有现有配置
+      dbService.executeSql.mockResolvedValue(true)
+      global.uni.setStorageSync.mockResolvedValue(true)
 
       const result = await promoApi.applyPromoCode('test_code')
 
-      expect(result).toBeDefined()
-      expect(promoApi.applyPromoCode).toHaveBeenCalled()
+      expect(result.success).toBe(true)
+      expect(result.message).toBe('分享码应用成功')
+      expect(cryptoUtils.validatePromoCodeUniversal).toHaveBeenCalled()
     })
 
     it('应该能够调用推广码状态查询', async () => {
-      promoApi.getPromoCodeStatus.mockResolvedValue({ hasPromoCode: true })
+      global.uni.getStorageSync.mockReturnValue({ provider: 'OpenAI' })
 
       const result = await promoApi.getPromoCodeStatus()
 
-      expect(result).toBeDefined()
-      expect(promoApi.getPromoCodeStatus).toHaveBeenCalled()
+      expect(result).toHaveProperty('hasPromoCode', true)
+      expect(result).toHaveProperty('provider', 'OpenAI')
+      expect(global.uni.getStorageSync).toHaveBeenCalled()
     })
   })
 
   describe('错误处理基础功能', () => {
     it('应该能够处理数据库连接失败', async () => {
-      knowledgeApi.getKnowledgeList.mockRejectedValue(new Error('数据库连接失败'))
+      dbService.findMany.mockRejectedValue(new Error('数据库连接失败'))
 
       await expect(knowledgeApi.getKnowledgeList()).rejects.toThrow('数据库连接失败')
     })
 
     it('应该能够处理查询失败', async () => {
-      favoriteApi.getFavoritesList.mockRejectedValue(new Error('查询失败'))
+      dbService.findMany.mockRejectedValue(new Error('查询失败'))
 
       await expect(favoriteApi.getFavoritesList()).rejects.toThrow('查询失败')
     })

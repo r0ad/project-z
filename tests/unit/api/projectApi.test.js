@@ -19,6 +19,7 @@ describe('项目管理 API 测试 (P0)', () => {
     
     // Mock dbService
     dbService.isInitialized = true
+    dbService.initDB = jest.fn().mockResolvedValue(true)
     dbService.findMany = jest.fn()
     dbService.findOne = jest.fn()
     dbService.insert = jest.fn()
@@ -26,11 +27,13 @@ describe('项目管理 API 测试 (P0)', () => {
     dbService.delete = jest.fn()
     dbService.query = jest.fn()
     dbService.count = jest.fn()
+    dbService.executeSql = jest.fn()
     
     // Mock userStore
     userStore.getCurrentUserId = jest.fn().mockReturnValue(1)
     
     // Mock DateUtils
+    DateUtils.getCurrentLocalISOString = jest.fn().mockReturnValue('2024-01-01T10:00:00Z')
     DateUtils.formatDate = jest.fn().mockReturnValue('2024-01-01')
     DateUtils.formatDateTime = jest.fn().mockReturnValue('2024-01-01 12:00:00')
   })

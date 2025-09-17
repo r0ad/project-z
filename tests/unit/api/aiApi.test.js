@@ -4,6 +4,13 @@
  * 使用真实的API源码进行测试
  */
 
+// Mock 依赖
+jest.mock('@/utils/dbService.js')
+jest.mock('@/utils/userStore.js')
+jest.mock('@/utils/dateUtils.js')
+jest.mock('@/uni_modules/openai-chat/js_sdk/openai-api.js')
+jest.mock('@/api/promoApi.js')
+
 // 导入真实的模块
 import aiApi from '@/api/aiApi.js'
 import dbService from '@/utils/dbService.js'
@@ -21,6 +28,13 @@ describe('AI API 测试', () => {
     
     // Mock数据库初始化状态，避免plus.sqlite检查
     dbService.isInitialized = true
+    
+    // Mock promoApi
+    promoApi.getPromoCodeStatus = jest.fn().mockResolvedValue({
+      hasPromoCode: false,
+      provider: null
+    })
+    promoApi.clearPromoConfig = jest.fn().mockResolvedValue(true)
   })
 
   describe('AI API 实例化', () => {
