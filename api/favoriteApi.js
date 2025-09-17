@@ -98,6 +98,11 @@ class FavoriteApi {
     }
     await this.ensureDBInit()
     
+    // 验证收藏类型
+    if (!['project', 'knowledge'].includes(targetType)) {
+      throw new Error('无效的收藏类型')
+    }
+    
     // 检查是否已收藏
     const existing = await dbService.findOne(
       'favorites',
