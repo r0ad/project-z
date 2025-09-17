@@ -1,0 +1,42 @@
+---
+alwaysApply: true
+---
+
+# 开发规范
+
+## 代码风格
+
+- 使用ES6+语法，优先使用const/let而非var
+- 函数和变量使用驼峰命名法
+- 常量使用全大写字母和下划线
+- 类名使用PascalCase
+- 文件名使用kebab-case（Vue组件除外）
+
+## Vue组件规范
+
+- 组件名使用PascalCase
+- 单文件组件结构：`<template>` -> `<script>` -> `<style>`
+- 使用Composition API而非Options API
+- 组件props必须定义类型和默认值
+- 事件命名使用kebab-case
+
+## 数据库操作规范
+
+- 所有数据库操作必须通过[dbService.js](mdc:utils/dbService.js)进行
+- 使用参数化查询防止SQL注入
+- 数据库操作必须包含错误处理
+- 事务操作使用BEGIN/COMMIT/ROLLBACK
+
+## API设计规范
+
+- API文件放在`api/`目录下，以`Api.js`结尾
+- 每个API类提供完整的CRUD操作
+- 所有API方法必须包含参数验证
+- 返回数据格式统一，包含成功/失败状态
+
+## 错误处理
+
+- 使用try-catch包装异步操作
+- 错误信息要具体且用户友好
+- 数据库错误要记录详细日志
+- 网络请求失败要有重试机制

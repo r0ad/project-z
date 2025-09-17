@@ -1,0 +1,78 @@
+---
+globs: api/*.js,utils/dbService.js
+---
+
+# 数据库操作规范
+
+## 数据库服务
+
+所有数据库操作必须通过[dbService.js](mdc:utils/dbService.js)进行，禁止直接使用plus.sqlite。
+
+## 表结构
+
+### 核心表
+- `users` - 用户信息
+- `projects` - 项目信息  
+- `project_milestones` - 项目里程碑
+- `project_logs` - 项目日志
+- `knowledge_base` - 知识库
+- `ai_analyses` - AI分析结果
+
+### 关联表
+- `favorites` - 收藏关系
+- `knowledge_tag_mappings` - 知识标签关联
+- `project_knowledge_mappings` - 项目知识关联
+
+## 操作规范
+
+### 查询操作
+```javascript
+// 使用参数化查询
+const projects = await dbService.query(
+  'SELECT * FROM projects WHERE user_id = ? AND status = ?',
+  [userId, status]
+)
+```
+
+### 插入操作
+```javascript
+// 使用insert方法
+const projectId = await dbService.insert('projects', {
+  user_id: userId,
+  name: projectName,
+  status: 'active'
+})
+```
+
+### 更新操作
+```javascript
+// 使用update方法
+await dbService.update('projects', updateData, 'id = ?', [projectId])
+```
+
+### 删除操作
+```javascript
+// 使用delete方法
+await dbService.delete('projects', 'id = ?', [projectId])
+```
+
+## 事务处理
+
+复杂操作使用事务确保数据一致性：
+```javascript
+await dbService.executeSql('BEGIN TRANSACTION')
+try {
+  // 多个操作
+  await dbService.executeSql('COMMIT')
+} catch (error) {
+  await dbService.executeSql('ROLLBACK')
+  throw error
+}
+```
+
+## 错误处理
+
+- 所有数据库操作必须包含try-catch
+- 记录详细的错误日志
+- 提供用户友好的错误信息
+- 数据库连接失败时的降级处理

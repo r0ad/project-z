@@ -1,0 +1,67 @@
+---
+globs: *.test.js,*.spec.js,tests/**/*.js
+---
+
+# 单元测试规范
+
+## 测试文件组织
+
+- 测试文件放在`tests/`目录下
+- 单元测试文件以`.test.js`结尾
+- 集成测试文件以`.spec.js`结尾
+- 测试文件与源文件保持相同的目录结构
+
+## 测试配置
+
+项目使用Jest作为测试框架，配置文件：
+- [jest.config.js](mdc:jest.config.js) - 主配置
+- [tests/jest.config.unit.js](mdc:tests/jest.config.unit.js) - 单元测试配置
+- [tests/jest.config.app.js](mdc:tests/jest.config.app.js) - 应用测试配置
+
+## 测试命名规范
+
+- 测试套件使用`describe`描述功能模块
+- 测试用例使用`it`或`test`，描述具体行为
+- 测试描述使用中文，格式：`应该...当...时`
+
+## 测试覆盖范围
+
+### API层测试
+- 测试所有CRUD操作
+- 测试参数验证
+- 测试错误处理
+- 测试数据库操作
+
+### 工具函数测试
+- 测试纯函数
+- 测试边界条件
+- 测试异常情况
+
+### 组件测试
+- 测试组件渲染
+- 测试用户交互
+- 测试事件处理
+- 测试props传递
+
+## 测试示例
+
+```javascript
+describe('ProjectApi', () => {
+  describe('createProject', () => {
+    it('应该成功创建项目当提供有效数据时', async () => {
+      // 测试实现
+    })
+    
+    it('应该抛出错误当项目名称为空时', async () => {
+      // 测试实现
+    })
+  })
+})
+```
+
+## 测试数据管理
+
+- 使用工厂函数创建测试数据
+- 每个测试使用独立的数据
+- 测试后清理数据
+- 使用模拟数据而非真实数据库

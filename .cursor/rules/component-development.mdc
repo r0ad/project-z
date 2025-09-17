@@ -1,0 +1,101 @@
+---
+globs: components/**/*.vue,uni_modules/**/*.vue
+---
+
+# 组件开发规范
+
+## 组件结构
+
+### 单文件组件结构
+```vue
+<template>
+  <!-- 模板内容 -->
+</template>
+
+<script>
+export default {
+  name: 'ComponentName',
+  props: {
+    // props定义
+  },
+  emits: ['event-name'],
+  setup(props, { emit }) {
+    // 组合式API逻辑
+    return {
+      // 暴露给模板的数据和方法
+    }
+  }
+}
+</script>
+
+<style scoped>
+/* 组件样式 */
+</style>
+```
+
+## 组件命名
+
+- 组件文件名使用PascalCase
+- 组件名使用PascalCase
+- 事件名使用kebab-case
+- props使用camelCase
+
+## Props定义
+
+```javascript
+props: {
+  title: {
+    type: String,
+    required: true,
+    default: ''
+  },
+  items: {
+    type: Array,
+    default: () => []
+  },
+  visible: {
+    type: Boolean,
+    default: false
+  }
+}
+```
+
+## 事件处理
+
+```javascript
+// 定义emits
+emits: ['update:visible', 'confirm', 'cancel']
+
+// 触发事件
+emit('update:visible', false)
+emit('confirm', data)
+```
+
+## 样式规范
+
+- 使用scoped样式避免污染
+- 使用rpx作为尺寸单位
+- 支持主题变量
+- 响应式设计
+
+## 组件文档
+
+每个组件必须包含：
+- 组件功能描述
+- Props说明
+- Events说明
+- 使用示例
+- 注意事项
+
+## 公共组件
+
+### 导航组件
+- [CustomNavbar.vue](mdc:components/CustomNavbar.vue) - 自定义导航栏
+
+### 功能组件
+- [ChatComponent.vue](mdc:components/ChatComponent.vue) - 聊天组件
+- [ShareCardComponent.vue](mdc:components/ShareCardComponent.vue) - 分享卡片
+- [UpdateLogComponent.vue](mdc:components/UpdateLogComponent.vue) - 更新日志
+
+### 第三方组件
+- [ua-markdown](mdc:components/ua-markdown) - Markdown渲染

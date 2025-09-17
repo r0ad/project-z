@@ -1,0 +1,46 @@
+---
+globs: api/aiApi.js,utils/aiProviders.js,uni_modules/openai-chat/**
+---
+
+# AI集成规范
+
+## AI服务配置
+
+- AI配置存储在`ai_config`表中
+- 支持多个AI提供商切换
+- API密钥加密存储
+- 配置界面在[pages/profile/ai-settings](mdc:pages/profile/ai-settings)
+
+## AI API设计
+
+- 统一AI接口封装在[api/aiApi.js](mdc:api/aiApi.js)
+- 支持流式和非流式响应
+- 请求超时和重试机制
+- 错误处理和降级策略
+
+## AI组件使用
+
+- 聊天组件：[uni_modules/openai-chat](mdc:uni_modules/openai-chat)
+- 文件管理：[uni_modules/file-manager](mdc:uni_modules/file-manager)
+- 数据同步：[uni_modules/gitcode-sync](mdc:uni_modules/gitcode-sync)
+
+## 提示词设计
+
+- 提示词模板化，支持变量替换
+- 包含项目上下文信息
+- 支持多轮对话
+- 输出格式结构化
+
+## 安全考虑
+
+- API密钥不存储在代码中
+- 用户输入内容过滤
+- 响应内容安全检查
+- 请求频率限制
+
+## 性能优化
+
+- 响应内容缓存
+- 流式响应处理
+- 请求去重
+- 离线模式支持

@@ -1,0 +1,50 @@
+---
+globs: *.vue,*.js,*.json
+---
+
+# UniApp开发规范
+
+## 平台兼容性
+
+- 使用UniApp官方API，避免使用平台特定API
+- 条件编译使用`// #ifdef`和`// #endif`
+- 测试时覆盖主要平台：H5、App、小程序
+
+## 页面配置
+
+- 页面路由在[pages.json](mdc:pages.json)中配置
+- 使用自定义导航栏时设置`navigationStyle: "custom"`
+- 页面标题使用中文描述
+
+## 组件使用
+
+- 优先使用UniApp内置组件
+- 自定义组件放在`components/`目录
+- 使用easycom自动导入组件
+- 组件名使用PascalCase
+
+## 样式规范
+
+- 使用rpx作为尺寸单位
+- 全局样式定义在[uni.scss](mdc:uni.scss)
+- 组件样式使用scoped
+- 支持主题切换
+
+## 数据存储
+
+- 使用`uni.setStorage`和`uni.getStorage`进行本地存储
+- 敏感数据使用加密存储
+- 数据同步使用[gitcode-sync](mdc:uni_modules/gitcode-sync)组件
+
+## 网络请求
+
+- 使用`uni.request`进行网络请求
+- 统一错误处理和重试机制
+- 支持请求拦截器
+- 超时时间设置为30秒
+
+## 生命周期
+
+- 页面生命周期：onLoad、onShow、onReady、onHide、onUnload
+- 应用生命周期：onLaunch、onShow、onHide
+- 组件生命周期：created、mounted、updated、destroyed
