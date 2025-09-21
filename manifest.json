@@ -136,6 +136,9 @@
     "app-harmony" : {
         "uniStatistics" : {
             "enable" : false
+        },
+        "distribute" : {
+            "bundleName" : "uni.app.UNI08418DF"
         }
     },
     "h5" : {
