@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 测试（unit / app / pages）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # .npmrc 已设 legacy-peer-deps：uni-automator 的 node-simctl peer 冲突
+      - run: npm ci
+
+      - name: 单元测试
+        run: npm run test:unit -- --forceExit
+
+      - name: 应用层测试
+        run: npm run test:app -- --forceExit
+
+      - name: 页面层测试
+        run: npm run test:pages -- --forceExit
+
+  build:
+    name: 构建（app-plus 资源 + H5）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # dist/build/app：App-Plus 资源包，可导入 HBuilderX 离线打包成 APK
+      - name: 构建 App-Plus 资源
+        run: npm run build:app
+
+      - name: 构建 H5
+        run: npm run build:h5
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uni-app-build
+          path: |
+            dist/build/app
+            dist/build/h5
+          retention-days: 14
