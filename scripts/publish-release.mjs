@@ -1,20 +1,26 @@
 #!/usr/bin/env node
 /**
- * 本地打包（HBuilderX 发行 → 云打包/本地打包）之后，把 APK 发布到 GitHub Releases。
- * 下载页 https://project.r0ad.host 会自动读取 Releases，显示「最新版」和「历史版本」，
- * 其中 project.apk 是固定文件名，.../releases/latest/download/project.apk 永远指向最新版。
+ * 本地打包（HBuilderX 发行 → 云打包/本地打包）之后发布版本。
+ *
+ * 重点：**用户下载一律走 https://project.r0ad.host（国内可访问）**，GitHub Releases 只当内部归档。
+ * 本脚本会：
+ *   1) 把 APK 传到 GitHub Releases（归档 + 给 CI/回滚用，project.apk 是固定名）
+ *   2) 写回 intro/version.json，最新条目的 downloadUrl 指向站点（默认 https://project.r0ad.host/project.apk），
+ *      这样 App 内更新（utils/updateApp.js）从站点下载，不碰 GitHub。
  *
  * 用法：
  *   node scripts/publish-release.mjs --apk D:\build\app.apk --notes "1. 修复分享码问题；2. 优化聊天流式"
  *   node scripts/publish-release.mjs --apk ./app.apk --version 1.0.7 --notes "..." --dry-run
  *
  * 参数：
- *   --apk <path>      必填，本地打出来的 APK
- *   --version <x.y.z> 可选，默认取 manifest.json 的 versionName
- *   --notes <text>    可选，更新说明（写进 Release 正文和 intro/version.json）
- *   --tag <vX.Y.Z>    可选，默认 v<version>
- *   --prerelease      标记为预发布（版本号带 - 时自动开启）
- *   --dry-run         只打印将要做的事，不调用 GitHub 写接口
+ *   --apk <path>           必填，本地打出来的 APK
+ *   --version <x.y.z>      可选，默认取 manifest.json 的 versionName
+ *   --notes <text>         可选，更新说明（写进 Release 正文和 intro/version.json）
+ *   --tag <vX.Y.Z>         可选，默认 v<version>
+ *   --download-url <url>   可选，写进 version.json 的下载地址，默认 https://project.r0ad.host/project.apk
+ *                          （历史版本可传站点上单独归档的地址，如 https://project.r0ad.host/apk/diandian-1.0.6.apk）
+ *   --prerelease           标记为预发布（版本号带 - 时自动开启）
+ *   --dry-run              只打印将要做的事，不调用 GitHub 写接口
  *
  * GitHub 令牌：优先读环境变量 GITHUB_TOKEN / GH_TOKEN，没有就从 git credential manager 取
  * （Windows 上通常已存过 github.com 的凭据）；需要 repo 权限。
@@ -22,11 +28,12 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, statSync } from 'node:fs'
-import { basename, dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const repo = process.env.GITHUB_REPOSITORY || 'r0ad/project-z'
+const SITE = 'https://project.r0ad.host'
 
 function parseArgs(argv) {
   const args = { dryRun: false, prerelease: false }
@@ -37,6 +44,7 @@ function parseArgs(argv) {
     else if (key === '--version') { args.version = val; i++ }
     else if (key === '--notes') { args.notes = val; i++ }
     else if (key === '--tag') { args.tag = val; i++ }
+    else if (key === '--download-url') { args.downloadUrl = val; i++ }
     else if (key === '--prerelease') { args.prerelease = true }
     else if (key === '--dry-run') { args.dryRun = true }
     else if (key === '-h' || key === '--help') { args.help = true }
@@ -142,7 +150,7 @@ async function main() {
     '',
     '| 文件 | 说明 |',
     '| --- | --- |',
-    '| `project.apk` | 最新版固定文件名，`releases/latest/download/project.apk` 始终指向它 |',
+    '| `project.apk` | 归档用固定名（国内访问 GitHub 不稳定，用户请从站点下载） |',
     `| \`diandian-${tag}.apk\` | 本版本存档 |`,
     '| `apk.sha256` | SHA256 校验值 |',
     '',
@@ -203,8 +211,8 @@ async function main() {
   }
 
   // 3) 更新 intro/version.json，下载页的更新日志立即有新条目（已存在版本保留原发布日期）
-  //    downloadUrl 指向 GitHub Release 直链：App 内更新（utils/updateApp.js）优先用它，
-  //    这样即使站点上的 project.apk 没跟着更新，老用户也能升到新版本。
+  //    downloadUrl 必须指向站点（国内可访问）：App 内更新（utils/updateApp.js）优先用它；
+  //    GitHub Releases 只归档，不作为用户下载源。
   const versionJsonPath = join(root, 'intro', 'version.json')
   const list = JSON.parse(readFileSync(versionJsonPath, 'utf8'))
   const idx = list.findIndex(v => v.version === version)
@@ -212,7 +220,7 @@ async function main() {
     version,
     comment: notes || (idx >= 0 ? list[idx].comment : `版本 ${version}`),
     date: idx >= 0 ? list[idx].date : ymd,
-    downloadUrl: `https://github.com/${repo}/releases/download/${tag}/diandian-${tag}.apk`
+    downloadUrl: args.downloadUrl || `${SITE}/project.apk`
   }
   if (idx >= 0) list[idx] = entry
   else list.push(entry)
@@ -226,10 +234,12 @@ async function main() {
   git commit -m "release: ${tag}"
   git push
 
-下载地址：
-  最新版    https://github.com/${repo}/releases/latest/download/project.apk
-  本版本    https://github.com/${repo}/releases/download/${tag}/diandian-${tag}.apk
+下载地址（用户侧，国内可访问）：
+  最新版    https://project.r0ad.host/project.apk
   下载页    https://project.r0ad.host
+
+GitHub 归档（仅开发者 / 回滚用）：
+  本版本    https://github.com/${repo}/releases/download/${tag}/diandian-${tag}.apk
 `)
 }
 

@@ -442,13 +442,11 @@
                             </div>
                             <h3 class="text-xl font-semibold mb-2 text-center">Android版本</h3>
                             <p class="text-blue-100 text-sm mb-6 text-center">
-                                <template v-if="latestRelease">
-                                    最新版 v{{ latestRelease.version }} · {{ latestRelease.date }} · {{ latestRelease.sizeText }}
-                                </template>
+                                <template v-if="latestVersion">最新版 v{{ latestVersion.version }} · {{ latestVersion.date }}</template>
                                 <template v-else>APK直接下载，立即开始使用</template>
                             </p>
                             <a :href="latestDownloadUrl" download class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg transition-all neon-glow text-base block text-center">
-                                <i class="fas fa-download mr-2"></i>{{ latestRelease ? '下载最新版' : '立即下载' }}
+                                <i class="fas fa-download mr-2"></i>{{ latestVersion ? '下载最新版' : '立即下载' }}
                             </a>
                             <a href="#changelog" class="mt-3 block text-center text-blue-100 text-sm underline hover:text-white">
                                 查看历史版本 <i class="fas fa-chevron-right ml-1 text-xs"></i>
@@ -469,10 +467,8 @@
                 <div class="text-center mb-16">
                     <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">更新日志</h2>
                     <p class="text-xl text-gray-600">持续优化，为您带来更好的使用体验</p>
-                    <p class="mt-4">
-                        <a href="https://github.com/r0ad/project-z/releases" target="_blank" rel="noopener" class="text-blue-600 hover:underline text-sm">
-                            <i class="fab fa-github mr-1"></i>全部版本与 SHA256 校验值（GitHub Releases）
-                        </a>
+                    <p class="mt-4 text-sm text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>安装包由本站提供；历史版本未单独归档时，下载最新版即可
                     </p>
                 </div>
                 
@@ -503,15 +499,12 @@
                                     <span class="text-sm">{{ version.comment }}</span>
                                 </div>
                             </div>
-                            <div class="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-sm">
-                                <span class="text-gray-500" v-if="version.sizeText">
-                                    APK {{ version.sizeText }}<span v-if="version.downloads"> · 已下载 {{ version.downloads }} 次</span>
-                                </span>
-                                <span class="text-gray-400" v-else>安装包尚未发布到 GitHub Releases</span>
-                                <div class="flex items-center space-x-3">
-                                    <a v-if="version.sha256Url" :href="version.sha256Url" target="_blank" rel="noopener" class="text-gray-500 hover:text-blue-600">SHA256</a>
-                                    <a v-if="version.downloadUrl" :href="version.downloadUrl" download class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">下载 v{{ version.version }}</a>
-                                </div>
+                            <div class="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-sm" v-if="version.downloadUrl">
+                                <span class="text-gray-500">APK 直接下载</span>
+                                <a :href="version.downloadUrl" download class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">下载 v{{ version.version }}</a>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-400" v-else>
+                                该版本未单独归档，建议下载最新版
                             </div>
                         </div>
                     </div>
@@ -641,8 +634,7 @@
                     currentDate: new Date().toLocaleDateString('zh-CN'),
                     activeTab: 'home',
                 changelog: [],
-                latestRelease: null,
-                releases: [],
+                latestVersion: null,
                 features: [
                     {
                         id: 1,
@@ -772,9 +764,10 @@
                 }
             },
             computed: {
-                // 优先用 GitHub Releases 里最新版本的 APK；拉不到就退回站点自带的 project.apk
+                // 下载全部走本站：优先用 version.json 里该版本的 downloadUrl，否则退回站点根目录的 project.apk。
+                // 不依赖 GitHub（国内网络访问不了）。
                 latestDownloadUrl() {
-                    return (this.latestRelease && this.latestRelease.downloadUrl) || './project.apk'
+                    return (this.latestVersion && this.latestVersion.downloadUrl) || './project.apk'
                 }
             },
             methods: {
@@ -793,84 +786,37 @@
                     }
                 },
                 async loadChangelog() {
-                    // 1) 先拿版本说明（comments / 日期），站点和仓库里都有一份
+                    // 只读同源的 ./version.json：站点上的版本清单（version/comment/date/downloadUrl）。
+                    // 国内访问不了 GitHub，所以这里不调任何 GitHub 接口。
                     try {
-                        const response = await fetch('/version.json', { cache: 'no-cache' })
+                        const response = await fetch('./version.json', { cache: 'no-cache' })
                         const data = await response.json()
-                        this.changelog = (Array.isArray(data) ? data : []).map(item => ({
-                            version: item.version,
+                        const list = (Array.isArray(data) ? data : [])
+                            .filter(item => item && item.version)
+                            .sort((a, b) => this.compareVersion(a.version, b.version))
+                        const latestIndex = list.length - 1
+                        this.changelog = list.map((item, index) => ({
+                            version: String(item.version),
                             comment: item.comment || '',
                             date: item.date || '',
-                            downloadUrl: '',
-                            sha256Url: '',
-                            sizeText: '',
-                            downloads: ''
+                            // 最新版必给可下载地址：没单独归档就用站点上的 project.apk
+                            downloadUrl: item.downloadUrl || (index === latestIndex ? './project.apk' : '')
                         }))
+                        this.latestVersion = this.changelog[latestIndex] || null
                     } catch (error) {
                         console.error('加载更新日志失败:', error)
                         this.changelog = []
+                        this.latestVersion = null
                     }
-                    // 2) 再从 GitHub Releases 补上「最新版」和每个版本的 APK 下载地址
-                    await this.loadReleases()
                 },
-                // GitHub Releases 十年老项目也够用，公开仓库免 token；用 localStorage 缓存 10 分钟避开限流
-                async loadReleases() {
-                    const repo = 'r0ad/project-z'
-                    const cacheKey = 'gh-releases:' + repo
-                    let releases = null
-                    try {
-                        const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null')
-                        if (cached && cached.at && Date.now() - cached.at < 10 * 60 * 1000) {
-                            releases = cached.data
-                        }
-                    } catch (e) { /* 忽略缓存异常 */ }
-
-                    if (!releases) {
-                        try {
-                            const res = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=30`, {
-                                headers: { Accept: 'application/vnd.github+json' }
-                            })
-                            if (!res.ok) throw new Error('HTTP ' + res.status)
-                            releases = await res.json()
-                            try {
-                                localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data: releases }))
-                            } catch (e) { /* 隐私模式下 localStorage 不可用 */ }
-                        } catch (error) {
-                            console.warn('加载 GitHub Releases 失败，退回静态下载地址:', error)
-                            return
-                        }
+                compareVersion(a, b) {
+                    const pa = String(a).split('.').map(n => parseInt(n, 10) || 0)
+                    const pb = String(b).split('.').map(n => parseInt(n, 10) || 0)
+                    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+                        const diff = (pa[i] || 0) - (pb[i] || 0)
+                        if (diff !== 0) return diff
                     }
-
-                    const published = (releases || []).filter(r => !r.draft)
-                    this.releases = published
-                    // 最新正式版本（没有正式版时退回任意带 APK 的版本）
-                    const latest = published.find(r => !r.prerelease && this.apkAsset(r)) || published.find(r => this.apkAsset(r))
-                    if (latest) this.latestRelease = this.mapRelease(latest)
-
-                    // 版本说明（version.json）与 Releases 按版本号合并，缺安装包的版本仍保留说明
-                    this.changelog = this.changelog.map(item => {
-                        const rel = published.find(r => this.versionOfTag(r.tag_name) === item.version)
-                        return rel ? Object.assign({}, item, this.mapRelease(rel), { comment: item.comment }) : item
-                    })
-                },
-                versionOfTag(tag) {
-                    return String(tag || '').replace(/^v/i, '')
-                },
-                apkAsset(release) {
-                    const assets = (release && release.assets) || []
-                    return assets.find(a => /\.apk$/i.test(a.name)) || null
-                },
-                mapRelease(release) {
-                    const apk = this.apkAsset(release)
-                    const sha = ((release && release.assets) || []).find(a => /\.sha256$/i.test(a.name))
-                    return {
-                        version: this.versionOfTag(release.tag_name),
-                        date: (release.published_at || release.created_at || '').slice(0, 10),
-                        downloadUrl: apk ? apk.browser_download_url : '',
-                        sha256Url: sha ? sha.browser_download_url : '',
-                        downloads: apk ? apk.download_count : '',
-                        sizeText: apk ? (apk.size / 1024 / 1024).toFixed(1) + ' MB' : ''
-                    }
+                    return 0
                 }
             },
             mounted() {

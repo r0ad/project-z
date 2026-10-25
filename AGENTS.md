@@ -112,8 +112,8 @@
 - **命令行 / CI 构建（不用开 HBuilderX）**：`npm run build:app` → `dist/build/app`（App-Plus 资源，可导入 HBuilderX 离线打包或交给云端 `cli pack` 出 APK）；`npm run build:h5` → `dist/build/h5`。CLI 工具链在 `package.json` 里锁成 `3.0.0-4070620250821001`（对齐 HBuilderX 4.07），**升级 HBuilderX 时同步升级 `@dcloudio/*` 与 `vite`**；`vite.config.js` + `scripts/build.mjs` 通过 `UNI_INPUT_DIR=.` 让 CLI 以仓库根为源码目录（win32 下脚本会把 TEMP 指到 `.tmp/` 绕开杀软占用 esbuild 临时文件的问题）。
 - **签名证书与口令不入库**：本地 `r0ad.keystore` / `package.md` 已被 `.gitignore` 忽略。发布用签名请放在仓库外目录或 GitHub secrets，并单独备份。
 - **CI（GitHub Actions，远端 `r0ad/project-z`）**：`.github/workflows/ci.yml` 在 push / PR 跑三套测试 + `build:app` / `build:h5`；`.github/workflows/release-apk.yml` 用 HBuilderX Linux CLI 走 DCloud 云打包出 APK（需仓库变量 `APK_CI=true` + DCloud 账号 / 证书 secrets，未配置时整个 job 跳过），包名固定 `uni.app.UNI08418DF`（与已发布 APK 一致，换包名老用户无法升级）；`.github/workflows/hbx-linux-smoke.yml` 每周自检 HBuilderX Linux CLI 能否启动。三者共用 `.github/actions/hbx-linux` 复合 action。
-- **发布版本（不依赖云打包）**：HBuilderX 本地出 APK 后 `npm run release:apk -- --apk <路径> --notes "更新说明"` → 创建/复用 `v<version>` Release，上传 `project.apk`（稳定名）/ 存档 APK / `apk.sha256`，并写回 `intro/version.json`；提交并 push 后下载页 <https://project.r0ad.host> 显示最新版与历史版本（页面实时读 GitHub Releases，App 内更新读站点的 `version.json`）。
-- **下载页部署**：`intro/` 是 Netlify 站点 project.r0ad.host 的源码，但**当前没和仓库自动关联**。配 `SITE_DEPLOY=true` 变量 + `NETLIFY_AUTH_TOKEN` / `NETLIFY_SITE_ID` secrets 后由 `.github/workflows/deploy-site.yml` 在 `intro/**` 变更时自动部署；否则要去 Netlify 手动拖 `intro/` 发布。
+- **发布版本（用户侧只走站点，GitHub 仅归档）**：HBuilderX 本地出 APK 后 `npm run release:apk -- --apk <路径> --notes "更新说明"` → GitHub Releases 归档（`project.apk` 固定名 + 版本存档 + `apk.sha256`）并写回 `intro/version.json`，最新条目 `downloadUrl` 指向 `https://project.r0ad.host/project.apk`。**国内访问不了 GitHub，下载页与 App 内更新都不得依赖 GitHub**：`intro/index.html` 只读同源 `./version.json`；要给历史版本单独下载，就把 APK 放到站点并在该条目写 `downloadUrl`。
+- **下载页部署**：`intro/` 是 Netlify 站点 project.r0ad.host 的源码，但**当前没和仓库自动关联**。配 `SITE_DEPLOY=true` 变量 + `NETLIFY_AUTH_TOKEN` / `NETLIFY_SITE_ID` secrets 后由 `.github/workflows/deploy-site.yml` 在 `intro/**` 变更时自动部署（部署时会从 Release 拉最新 APK 同步成站点 `project.apk`）；否则要去 Netlify 手动拖 `intro/`（记得把 APK 一起放进去）。
 
 ### 9.2 测试（已实测可用）
 
