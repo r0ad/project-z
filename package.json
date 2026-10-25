@@ -1,7 +1,23 @@
 {
   "name": "project-z",
   "version": "1.0.6",
-  "description": "指日可待",
+  "description": "点点 - 本地优先的 AI 项目管理应用（uni-app + Vue 3 + SQLite）",
+  "license": "MIT",
+  "author": "r0ad <sunzroad@gmail.com>",
+  "private": false,
+  "keywords": [
+    "uni-app",
+    "vue3",
+    "ai",
+    "project-management",
+    "sqlite",
+    "nutui-uniapp",
+    "offline-first",
+    "productivity"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
