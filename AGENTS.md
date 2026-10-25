@@ -106,10 +106,12 @@
 
 ### 9.1 开发与构建
 
-- **本项目用 HBuilderX 开发，`package.json` 里没有 `dev` / `build` 脚本**。不要试图 `npm run dev`、不要自己搭 vite/webpack。
+- **本项目用 HBuilderX 开发**；`package.json` 里只有测试与 CLI 构建脚本，**没有 `dev` 热更新脚本**——不要试图 `npm run dev`、不要自己搭 vite/webpack 跑开发态。
 - 用 HBuilderX 打开**仓库根目录**（不是 `app/`），运行到手机/模拟器；打包流程见 `package.example.md`。
 - **首次运行 / 拉新代码 / `git clean -Xdf` 之后，先在仓库根目录 `npm ci` 装依赖**。`node_modules/` 被 `.gitignore` 忽略，缺了它 HBuilderX 跑 H5/App 会报 `[plugin:vite:css] [sass] Can't find stylesheet to import`（`uni.scss` 里的 `@import "nutui-uniapp/styles/variables.scss"`、`App.vue` 里的 `index.scss` 都解析不到），nut-* 组件也会整体失效。仓库自带 `.npmrc`（`legacy-peer-deps=true`）用于绕过 `@dcloudio/uni-automator` 的 `node-simctl` peer 冲突，不要删。
-- **签名证书与口令不入库**：本地 `r0ad.keystore` / `package.md` 已被 `.gitignore` 忽略（历史里仍有，见 §11/§12）。发布用签名请放在仓库外目录，并单独备份。
+- **命令行 / CI 构建（不用开 HBuilderX）**：`npm run build:app` → `dist/build/app`（App-Plus 资源，可导入 HBuilderX 离线打包或交给云端 `cli pack` 出 APK）；`npm run build:h5` → `dist/build/h5`。CLI 工具链在 `package.json` 里锁成 `3.0.0-4070620250821001`（对齐 HBuilderX 4.07），**升级 HBuilderX 时同步升级 `@dcloudio/*` 与 `vite`**；`vite.config.js` + `scripts/build.mjs` 通过 `UNI_INPUT_DIR=.` 让 CLI 以仓库根为源码目录（win32 下脚本会把 TEMP 指到 `.tmp/` 绕开杀软占用 esbuild 临时文件的问题）。
+- **签名证书与口令不入库**：本地 `r0ad.keystore` / `package.md` 已被 `.gitignore` 忽略。发布用签名请放在仓库外目录或 GitHub secrets，并单独备份。
+- **CI（GitHub Actions，远端 `r0ad/project-z`）**：`.github/workflows/ci.yml` 在 push / PR 跑三套测试 + `build:app` / `build:h5`；`.github/workflows/release-apk.yml` 用 HBuilderX Linux CLI 走 DCloud 云打包出 APK（需仓库变量 `APK_CI=true` + DCloud 账号 / 证书 secrets，未配置时整个 job 跳过），包名固定 `host.r0ad.diandian`；`.github/workflows/hbx-linux-smoke.yml` 每周自检 HBuilderX Linux CLI 能否启动。三者共用 `.github/actions/hbx-linux` 复合 action。
 
 ### 9.2 测试（已实测可用）
 
@@ -167,7 +169,7 @@ npm test
 | 双份 schema | `dbUpgradeConfig.js` 的脚本与 `dbService.js` 里的建表方法并存，已有漂移；改表以 `dbUpgradeConfig.js` 为准，必要时清理 `dbService` 里的旧建表逻辑 |
 | 文档过期 | `doc/03-design/03-design.md` 顶部已有 2026-10 修订块（原写 uView UI / Pinia / 日志字段 / 10 张表 / `mine/` 均已改正）；`README.md` 已按真实功能重写；`.cursorrules`、`.trae/rules/` 已改为仓库根路径并指向本文件。历史设计文档（`doc/04-test/`）仍部分过时，只作参考 |
 | 仓库体积 | `unpackage/`（约 121MB）已在 `.gitignore` 中且取消跟踪，但**本地仍占磁盘**，可用 `git clean -Xdf` 清理；仍在跟踪的大文件：`uni_modules/qiun-data-charts` 内 echarts（~1.4MB）、`doc/02-UI界面` 设计源文件（~6.4MB）、`static/logo.png`（0.65MB）。不要新增二进制到 git |
-| 密钥历史 | `r0ad.keystore`、`package.md`（口令）以及 `pages/demo/plugin-example` 里的一枚真实 API Key **仍在 git 历史里**（已推送到 `origin`）。工作区已修复，但发布前必须清理历史并轮换凭证，见 §12 |
+| 密钥历史 | 2026-10-25 复核：全历史已无 `*.keystore` / `package.md` / 真实 API Key（`pages/demo/plugin-example` 只剩 `apiKey: ''` 占位），历史已清理，可直接公开；当前远端是 GitHub `r0ad/project-z`，本仓库已无 GitCode origin。若 GitCode 旧仓库仍存在，仍需按 §12.3 清理或轮换凭证 |
 
 ## 12. 开源协作与密钥策略
 
@@ -190,14 +192,11 @@ npm test
 - 推广码只是 `cryptoUtils` 的 XOR + base58 **本地对称编码**，不是加密，也不含任何服务端密钥——不要把它当机密或安全机制。
 - 一旦发现 Key/口令进入提交：**立即轮换**（吊销 API Key、重新生成签名证书），再清理历史；只删文件不轮换等于没修。
 
-### 12.3 历史清理（发布前必须决定）
+### 12.3 历史清理（2026-10-25 已复核）
 
-截至 2026-10，git 历史中仍包含 `r0ad.keystore`、`package.md`（口令）、以及一枚真实 API Key，且已推送到 `origin`（腾讯 GitCode）。发布到公开仓库前二选一：
-
-1. **干净历史（推荐）**：新建公开仓库，把当前工作区提交为一次初始提交（如 `git checkout --orphan main` 后提交），旧历史不随行。代价是丢失提交历史。
-2. **重写历史**：`git filter-repo` 移除 `r0ad.keystore`、`package.md` 及相关 Key 字符串后 force push。需要协调所有克隆者，且远端缓存/PR 引用可能残留。
-
-无论选哪种，都必须在对应平台**吊销旧 API Key** 并**重新生成签名证书**（旧证书能签出可覆盖安装的包）。
+- 对当前仓库全历史扫过 `git log --all -p` / `git rev-list --objects --all`：**没有** `*.keystore`、`package.md`、真实 `sk-` Key，历史干净，可以直接发布到公开仓库。
+- 已发布到 <https://github.com/r0ad/project-z>（public），本仓库不再配置 GitCode origin。
+- 若腾讯 GitCode 上的旧仓库仍然存在并带着旧历史，仍需按「干净历史 / `git filter-repo` 重写」二选一处理，并**吊销旧 API Key、重新生成签名证书**（旧证书仍能签出可覆盖安装的包）。
 
 ### 12.4 发布前仓库设置清单
 
@@ -205,7 +204,8 @@ npm test
 - [ ] 填写仓库描述、Topics（`uniapp` `vue3` `ai` `project-management` `sqlite`）
 - [ ] 开启 Secret scanning / push protection（GitHub）
 - [ ] 保护 `main` 分支，禁止直接 push
-- [ ] 确认 CI（可选）：目前**没有** CI 配置，如要加，跑测试即可（`--forceExit`）
+- [x] CI 已接入：`ci.yml`（测试 + 资源构建）、`release-apk.yml`（云打包 APK，需配 `APK_CI` 变量与 secrets）、`hbx-linux-smoke.yml`（HBuilderX Linux CLI 自检）
+- [ ] 配 `APK_CI=true` 变量 + DCloud 账号 / keystore secrets，并手动跑一次 `release-apk` 验证云打包
 - [ ] Release 附构建产物（APK）时给出校验值，不要把 APK 提交进仓库
 - [ ] `README` 的徽章/链接全部可达（LICENSE、CONTRIBUTING、SECURITY）
 

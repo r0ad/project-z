@@ -7,6 +7,7 @@
 ![version](https://img.shields.io/badge/version-1.0.6-165DFF)
 ![uni-app](https://img.shields.io/badge/uni--app-Vue%203-00B42A)
 ![license](https://img.shields.io/badge/license-MIT-F53F3F)
+[![CI](https://github.com/r0ad/project-z/actions/workflows/ci.yml/badge.svg)](https://github.com/r0ad/project-z/actions/workflows/ci.yml)
 
 **点点**是用 uni-app + Vue 3 编写的 AI 驱动项目管理 App。它把「设定目标 → 记录执行 → AI 分析 → 沉淀知识」做成一条闭环：AI 把一句朴素的目标拆成可执行的里程碑，日志里的碎碎念会被整理成「进展 / 问题 / 计划」，项目结束后经验可以沉淀进知识库。
 
@@ -170,6 +171,23 @@ npx jest --config tests/jest.config.unit.js \
 ```
 
 测试通过 `tests/setup/uniapp.setup.js` mock `uni` / `plus`，不连真库；`@/` 别名由 `jest.config.js` 的 `moduleNameMapper` 映射到仓库根。**部分用例会留下未关闭的异步句柄，不加 `--forceExit` 会挂住不退出**，因此不建议把全量套件当 CI 门禁。e2e 配置在 `tests/jest.config.e2e.js`，需要真机或模拟器。
+
+## 构建与 CI
+
+APK 仍由 HBuilderX 打包（App-Plus 主目标），但仓库里也配了不开 HBuilderX GUI 的构建命令与流水线：
+
+```bash
+npm run build:app   # → dist/build/app，App-Plus 资源（可导入 HBuilderX 离线打包）
+npm run build:h5    # → dist/build/h5
+```
+
+| 工作流 | 作用 | 触发 |
+|---|---|---|
+| [`ci.yml`](.github/workflows/ci.yml) | 三套 Jest + `build:app` / `build:h5`，上传 artifact | push / PR |
+| [`release-apk.yml`](.github/workflows/release-apk.yml) | HBuilderX Linux CLI 走 DCloud 云打包出 APK，打 tag 时附到 Release | 手动 / `v*` tag（需 `APK_CI=true`） |
+| [`hbx-linux-smoke.yml`](.github/workflows/hbx-linux-smoke.yml) | 只验证 HBuilderX Linux CLI 能在托管 runner 启动 | 手动 / 每周 |
+
+启用云打包：在仓库 Settings → Secrets and variables → Actions 里加变量 `APK_CI=true`，并配置 secrets：`DCLOUD_USERNAME`、`DCLOUD_PASSWORD`（云打包必须登录 DCloud 账号）、`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` / `ANDROID_STORE_PASSWORD`（自有证书；不配则用公共证书出测试包，不能当升级包）。APK 包名固定 `host.r0ad.diandian`；证书与口令只放 secrets 或仓库外，不要提交。
 
 ## 常见问题
 
