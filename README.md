@@ -208,6 +208,11 @@ git push          # Netlify 若已连本仓库会自动部署；否则手动把 
 - 下载页：<https://project.r0ad.host>（实时读 Releases，含每个版本的 APK 与 SHA256）
 - App 内更新仍读 `https://project.r0ad.host/version.json`，所以每次发版记得把 `intro/version.json` 一起推上去
 
+下载页（Netlify）当前没有和仓库自动关联，push 不会自动上线。二选一：
+
+1. **自动（推荐）**：仓库 Settings → Secrets and variables → Actions 里加变量 `SITE_DEPLOY=true`、secrets `NETLIFY_AUTH_TOKEN`（Netlify → User settings → Applications → Personal access tokens）和 `NETLIFY_SITE_ID`（站点 → Site settings → General → Site ID），之后改 `intro/**` 会自动跑 `deploy-site.yml` 部署；
+2. **手动**：Netlify 站点 → Deploys → 把 `intro/` 文件夹拖进去部署。
+
 ## 常见问题
 
 **Q：H5 或小程序预览时页面空白 / 报「数据库初始化失败」？**

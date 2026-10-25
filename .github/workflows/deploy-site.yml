@@ -1,0 +1,76 @@
+name: Deploy site
+
+# 把 intro/ 部署到 https://project.r0ad.host（Netlify）。
+# 需要仓库配置（Settings → Secrets and variables → Actions）：
+#   Variables: SITE_DEPLOY=true
+#   Secrets:   NETLIFY_AUTH_TOKEN（Netlify → User settings → Applications → Personal access tokens）
+#              NETLIFY_SITE_ID（Netlify 站点 → Site settings → General → Site ID）
+# 不配置时本工作流不跑；也可以在 Netlify UI 里手动拖 intro/ 部署。
+
+on:
+  push:
+    paths:
+      - 'intro/**'
+      - '.github/workflows/deploy-site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-site
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: 部署下载页到 Netlify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: vars.SITE_DEPLOY == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 打包 intro/
+        run: cd intro && zip -qr "$RUNNER_TEMP/site.zip" .
+
+      - name: 部署到 Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$NETLIFY_AUTH_TOKEN" ] || [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "::error::缺少 secrets.NETLIFY_AUTH_TOKEN / NETLIFY_SITE_ID"
+            exit 1
+          fi
+
+          resp=$(curl -sS -X POST \
+            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+            -H "Content-Type: application/zip" \
+            --data-binary @"$RUNNER_TEMP/site.zip" \
+            "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys")
+
+          echo "$resp" | jq -r '{deploy_id, state, ssl_url}'
+          deploy_id=$(echo "$resp" | jq -r '.deploy_id // .id')
+          if [ -z "$deploy_id" ] || [ "$deploy_id" = "null" ]; then
+            echo "::error::Netlify 未返回 deploy_id"
+            exit 1
+          fi
+
+          for i in $(seq 1 60); do
+            state=$(curl -sS -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+              "https://api.netlify.com/api/v1/deploys/$deploy_id" | jq -r '.state')
+            echo "第 $i 次查询：state=$state"
+            if [ "$state" = "ready" ]; then
+              echo "部署完成：https://project.r0ad.host"
+              exit 0
+            fi
+            if [ "$state" = "error" ]; then
+              echo "::error::Netlify 部署失败"
+              exit 1
+            fi
+            sleep 5
+          done
+
+          echo "::error::等待 Netlify 部署超时"
+          exit 1
