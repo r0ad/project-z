@@ -50,4 +50,7 @@ lerna-debug.log*
 .stylelintcache
 .temp
 .tmp
+.tmp-build
+dist-site/
+dist-site.zip
 .cache

@@ -191,28 +191,33 @@ npm run build:h5    # → dist/build/h5
 
 ### 本地打包 + 发布（不依赖云打包）
 
-HBuilderX「发行 → 原生 App-云打包 / 本地打包」出 APK 后，一条命令发布（**用户下载始终走本站，不依赖 GitHub**）：
+HBuilderX「发行 → 原生 App-云打包 / 本地打包」出 APK 后，按下面两步发布。**用户下载只走站点（project.r0ad.host），不依赖 GitHub——国内访问不了。**
+
+**① 准备站点发布包（推荐，不碰 GitHub）**
 
 ```bash
-# --notes 写本次更新说明；--version 不传则取 manifest.json 的 versionName
-npm run release:apk -- --apk "D:\build\diandian.apk" --notes "1. 修复分享码问题；2. 优化聊天流式输出"
-# 脚本会：创建/复用 v<version> Release，上传 project.apk / diandian-v<version>.apk / apk.sha256，
-#        并把版本说明写进 intro/version.json（已存在版本保留原发布日期）
-
-git add intro/version.json
-git commit -m "release: v1.0.7"
-git push          # Netlify 若已连本仓库会自动部署；否则手动把 intro/ 重新部署
+npm run stage:site -- --apk "D:\build\diandian.apk" --notes "1. 修复分享码问题；2. 优化聊天流式输出"
 ```
 
-- **用户下载地址只有站点**：<https://project.r0ad.host>（根目录 `project.apk` 永远最新，历史版本见更新日志）
-- App 内更新读站点 `version.json` 里最新条目的 `downloadUrl`（指向站点），同样不走 GitHub
-- GitHub Releases 只当**归档 / 回滚**用，国内访问不稳定，不要在下载页或 App 里引用；要单独归档某个历史版本，把 APK 放上站点并在 `version.json` 该条目写 `downloadUrl`
-- 站点部署：`deploy-site.yml` 会把最新 Release 里的 APK 同步成站点根目录的 `project.apk`（需配 Netlify secrets）；手动部署时把 APK 一起放进 `intro/` 再上传
+它会生成 `dist-site/`（新版下载页 + `version.json` + `project.apk`）和 `dist-site.zip`，并同步更新 `intro/version.json`（小文件，建议提交）。
 
-下载页（Netlify）当前没有和仓库自动关联，push 不会自动上线。二选一：
+**② 部署站点**
 
-1. **自动（推荐）**：仓库 Settings → Secrets and variables → Actions 里加变量 `SITE_DEPLOY=true`、secrets `NETLIFY_AUTH_TOKEN`（Netlify → User settings → Applications → Personal access tokens）和 `NETLIFY_SITE_ID`（站点 → Site settings → General → Site ID），之后改 `intro/**` 会自动跑 `deploy-site.yml` 部署；
-2. **手动**：Netlify 站点 → Deploys → 把 `intro/` 文件夹拖进去部署。
+Netlify 站点 → Deploys → 把 `dist-site.zip`（或 `dist-site/` 目录）拖进去；然后提交版本说明：
+
+```bash
+git add intro/version.json && git commit -m "release: v1.0.7" && git push
+```
+
+如果配了 `SITE_DEPLOY=true` 变量 + `NETLIFY_AUTH_TOKEN` / `NETLIFY_SITE_ID` secrets，`deploy-site.yml` 会在 `intro/**` 变更时自动部署（并从最新 Release 同步 APK 成站点 `project.apk`）。
+
+**可选：GitHub 归档**
+
+`npm run release:apk -- --apk ...` 会把 APK 传到 GitHub Releases 当归档 / 回滚用。国内访问 GitHub 不稳定，**不要**把它当下载源。
+
+- 用户下载地址只有站点：<https://project.r0ad.host>（根目录 `project.apk` 永远最新；历史版本见更新日志）
+- App 内更新读站点 `version.json` 最新条目的 `downloadUrl`（指向站点），同样不走 GitHub
+- 要给某个历史版本单独提供下载：把 APK 放到站点（如 `/apk/diandian-1.0.6.apk`），在 `version.json` 该条目写 `downloadUrl`
 
 ## 常见问题
 
