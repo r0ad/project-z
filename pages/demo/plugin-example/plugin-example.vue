@@ -78,7 +78,7 @@ export default {
 			// 聊天配置
 			chatConfig: {
 				baseUrl: 'https://api.deepseek.com/v1',
-				apiKey: 'sk-REMOVED', // 用户需要在配置面板中设置
+				apiKey: '', // 占位：请勿在此填写真实 Key，运行后在「我的 → AI 设置」中配置
 				model: 'deepseek-chat',
 				timeout: 30000
 			},
