@@ -49,4 +49,5 @@ lerna-debug.log*
 .eslintcache
 .stylelintcache
 .temp
+.tmp
 .cache
