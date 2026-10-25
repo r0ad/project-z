@@ -187,7 +187,26 @@ npm run build:h5    # → dist/build/h5
 | [`release-apk.yml`](.github/workflows/release-apk.yml) | HBuilderX Linux CLI 走 DCloud 云打包出 APK，打 tag 时附到 Release | 手动 / `v*` tag（需 `APK_CI=true`） |
 | [`hbx-linux-smoke.yml`](.github/workflows/hbx-linux-smoke.yml) | 只验证 HBuilderX Linux CLI 能在托管 runner 启动 | 手动 / 每周 |
 
-启用云打包：在仓库 Settings → Secrets and variables → Actions 里加变量 `APK_CI=true`，并配置 secrets：`DCLOUD_USERNAME`、`DCLOUD_PASSWORD`（云打包必须登录 DCloud 账号）、`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` / `ANDROID_STORE_PASSWORD`（自有证书；不配则用公共证书出测试包，不能当升级包）。APK 包名固定 `host.r0ad.diandian`；证书与口令只放 secrets 或仓库外，不要提交。
+启用云打包：在仓库 Settings → Secrets and variables → Actions 里加变量 `APK_CI=true`，并配置 secrets：`DCLOUD_USERNAME`、`DCLOUD_PASSWORD`（云打包必须登录 DCloud 账号）、`ANDROID_KEYSTORE_BASE64` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` / `ANDROID_STORE_PASSWORD`（自有证书；不配则用公共证书出测试包，不能当升级包）。包名固定 `uni.app.UNI08418DF`（与历史 APK 一致才能覆盖升级）；证书与口令只放 secrets 或仓库外，不要提交。
+
+### 本地打包 + 发布（不依赖云打包）
+
+HBuilderX「发行 → 原生 App-云打包 / 本地打包」出 APK 后，直接发布到 GitHub Releases，下载页会自动显示最新版和历史版本：
+
+```bash
+# --notes 写本次更新说明；--version 不传则取 manifest.json 的 versionName
+npm run release:apk -- --apk "D:\build\diandian.apk" --notes "1. 修复分享码问题；2. 优化聊天流式输出"
+# 脚本会：创建/复用 v<version> Release，上传 project.apk / diandian-v<version>.apk / apk.sha256，
+#        并把版本说明写进 intro/version.json（已存在版本保留原发布日期）
+
+git add intro/version.json
+git commit -m "release: v1.0.7"
+git push          # Netlify 若已连本仓库会自动部署；否则手动把 intro/ 重新部署
+```
+
+- 稳定下载地址：`https://github.com/r0ad/project-z/releases/latest/download/project.apk`（永远最新）
+- 下载页：<https://project.r0ad.host>（实时读 Releases，含每个版本的 APK 与 SHA256）
+- App 内更新仍读 `https://project.r0ad.host/version.json`，所以每次发版记得把 `intro/version.json` 一起推上去
 
 ## 常见问题
 

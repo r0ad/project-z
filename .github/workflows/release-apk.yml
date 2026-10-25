@@ -36,7 +36,10 @@ jobs:
     timeout-minutes: 60
     if: vars.APK_CI == 'true'
     env:
-      PACKAGE_NAME: host.r0ad.diandian
+      # 必须和历史 APK 的包名一致，否则老用户无法覆盖升级。
+      # 现有 1.0.6 APK 的包名是 DCloud 默认的 uni.app.UNI08418DF（appid __UNI__08418DF 派生），
+      # 换成 host.r0ad.diandian 等于发一个全新 App，已安装用户收不到更新。
+      PACKAGE_NAME: uni.app.UNI08418DF
     steps:
       - uses: actions/checkout@v4
 
@@ -97,7 +100,10 @@ jobs:
       - name: 下载 APK 并计算校验值
         run: |
           set -euo pipefail
-          curl -fL "${{ steps.pack.outputs.url }}" -o "diandian-${{ github.ref_name }}.apk"
+          # project.apk 是固定文件名：.../releases/latest/download/project.apk 永远指向最新版，
+          # 下载页（project.r0ad.host）与 App 内更新都可以拿它当稳定地址
+          curl -fL "${{ steps.pack.outputs.url }}" -o project.apk
+          cp project.apk "diandian-${{ github.ref_name }}.apk"
           ls -lh ./*.apk
           sha256sum ./*.apk | tee apk.sha256
 

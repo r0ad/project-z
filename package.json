@@ -31,7 +31,8 @@
     "test:mp-weixin": "cross-env UNI_PLATFORM=mp-weixin jest -i",
     "test:mp-baidu": "cross-env UNI_PLATFORM=mp-baidu jest -i",
     "build:app": "node scripts/build.mjs app",
-    "build:h5": "node scripts/build.mjs h5"
+    "build:h5": "node scripts/build.mjs h5",
+    "release:apk": "node scripts/publish-release.mjs"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4070620250821001",
