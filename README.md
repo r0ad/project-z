@@ -206,7 +206,7 @@ git push          # Netlify 若已连本仓库会自动部署；否则手动把 
 
 - 稳定下载地址：`https://github.com/r0ad/project-z/releases/latest/download/project.apk`（永远最新）
 - 下载页：<https://project.r0ad.host>（实时读 Releases，含每个版本的 APK 与 SHA256）
-- App 内更新仍读 `https://project.r0ad.host/version.json`，所以每次发版记得把 `intro/version.json` 一起推上去
+- `release:apk` 会给 `intro/version.json` 的最新条目写入 `downloadUrl`（GitHub Release 直链），App 内更新优先用它，**不依赖站点上的 project.apk**；部署站点时 `deploy-site.yml` 也会自动把最新 APK 同步成站点根目录的 `project.apk`（手动部署的话记得连 APK 一起放进去）
 
 下载页（Netlify）当前没有和仓库自动关联，push 不会自动上线。二选一：
 

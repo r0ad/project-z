@@ -203,13 +203,16 @@ async function main() {
   }
 
   // 3) 更新 intro/version.json，下载页的更新日志立即有新条目（已存在版本保留原发布日期）
+  //    downloadUrl 指向 GitHub Release 直链：App 内更新（utils/updateApp.js）优先用它，
+  //    这样即使站点上的 project.apk 没跟着更新，老用户也能升到新版本。
   const versionJsonPath = join(root, 'intro', 'version.json')
   const list = JSON.parse(readFileSync(versionJsonPath, 'utf8'))
   const idx = list.findIndex(v => v.version === version)
   const entry = {
     version,
     comment: notes || (idx >= 0 ? list[idx].comment : `版本 ${version}`),
-    date: idx >= 0 ? list[idx].date : ymd
+    date: idx >= 0 ? list[idx].date : ymd,
+    downloadUrl: `https://github.com/${repo}/releases/download/${tag}/diandian-${tag}.apk`
   }
   if (idx >= 0) list[idx] = entry
   else list.push(entry)

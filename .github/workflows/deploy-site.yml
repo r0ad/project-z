@@ -30,8 +30,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 打包 intro/
-        run: cd intro && zip -qr "$RUNNER_TEMP/site.zip" .
+      - name: 准备站点文件（intro/ + 最新 APK 作为 project.apk）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/site"
+          cp -R intro/. "$RUNNER_TEMP/site/"
+
+          # 站点根目录的 project.apk 是给老版本 App 内更新兜底的，部署时从最新 Release 同步一份，
+          # 避免重新部署把原来手传的 APK 覆盖掉
+          asset_id=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+            | jq -r '.assets[]? | select(.name == "project.apk") | .id' | head -n1)
+          if [ -n "$asset_id" ] && [ "$asset_id" != "null" ]; then
+            curl -sSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" \
+              -o "$RUNNER_TEMP/site/project.apk" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id"
+            ls -lh "$RUNNER_TEMP/site/project.apk"
+          else
+            echo "::warning::最新 Release 里没有 project.apk，本次部署站点将不带 project.apk"
+          fi
+
+          cd "$RUNNER_TEMP/site" && zip -qr "$RUNNER_TEMP/site.zip" .
 
       - name: 部署到 Netlify
         env:
