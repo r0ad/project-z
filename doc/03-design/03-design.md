@@ -1,5 +1,28 @@
 # AI项目管理APP概要设计文档（uniapp版）
 
+> ⚠️ **修订说明（2026-10）**
+>
+> 本文档撰写于项目早期（`app/` 目录时代），**部分内容已过时**，以根目录 `AGENTS.md` 与源码为准。
+> 事实优先级：**AGENTS.md > 源码 > 本文档**。
+>
+> 本次（2026-10）就地改正的错误断言：
+>
+> 1. §2.2 UI 组件库 `uView UI` → 实际为 **nutui-uniapp**（easycom 自动注册，无原生 tabBar）；
+> 2. §2.2 状态管理 `Pinia` → 实际**无全局状态库**（全仓无 pinia / vuex），当前用户状态是 `utils/userStore.js`；
+> 3. §4.1 `project_logs` 字段 `progress / problem / plan` → 实际为 **`progress_text / problem_text / plan_text`**（另有 `content`、`log_type`）；
+> 4. §4.1 表清单只列 10 张 → 实际 **15 张**，已补 `settings`、`ai_config`、`ai_summaries`、`chat_conversations`、`chat_messages`；
+> 5. §6.1 页面树 `mine/` → 实际为 **`pages/profile/`**；首页不是 `pages/index/`，而是 **`pages/project/list`**（`pages.json` 第一个页面），`pages/index/index.vue` 属未注册死页；
+> 6. §11.1 附录 UI 组件库 `uView UI` → 实际为 **nutui-uniapp**；AI 模型服务现为多供应商（`utils/aiProviders.js`：openai / deepseek / siliconflow / kimi / qwen / custom）。
+>
+> 另有一类差异仅在本文说明、正文未逐句改写（避免破坏历史设计叙述）：
+>
+> - 文中 `aiService.js` / `AIService` → 现为 `api/aiApi.js`；`DBService` → 现为 `utils/dbService.js` 单例；
+> - 文中 `ProjectModel` / `LogModel` 等数据模型类不存在，字段映射统一在 `api/*Api.js` 完成；
+> - 项目进度实际**由里程碑推导**（已完成里程碑 / 总数 × 100，满 100 自动置 `completed`），不是「节点完成率 + 手动进度值」；
+> - 数据库结构以 `doc/03-design/01-db.sql` 为准（仍与实现有少量偏差），升级脚本见 `utils/dbUpgradeConfig.js`。
+>
+> 未标注修订的章节（如 §9 开发计划、§10 风险）属历史规划，仅供参考，不构成实现承诺。
+
 ## 1. 项目概述
 
 ### 1.1 项目目标
@@ -39,10 +62,10 @@
 ### 2.2 技术架构
 
 - 框架：uniapp（Vue 3 + Vite）
-- 状态管理：Pinia
+- 状态管理：无全局状态库（全仓无 pinia / vuex），当前用户状态见 `utils/userStore.js`（2026-10 修订）
 - 路由管理：uniapp内置路由
-- 数据库：sqlite（通过uniapp的plus.sqlite模块操作）
-- UI组件：自定义组件 + uView UI
+- 数据库：sqlite（通过uniapp的plus.sqlite模块操作，统一经 `utils/dbService.js`）
+- UI组件：自定义公共组件 + nutui-uniapp（2026-10 修订，原文档误写为 uView UI）
 - 网络请求：uni.request（用于AI接口调用）
 - 本地存储：uni.setStorage/uni.getStorage
 
@@ -159,26 +182,33 @@
 - 用户信息存储在`users`表（单用户模式）
 - 统计数据通过SQL聚合查询实现
 - 数据备份通过导出SQLite数据库文件实现
-- AI接口配置加密存储在本地缓存
+- AI接口配置加密存储在本地缓存（2026-10 修订：实际存 `ai_config` 表，由 `pages/profile/ai-settings.vue` 录入，禁止硬编码进源码）
 
 ## 4. 数据设计
 
 ### 4.1 数据库设计
 
-采用SQLite数据库，数据库名称为`ai_project_manage.db`，主要表结构如下：
+采用SQLite数据库，数据库名称为`ai_project_manage.db`，**全部 15 张表**结构如下（2026-10 修订：原文档仅列 10 张，权威 DDL 见 `01-db.sql`）：
 
 | 表名 | 说明 | 核心字段 |
 |------|------|----------|
 | users | 用户信息表 | id, username, email, avatar, settings |
+| settings | 系统设置表（category/key/value，含 `system.db_version`） | id, category, key, value（UNIQUE(category, key)） |
+| ai_config | AI 供应商配置表（每用户每供应商一条） | id, provider, base_url, api_key, model, timeout, max_tokens, temperature, is_active, user_id（UNIQUE(provider, user_id)） |
 | projects | 项目表 | id, user_id, name, description, goal, status, progress |
 | project_milestones | 项目节点表 | id, project_id, title, status, deadline, sequence |
-| project_logs | 项目日志表 | id, project_id, progress, problem, plan, created_at |
+| project_logs | 项目日志表 | id, project_id, content, progress_text, problem_text, plan_text, log_type, created_at |
+| ai_analyses | AI分析结果表 | id, project_id, analysis_type, content, suggestions, created_at |
+| ai_summaries | AI 总结结果表 | id, project_id, summary_type, content, suggestions, created_at |
+| chat_conversations | AI 对话会话表 | id, project_id, title, chat_type, related_id, created_at |
+| chat_messages | AI 对话消息表 | id, conversation_id, role, content, timestamp, metadata |
 | knowledge_base | 知识库表 | id, title, content, summary, view_count |
 | knowledge_tags | 知识标签表 | id, name |
 | knowledge_tag_mappings | 知识-标签关联表 | id, knowledge_id, tag_id |
 | project_knowledge_mappings | 项目-知识关联表 | id, project_id, knowledge_id |
-| ai_analyses | AI分析结果表 | id, project_id, content, suggestions, created_at |
 | favorites | 收藏表 | id, user_id, target_type, target_id |
+
+> 2026-10 修订：`project_logs` 的进展/问题/计划字段实际为 `progress_text` / `problem_text` / `plan_text`（原文档误写为 `progress` / `problem` / `plan`）。
 
 ### 4.2 数据访问层设计
 
@@ -272,26 +302,31 @@ async function analyzeProject(projectId) {
 
 ### 6.1 页面结构
 
+> 2026-10 修订：以下页面树已按实际目录改正（原文档误写 `index/` 为首页、`mine/` 为个人中心）。完整页面清单与注册顺序以 `pages.json` 为准。
+
 ```
 pages/
-├── index/                 # 首页/项目列表页
-├── project/               # 项目详情相关
+├── project/               # 项目管理（首页即 list，pages.json 第一个页面）
+│   ├── list.vue           # 首页/项目列表页（不是 pages/index/）
 │   ├── detail.vue         # 项目详情页
-│   ├── milestones.vue     # 项目节点页
-│   ├── logs.vue           # 项目日志页
-│   └── analysis.vue       # AI分析页
+│   ├── create.vue         # 创建项目页
+│   ├── log.vue            # 项目日志页
+│   └── chat.vue           # 项目 AI 对话页
 ├── knowledge/             # 知识库相关
 │   ├── index.vue          # 知识库首页
 │   ├── detail.vue         # 知识详情页
-│   └── edit.vue           # 编辑知识页
-├── ai/                    # AI交互相关
-│   ├── chat.vue           # AI聊天页
-│   └── suggestions.vue    # 建议列表页
-└── mine/                  # 个人中心相关
-    ├── index.vue          # 个人中心首页
-    ├── stats.vue          # 数据统计页
-    ├── favorites.vue      # 收藏页
-    └── settings.vue       # 设置页
+│   ├── create.vue         # 新增/编辑知识页
+│   └── chat.vue           # 知识 AI 对话页
+├── profile/               # 个人中心（原文档误写为 mine/）
+│   ├── index.vue          # 个人中心首页
+│   ├── stats.vue          # 数据统计页
+│   ├── favorites.vue      # 收藏页
+│   ├── ai-settings.vue    # AI 设置页
+│   ├── edit.vue           # 用户信息编辑页
+│   ├── feedback.vue       # 反馈页
+│   └── help.vue           # 帮助页
+├── demo/                  # 第三方插件示例页（多数未注册，仅供查阅）
+└── index/index.vue        # 未注册死页，实际不可达
 ```
 
 ### 6.2 导航设计
@@ -385,9 +420,9 @@ pages/
 
 ### 11.1 第三方服务依赖
 
-- AI模型服务：OpenAI API / 阿里云灵积 / 百度文心一言
-- UI组件库：uView UI
-- 图表库：uCharts
+- AI模型服务：OpenAI API / 阿里云灵积 / 百度文心一言（2026-10 修订：实际支持 openai / deepseek / siliconflow / kimi / qwen / custom，见 `utils/aiProviders.js`）
+- UI组件库：uView UI（2026-10 修订：实际为 nutui-uniapp）
+- 图表库：uCharts（对应 `uni_modules/qiun-data-charts`）
 
 ### 11.2 关键技术点
 
