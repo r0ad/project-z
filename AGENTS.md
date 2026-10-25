@@ -108,6 +108,7 @@
 
 - **本项目用 HBuilderX 开发，`package.json` 里没有 `dev` / `build` 脚本**。不要试图 `npm run dev`、不要自己搭 vite/webpack。
 - 用 HBuilderX 打开**仓库根目录**（不是 `app/`），运行到手机/模拟器；打包流程见 `package.example.md`。
+- **首次运行 / 拉新代码 / `git clean -Xdf` 之后，先在仓库根目录 `npm ci` 装依赖**。`node_modules/` 被 `.gitignore` 忽略，缺了它 HBuilderX 跑 H5/App 会报 `[plugin:vite:css] [sass] Can't find stylesheet to import`（`uni.scss` 里的 `@import "nutui-uniapp/styles/variables.scss"`、`App.vue` 里的 `index.scss` 都解析不到），nut-* 组件也会整体失效。仓库自带 `.npmrc`（`legacy-peer-deps=true`）用于绕过 `@dcloudio/uni-automator` 的 `node-simctl` peer 冲突，不要删。
 - **签名证书与口令不入库**：本地 `r0ad.keystore` / `package.md` 已被 `.gitignore` 忽略（历史里仍有，见 §11/§12）。发布用签名请放在仓库外目录，并单独备份。
 
 ### 9.2 测试（已实测可用）
