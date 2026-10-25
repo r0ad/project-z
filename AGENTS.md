@@ -219,4 +219,51 @@ npm test
 - [ ] 平台相关代码加了条件编译，H5/小程序不会因 `plus` 不存在而崩
 - [ ] 相关单测通过（至少 `npx jest --config tests/jest.config.unit.js --runTestsByPath <文件>`），并在 App 内手工验证关键路径
 - [ ] 没有新建无引用文件、没有提交构建产物/临时脚本/密钥
+- [ ] 改动已按 §14 提交（单一职责、message 规范、未混入无关文件）
 - [ ] 若结构、命令、约定有变化，**同步更新本 `AGENTS.md`**
+
+## 14. 提交规范（每次改动后自动提交）
+
+**默认行为：每完成一个可验证的改动单元，立即 `git commit`，不要攒到最后一次性提交。** 编码代理（Claude Code / Cursor / Codex 等）在完成任务时就应提交，而不是只改文件等用户手动 commit。
+
+### 14.1 提交粒度
+
+- **一个 commit 只做一件事**：一个功能、一个修复、一次重构、一次文档更新、一次格式化，各自独立。
+- 顺手修掉的无关 bug / 无关格式化，**单独一次提交**，不要混进当前改动。
+- 大功能拆成可独立验证的小步（页面 → api → 数据层），每步能跑通就提交。
+
+### 14.2 固定流程（四步，缺一不可）
+
+```bash
+git status && git diff          # 1. 自查：有没有 unpackage/、密钥、临时脚本、无关改动
+npx jest --config tests/jest.config.unit.js --runTestsByPath <受影响文件的测试> --forceExit   # 2. 验证
+git add <具体文件路径>           # 3. 精确添加，不要无脑 git add -A
+git commit -m "type(scope): 中文描述" -m "为什么改 + 如何验证"
+```
+
+- 测试不通过就**不要提交**；页面/数据库改动还要在 App 内走一遍 §9.3。
+- 提交前确认：无 API Key / 证书 / 口令、无构建产物、无大二进制、无 `package.md`（`.gitignore` 已覆盖，但 `git add -f` 会绕过）。
+
+### 14.3 提交信息（Conventional Commits，中文描述）
+
+```text
+feat(project): 详情页支持导出分享卡
+fix(log): 修正日志进度字段映射
+docs: 补充数据库升级说明
+refactor(ai): 抽取流式响应解析
+test(api): 补充 knowledgeApi 单元测试
+chore: 升级 nutui-uniapp 版本
+security: 移除硬编码 API Key
+chore(release): 1.0.7
+```
+
+- 类型：`feat` / `fix` / `docs` / `refactor` / `test` / `chore` / `perf` / `security` / `release`。
+- subject ≤ 50 字；正文用 `-m` 第二段说明**为什么**与**如何验证**（跑了哪条命令、App 里点了什么）。
+- 参考实现：本仓库 `fafb731 security:`、`4b130fa chore:`、`18a4877 docs:` 三次提交。
+
+### 14.4 推送与红线
+
+- **默认只提交到本地**；只有用户明确要求、或分支已确认可推送时才 `git push`，推送前先 `git pull --rebase`。
+- 禁止：`--amend` 已推送的提交、对共享分支 force push、`reset --hard` 丢弃未提交改动（回滚用 `git revert`）、`--no-verify` 绕过检查。
+- 版本号（`manifest.json` 的 `versionName` / `versionCode`、`package.json` 的 `version`）变更用单独的 `chore(release): x.y.z` 提交并打 tag。
+- 历史中的敏感内容按 §12.3 单独处理，不要试图用普通提交"顺手"抹掉。

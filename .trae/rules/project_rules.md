@@ -20,3 +20,4 @@
 ## 开发说明
 
 1. 本项目使用hbuilderx进行开发。不适用npm启动。
+2. 每次改动完成并通过验证后，按 `AGENTS.md` §14 立即提交（Conventional Commits，一个提交一件事），不要攒改动。
