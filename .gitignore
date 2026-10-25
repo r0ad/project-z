@@ -53,4 +53,6 @@ lerna-debug.log*
 .tmp-build
 dist-site/
 dist-site.zip
+# CLI 构建期间由 scripts/build.mjs 临时生成；不要提交（HBuilderX 会误读根目录 vite.config.js）
+vite.config.js
 .cache
