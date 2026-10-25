@@ -1,0 +1,63 @@
+name: 准备 HBuilderX Linux CLI
+description: >-
+  在 Ubuntu runner 上装齐 HBuilderX Linux 版运行依赖、缓存并启动 CLI。
+  供 release-apk.yml（云打包）与 hbx-linux-smoke.yml（自检）复用。
+
+inputs:
+  version:
+    description: HBuilderX Linux 版本号，见 https://hx.dcloud.net.cn/Tutorial/install/linux-cli
+    required: false
+    default: 5.26.2026091802
+
+runs:
+  using: composite
+  steps:
+    - name: 安装 HBuilderX 运行依赖
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          libglib2.0-0 libgl1 libharfbuzz0b libfreetype6 libxrender1 \
+          libpcre2-16-0 zlib1g libx11-6 libx11-xcb1 libxcb1 libfontconfig1 \
+          libstdc++6 libgcc-s1 wget xz-utils procps
+        # HBuilderX 依赖 libssl1.1，Ubuntu 22.04+ 只有 libssl3，从 focal 源补装
+        if ! ldconfig -p | grep -q 'libssl\.so\.1\.1'; then
+          echo "deb [trusted=yes] http://archive.ubuntu.com/ubuntu focal main" \
+            | sudo tee /etc/apt/sources.list.d/focal-libssl1.1.list > /dev/null
+          sudo apt-get update -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/focal-libssl1.1.list \
+            -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0
+          sudo apt-get install -y libssl1.1
+          sudo rm -f /etc/apt/sources.list.d/focal-libssl1.1.list
+        fi
+
+    - name: 缓存 HBuilderX
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/.hbuilderx
+        key: hbuilderx-linux-${{ inputs.version }}
+
+    - name: 下载并解压 HBuilderX
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        wget -q -O /tmp/hbuilderx.tar.gz \
+          "https://download1.dcloud.net.cn/download/HBuilderX.${{ inputs.version }}.linux_x64.full.tar.gz"
+        mkdir -p .hbuilderx
+        tar -xzf /tmp/hbuilderx.tar.gz -C .hbuilderx --strip-components=1
+        test -x ./.hbuilderx/cli
+
+    - name: 启动 HBuilderX 并确认 CLI 可用
+      shell: bash
+      run: |
+        ./.hbuilderx/cli open
+        for i in $(seq 1 30); do
+          if ./.hbuilderx/cli ver; then
+            echo "HBuilderX CLI 已就绪"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "HBuilderX 启动失败，最近日志："
+        ./.hbuilderx/cli app quit || true
+        exit 1

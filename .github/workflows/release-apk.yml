@@ -1,0 +1,119 @@
+name: Release APK
+
+# 用 HBuilderX Linux CLI 走 DCloud 云打包出 Android APK。
+# 需要仓库配置（Settings → Secrets and variables → Actions）：
+#   Variables: APK_CI=true                —— 不开这个开关，本工作流所有 job 直接跳过（公开仓库不显示红叉）
+#   Secrets:   DCLOUD_USERNAME / DCLOUD_PASSWORD   —— DCloud 账号（云打包必须登录）
+#              ANDROID_KEYSTORE_BASE64 / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD / ANDROID_STORE_PASSWORD
+#              —— 自有证书（发布包用）；不配置则退化为公共证书（只能装机测试，不能作为升级包）
+# 注意：云打包在 DCloud 云端排队执行，免费额度与次数限制以 DCloud 后台为准；APK 下载地址是临时链接（限 5 次）。
+
+on:
+  workflow_dispatch:
+    inputs:
+      cert:
+        description: '证书方式：public=公共证书（测试包）/ own=自有证书（发布包，需配置 keystore secrets）'
+        required: true
+        default: public
+        type: choice
+        options:
+          - public
+          - own
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    name: 云打包 Android APK
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    if: vars.APK_CI == 'true'
+    env:
+      PACKAGE_NAME: host.r0ad.diandian
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/hbx-linux
+        with:
+          version: 5.26.2026091802
+
+      - name: 登录 DCloud 账号
+        env:
+          DCLOUD_USERNAME: ${{ secrets.DCLOUD_USERNAME }}
+          DCLOUD_PASSWORD: ${{ secrets.DCLOUD_PASSWORD }}
+        run: |
+          if [ -z "$DCLOUD_USERNAME" ] || [ -z "$DCLOUD_PASSWORD" ]; then
+            echo "::error::缺少 secrets.DCLOUD_USERNAME / DCLOUD_PASSWORD，云打包必须登录 DCloud 账号"
+            exit 1
+          fi
+          ./.hbuilderx/cli user login --username "$DCLOUD_USERNAME" --password "$DCLOUD_PASSWORD"
+
+      - name: 导入项目
+        run: ./.hbuilderx/cli project open --path "$GITHUB_WORKSPACE"
+
+      - name: 云打包
+        id: pack
+        env:
+          CERT_MODE: ${{ inputs.cert || 'public' }}
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          args=(pack --project "$GITHUB_WORKSPACE" --platform android
+                --android.packagename "$PACKAGE_NAME" --ignoreWarnings true)
+          if [ "$CERT_MODE" = "own" ] || [ -n "${KEYSTORE_B64:-}" ]; then
+            if [ -z "${KEYSTORE_B64:-}" ]; then
+              echo "::error::选择 own 证书但未配置 ANDROID_KEYSTORE_BASE64"
+              exit 1
+            fi
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            args+=(--android.androidpacktype 0
+                   --android.certalias "$KEY_ALIAS"
+                   --android.certfile "$RUNNER_TEMP/release.keystore"
+                   --android.certpassword "$KEY_PASSWORD"
+                   --android.storepassword "$STORE_PASSWORD")
+          else
+            echo "使用公共证书打包（测试包，不能作为升级包发布）"
+            args+=(--android.androidpacktype 1)
+          fi
+          ./.hbuilderx/cli "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/pack.log"
+          url=$(grep -oE 'https://service\.dcloud\.net\.cn/build/download/[A-Za-z0-9-]+' \
+                  "$RUNNER_TEMP/pack.log" | head -n1 || true)
+          if [ -z "$url" ]; then
+            echo "::error::未能从打包日志解析出 APK 下载地址，请查看上方日志"
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: 下载 APK 并计算校验值
+        run: |
+          set -euo pipefail
+          curl -fL "${{ steps.pack.outputs.url }}" -o "diandian-${{ github.ref_name }}.apk"
+          ls -lh ./*.apk
+          sha256sum ./*.apk | tee apk.sha256
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-${{ github.ref_name }}
+          path: |
+            ./*.apk
+            apk.sha256
+          retention-days: 14
+
+      - name: 附加到 GitHub Release（打 tag 时）
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./*.apk
+            apk.sha256

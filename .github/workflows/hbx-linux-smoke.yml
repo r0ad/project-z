@@ -1,0 +1,30 @@
+name: HBuilderX Linux 自检
+
+# 只验证「GitHub 托管 runner 能否把 HBuilderX Linux CLI 跑起来」这条链路：
+# 不登录、不打包，因此公开仓库跑它不会消耗 DCloud 云打包额度。
+# 主要是防 DCloud 换下载地址 / CLI 依赖变化导致 release-apk.yml 静默坏掉。
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: CLI 启动自检
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/hbx-linux
+        with:
+          version: 5.26.2026091802
+
+      - name: 打印版本与命令列表
+        run: |
+          ./.hbuilderx/cli ver
+          ./.hbuilderx/cli --help | head -n 30
