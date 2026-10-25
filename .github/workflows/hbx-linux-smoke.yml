@@ -28,3 +28,5 @@ jobs:
         run: |
           ./.hbuilderx/cli ver
           ./.hbuilderx/cli --help | head -n 30
+
+# 维护提示：这里只验证 CLI 能启动，不登录、不打包。

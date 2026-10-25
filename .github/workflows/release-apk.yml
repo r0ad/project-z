@@ -117,3 +117,5 @@ jobs:
           files: |
             ./*.apk
             apk.sha256
+
+# 维护提示：DCloud 升级 HBuilderX Linux CLI 后，先跑 hbx-linux-smoke.yml 再跑本工作流。
