@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>点点 · AI 项目管理 App — 让每一个目标，指日可待</title>
     <meta name="description" content="点点是一款本地优先的 AI 项目管理 App：AI 生成 SMART 目标与里程碑，日志自动提炼，对话带着项目上下文，经验沉淀进知识库。项目数据存在手机本地 SQLite。">
-    <meta name="theme-color" content="#04070e">
-    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#08090b">
+    <meta name="color-scheme" content="light">
     <link rel="canonical" href="https://project.r0ad.host/">
     <link rel="icon" href="./img/logo.png">
 
@@ -47,27 +47,31 @@
 
     <style>
         /* ============================================================
-           设计变量
+           设计变量 — 深色影像首屏 + 暖白内容区
            ============================================================ */
         :root {
-            --bg: #04070e;
-            --bg-soft: #070c17;
-            --surface: rgba(255, 255, 255, 0.035);
-            --surface-2: rgba(255, 255, 255, 0.02);
-            --line: rgba(255, 255, 255, 0.085);
-            --line-strong: rgba(255, 255, 255, 0.16);
-            --text: #eef3fa;
-            --muted: #95a3ba;
-            --muted-2: #6b7a91;
-            --cyan: #4fe3f0;
-            --cyan-soft: rgba(79, 227, 240, 0.12);
+            --ink: #08090b;
+            --ink-soft: #0e1013;
+            --ink-card: #121417;
+            --paper: #f6f6f2;
+            --paper-2: #eeeee8;
+            --card: #ffffff;
+            --text: #131416;
+            --muted: #5d626a;
+            --muted-2: #8a9098;
+            --line: rgba(19, 20, 22, 0.12);
+            --line-soft: rgba(19, 20, 22, 0.07);
+            --text-inverse: #f4f5f6;
+            --muted-inverse: #9aa0a8;
+            --line-inverse: rgba(255, 255, 255, 0.14);
+            --line-inverse-soft: rgba(255, 255, 255, 0.08);
+            --cyan: #22d3e0;
+            --cyan-deep: #0a8f99;
             --blue: #165dff;
-            --blue-2: #2f7bff;
-            --grad: linear-gradient(100deg, #9ff6ff 0%, #4fe3f0 36%, #2f7bff 96%);
             --radius: 20px;
-            --wrap: 1180px;
-            --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
-            --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+            --wrap: 1200px;
+            --ease: cubic-bezier(0.22, 0.7, 0.2, 1);
+            --font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", sans-serif;
         }
 
         /* ============================================================
@@ -86,30 +90,21 @@
             font-size: 16px;
             line-height: 1.6;
             color: var(--text);
-            background: var(--bg);
+            background: var(--paper);
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* 细腻噪点，避免大面积深色背景出现断层 */
-        body::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            z-index: 1;
-            pointer-events: none;
-            opacity: 0.028;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-        }
+        body.modal-open { overflow: hidden; }
 
-        ::selection { background: rgba(79, 227, 240, 0.28); color: #fff; }
+        ::selection { background: rgba(34, 211, 224, 0.25); color: #fff; }
 
         a { color: inherit; }
 
-        img { max-width: 100%; height: auto; display: block; }
+        img { display: block; max-width: 100%; height: auto; }
 
-        button { font: inherit; color: inherit; }
+        button, summary { font: inherit; color: inherit; }
 
         :focus-visible {
             outline: 2px solid var(--cyan);
@@ -135,8 +130,6 @@
             stroke-linejoin: round;
         }
 
-        .i-fill { fill: currentColor; stroke: none; }
-
         .wrap {
             width: min(var(--wrap), 100% - 48px);
             margin-inline: auto;
@@ -148,9 +141,9 @@
             left: 12px;
             z-index: 100;
             padding: 10px 16px;
-            border-radius: 10px;
-            background: var(--cyan);
-            color: #04121a;
+            border-radius: 8px;
+            background: #fff;
+            color: #111;
             font-size: 13px;
             font-weight: 600;
             text-decoration: none;
@@ -167,139 +160,126 @@
             right: 0;
             height: 2px;
             z-index: 60;
-            background: linear-gradient(90deg, var(--cyan), var(--blue));
+            background: var(--cyan);
             transform: scaleX(0);
             transform-origin: 0 50%;
             will-change: transform;
         }
 
         /* ============================================================
-           按钮与通用元素
+           通用元素
            ============================================================ */
+        .eyebrow {
+            display: inline-block;
+            margin: 0 0 20px;
+            color: var(--muted-2);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        .sec--dark .eyebrow { color: rgba(255, 255, 255, 0.45); }
+
+        .sec {
+            position: relative;
+            padding: clamp(76px, 9vw, 138px) 0;
+            scroll-margin-top: 86px;
+        }
+
+        .sec--paper { background: var(--paper); color: var(--text); }
+        .sec--dark { background: var(--ink); color: var(--text-inverse); }
+
+        .hl { color: var(--cyan-deep); }
+        .sec--dark .hl { color: var(--cyan); }
+
+        .sec-head {
+            max-width: 780px;
+            margin: 0 auto clamp(38px, 5vw, 66px);
+            text-align: center;
+        }
+
+        .sec-head h2,
+        .sec h2 {
+            margin: 0;
+            font-size: clamp(32px, 4.3vw, 56px);
+            line-height: 1.1;
+            letter-spacing: -0.035em;
+            font-weight: 700;
+        }
+
+        .sec-head .lead,
+        .sec .lead {
+            margin: 20px auto 0;
+            max-width: 640px;
+            color: var(--muted);
+            font-size: clamp(15px, 1.2vw, 17px);
+            line-height: 1.85;
+        }
+
+        .sec--dark .lead { color: var(--muted-inverse); }
+
         .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 9px;
-            padding: 14px 24px;
+            padding: 16px 28px;
             border-radius: 999px;
             border: 1px solid transparent;
-            font-size: 14.5px;
+            font-size: 15px;
             font-weight: 600;
-            letter-spacing: 0.01em;
             line-height: 1.2;
             text-decoration: none;
             white-space: nowrap;
             cursor: pointer;
-            transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease),
-                        background 0.25s var(--ease), border-color 0.25s var(--ease), color 0.25s var(--ease);
+            transition: transform 0.25s var(--ease), background 0.25s var(--ease),
+                        border-color 0.25s var(--ease), color 0.25s var(--ease), box-shadow 0.25s var(--ease);
         }
 
         .btn .i { width: 1.05em; height: 1.05em; }
 
-        .btn-primary {
-            color: #04121a;
-            background: linear-gradient(100deg, #a6f7ff 0%, #4fe3f0 48%, #38c8ff 100%);
-            box-shadow: 0 12px 34px -12px rgba(79, 227, 240, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+        .btn-light {
+            background: #fff;
+            color: #0a0a0b;
+            box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.5);
         }
 
-        .btn-primary:hover {
+        .btn-light:hover {
             transform: translateY(-2px);
-            box-shadow: 0 18px 44px -14px rgba(79, 227, 240, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+            box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.6);
         }
 
-        .btn-ghost {
-            color: var(--text);
-            border-color: var(--line-strong);
-            background: rgba(255, 255, 255, 0.025);
+        .btn-outline-light {
+            border-color: rgba(255, 255, 255, 0.32);
+            background: rgba(255, 255, 255, 0.04);
+            color: #fff;
         }
 
-        .btn-ghost:hover {
+        .btn-outline-light:hover {
             transform: translateY(-2px);
-            border-color: rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
         }
-
-        .btn-sm { padding: 9px 17px; font-size: 12.5px; }
-        .btn-lg { padding: 16px 30px; font-size: 15px; }
-
-        .eyebrow {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            color: var(--muted-2);
-        }
-
-        .eyebrow::before {
-            content: "";
-            width: 22px;
-            height: 1px;
-            background: linear-gradient(90deg, var(--cyan), transparent);
-        }
-
-        .section {
-            position: relative;
-            padding: clamp(74px, 9vw, 122px) 0;
-            scroll-margin-top: 86px;
-        }
-
-        .section--glow::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background: radial-gradient(820px 420px at 50% -6%, rgba(22, 93, 255, 0.09), transparent 68%);
-        }
-
-        .section-head {
-            max-width: 720px;
-            margin-bottom: clamp(34px, 4.6vw, 54px);
-        }
-
-        .section-head h2,
-        .log-intro h2,
-        .privacy-copy h2,
-        .dl-copy h2 {
-            margin: 16px 0 0;
-            font-size: clamp(30px, 4vw, 46px);
-            line-height: 1.14;
-            letter-spacing: -0.03em;
-            font-weight: 700;
-        }
-
-        .section-head p,
-        .log-intro > p,
-        .privacy-copy > p,
-        .dl-copy > p {
-            margin: 16px 0 0;
-            max-width: 620px;
-            font-size: clamp(14.5px, 1.25vw, 16px);
-            line-height: 1.8;
-            color: var(--muted);
-        }
-
-        .section-head p b,
-        .privacy-copy p b { color: var(--text); font-weight: 600; }
 
         .text-link {
             display: inline-flex;
             align-items: center;
             gap: 7px;
             margin-top: 20px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid var(--line);
             color: var(--muted);
             font-size: 13px;
             text-decoration: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.16);
-            padding-bottom: 3px;
             transition: color 0.2s, border-color 0.2s;
         }
 
-        .text-link:hover { color: var(--text); border-color: var(--cyan); }
+        .text-link:hover { color: var(--text); border-color: var(--cyan-deep); }
         .text-link .i { width: 0.95em; height: 0.95em; }
+
+        .sec--dark .text-link { color: var(--muted-inverse); border-color: var(--line-inverse); }
+        .sec--dark .text-link:hover { color: #fff; border-color: var(--cyan); }
 
         /* ============================================================
            顶部导航
@@ -310,149 +290,146 @@
             left: 0;
             right: 0;
             z-index: 50;
-            transition: background 0.35s var(--ease), backdrop-filter 0.35s var(--ease);
+            height: 72px;
+            color: #fff;
+            transition: color 0.35s var(--ease);
         }
 
-        .site-header::after {
+        .site-header::before {
             content: "";
             position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(79, 227, 240, 0.32), transparent);
-            opacity: 0;
-            transition: opacity 0.35s;
+            inset: 0;
+            z-index: -1;
+            border-bottom: 1px solid transparent;
+            background: transparent;
+            transition: background 0.35s var(--ease), border-color 0.35s var(--ease);
         }
 
-        .site-header.scrolled {
-            background: rgba(4, 7, 14, 0.78);
+        .site-header.scrolled::before {
+            background: rgba(8, 9, 11, 0.72);
             -webkit-backdrop-filter: blur(18px);
             backdrop-filter: blur(18px);
+            border-color: var(--line-inverse-soft);
         }
 
-        .site-header.scrolled::after { opacity: 1; }
+        .site-header.header-light { color: var(--text); }
+
+        .site-header.header-light::before {
+            background: rgba(246, 246, 242, 0.86);
+            -webkit-backdrop-filter: blur(18px);
+            backdrop-filter: blur(18px);
+            border-color: var(--line-soft);
+        }
+
+        .site-header.menu-open { color: #fff; }
+        .site-header.menu-open::before {
+            background: rgba(8, 9, 11, 0.98);
+            border-color: var(--line-inverse-soft);
+        }
 
         .header-inner {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 24px;
-            height: 68px;
+            height: 72px;
         }
 
         .brand {
             display: flex;
             align-items: center;
             gap: 11px;
-            text-decoration: none;
-            color: inherit;
             flex: none;
+            color: inherit;
+            text-decoration: none;
         }
 
         .brand-icon {
             width: 34px;
             height: 34px;
-            border-radius: 10px;
+            border-radius: 9px;
             background: #fff;
             object-fit: cover;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.14);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.12);
         }
 
-        .brand-text {
-            display: flex;
-            flex-direction: column;
-            line-height: 1.15;
-        }
-
-        .brand-text strong {
-            font-size: 16px;
-            font-weight: 700;
-            letter-spacing: 0.14em;
-        }
-
+        .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+        .brand-text strong { font-size: 16px; font-weight: 700; letter-spacing: 0.14em; }
         .brand-text span {
             margin-top: 3px;
             font-size: 8.5px;
-            letter-spacing: 0.26em;
-            color: var(--muted-2);
+            letter-spacing: 0.24em;
+            color: rgba(255, 255, 255, 0.42);
         }
 
-        .nav {
-            display: flex;
-            align-items: center;
-            gap: 30px;
-        }
+        .header-light .brand-text span { color: var(--muted-2); }
+
+        .nav { display: flex; align-items: center; gap: 30px; }
 
         .nav a {
             position: relative;
-            color: var(--muted);
+            color: rgba(255, 255, 255, 0.66);
             font-size: 13.5px;
-            letter-spacing: 0.02em;
             text-decoration: none;
             transition: color 0.2s;
         }
 
-        .nav a:hover,
-        .nav a.active { color: var(--text); }
+        .header-light .nav a { color: rgba(19, 20, 22, 0.58); }
+        .header-light .nav a:hover, .header-light .nav a.active { color: var(--text); }
+        .nav a:hover, .nav a.active { color: #fff; }
 
-        .nav a::after {
-            content: "";
-            position: absolute;
-            left: 50%;
-            bottom: -8px;
-            width: 3px;
-            height: 3px;
-            border-radius: 50%;
-            background: var(--cyan);
-            opacity: 0;
-            transform: translateX(-50%) scale(0.4);
-            transition: opacity 0.25s, transform 0.25s var(--ease);
-        }
-
-        .nav a.active::after {
-            opacity: 1;
-            transform: translateX(-50%) scale(1);
-        }
-
-        .header-actions {
-            display: flex;
+        .header-download {
+            display: inline-flex;
             align-items: center;
-            gap: 12px;
-            flex: none;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            background: #fff;
+            color: #0a0a0b;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.35s var(--ease), color 0.35s var(--ease), transform 0.2s var(--ease);
         }
+
+        .header-download:hover { transform: translateY(-1px); }
+
+        .header-light .header-download { background: #111214; color: #fff; }
+        .header-download .i { width: 14px; height: 14px; }
 
         .menu-btn {
             display: none;
-            width: 38px;
-            height: 38px;
+            width: 40px;
+            height: 40px;
             padding: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 10px;
-            border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.03);
-            color: var(--text);
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
             align-items: center;
             justify-content: center;
             cursor: pointer;
         }
 
+        .header-light .menu-btn { border-color: var(--line); background: rgba(19, 20, 22, 0.04); color: var(--text); }
+        .site-header.menu-open .menu-btn { border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.06); color: #fff; }
+
         .menu-btn .icon-close { display: none; }
         .menu-btn[aria-expanded="true"] .icon-menu { display: none; }
         .menu-btn[aria-expanded="true"] .icon-close { display: block; }
 
+        /* 移动端全屏菜单 */
         .mobile-menu {
             position: fixed;
-            top: 68px;
+            top: 72px;
             left: 0;
             right: 0;
             bottom: 0;
             z-index: 49;
             display: flex;
             flex-direction: column;
-            padding: 6px 24px 30px;
-            background: linear-gradient(180deg, rgba(6, 10, 20, 0.995), rgba(4, 7, 14, 0.99));
-            -webkit-backdrop-filter: blur(22px);
-            backdrop-filter: blur(22px);
+            padding: 8px 24px 30px;
+            background: var(--ink);
             overflow-y: auto;
             overscroll-behavior: contain;
         }
@@ -465,215 +442,178 @@
             justify-content: space-between;
             gap: 16px;
             padding: 19px 2px;
-            color: var(--text);
+            border-bottom: 1px solid var(--line-inverse-soft);
+            color: #fff;
             font-size: 17px;
-            letter-spacing: 0.01em;
             text-decoration: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .mobile-menu a:not(.btn)::after {
             content: "";
             width: 7px;
             height: 7px;
-            border-top: 1px solid var(--muted-2);
-            border-right: 1px solid var(--muted-2);
+            border-top: 1px solid rgba(255, 255, 255, 0.4);
+            border-right: 1px solid rgba(255, 255, 255, 0.4);
             transform: rotate(45deg);
         }
 
         .mobile-menu .btn {
             margin-top: 0;
-            margin-bottom: 0;
             padding: 16px 24px;
             border-bottom: 0;
             justify-content: center;
+            color: #0a0a0b;
         }
 
         .menu-note {
             margin: auto 0 16px;
             padding: 24px 2px 0;
-            color: var(--muted-2);
+            color: rgba(255, 255, 255, 0.4);
             font-size: 11.5px;
             letter-spacing: 0.04em;
         }
 
         /* ============================================================
-           英雄区
+           首屏 — 深色影像
            ============================================================ */
         .hero {
             position: relative;
+            display: flex;
+            align-items: flex-end;
+            min-height: 100vh;
+            min-height: 100svh;
+            padding: calc(72px + 34px) 0 58px;
             overflow: hidden;
-            padding: calc(68px + clamp(52px, 8vw, 102px)) 0 clamp(60px, 8vw, 108px);
+            background: var(--ink);
+            color: #fff;
         }
 
-        .hero::before {
-            content: "";
-            position: absolute;
-            top: -220px;
-            right: -120px;
-            width: 780px;
-            height: 780px;
-            pointer-events: none;
-            background: radial-gradient(circle, rgba(79, 227, 240, 0.14), rgba(79, 227, 240, 0.04) 42%, transparent 68%);
-        }
-
-        .hero::after {
-            content: "";
-            position: absolute;
-            bottom: -280px;
-            left: -220px;
-            width: 820px;
-            height: 820px;
-            pointer-events: none;
-            background: radial-gradient(circle, rgba(22, 93, 255, 0.16), rgba(22, 93, 255, 0.05) 44%, transparent 70%);
-        }
-
-        .hero-grid-lines {
+        .hero-bg {
             position: absolute;
             inset: 0;
-            pointer-events: none;
-            background-image:
-                linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-            background-size: 72px 72px;
-            -webkit-mask-image: radial-gradient(ellipse 78% 68% at 50% 28%, #000 18%, transparent 76%);
-            mask-image: radial-gradient(ellipse 78% 68% at 50% 28%, #000 18%, transparent 76%);
+            background:
+                radial-gradient(1000px 720px at 76% 16%, rgba(34, 211, 224, 0.15), transparent 62%),
+                radial-gradient(900px 640px at 6% 88%, rgba(22, 93, 255, 0.14), transparent 64%),
+                linear-gradient(180deg, #0b0d10 0%, #08090b 62%, #08090b 100%);
+        }
+
+        .hero-bg::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 90% 70% at 50% 30%, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
         }
 
         .hero-inner {
             position: relative;
             z-index: 2;
             display: grid;
-            grid-template-columns: 1.04fr 0.96fr;
-            align-items: center;
-            gap: clamp(28px, 5vw, 64px);
+            grid-template-columns: 1.02fr 0.98fr;
+            align-items: end;
+            gap: clamp(20px, 4vw, 56px);
         }
 
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 9px;
-            padding: 8px 14px;
-            border-radius: 999px;
-            border: 1px solid rgba(79, 227, 240, 0.26);
-            background: rgba(79, 227, 240, 0.06);
-            color: #bff3f9;
-            font-size: 12px;
-            letter-spacing: 0.02em;
-        }
+        .hero-copy { padding-bottom: clamp(6px, 3vh, 36px); }
 
-        .badge b {
+        .hero-kicker {
+            margin: 0 0 22px;
+            color: rgba(255, 255, 255, 0.42);
+            font-size: 10.5px;
             font-weight: 600;
-            font-variant-numeric: tabular-nums;
-            color: #fff;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
         }
 
-        .badge .pulse {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--cyan);
-            box-shadow: 0 0 0 4px rgba(79, 227, 240, 0.14);
-        }
-
-        .hero-copy h1 {
-            margin: 22px 0 0;
-            font-size: clamp(38px, 5.4vw, 68px);
-            line-height: 1.08;
-            letter-spacing: -0.035em;
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(42px, 6.7vw, 88px);
+            line-height: 1.03;
+            letter-spacing: -0.045em;
             font-weight: 700;
         }
 
-        .grad {
-            background: var(--grad);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            filter: drop-shadow(0 8px 34px rgba(79, 227, 240, 0.2));
-        }
+        .hero h1 span { color: var(--cyan); }
 
-        .hero-lead {
-            margin: 22px 0 0;
-            max-width: 540px;
-            font-size: clamp(14.5px, 1.3vw, 16.5px);
+        .hero-sub {
+            margin: 26px 0 0;
+            max-width: 560px;
+            color: rgba(255, 255, 255, 0.64);
+            font-size: clamp(15px, 1.25vw, 17px);
             line-height: 1.85;
-            color: var(--muted);
         }
 
-        .hero-lead b { color: #cfe8f1; font-weight: 500; }
+        .hero-sub b { color: rgba(255, 255, 255, 0.92); font-weight: 500; }
 
-        .cta-row {
+        .hero-cta {
             display: flex;
             flex-wrap: wrap;
             gap: 12px;
-            margin-top: 32px;
+            margin-top: 34px;
         }
 
-        .hero-facts {
+        .hero-meta {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px 22px;
-            margin: 28px 0 0;
-            padding: 0;
-            list-style: none;
-            color: var(--muted-2);
-            font-size: 12.5px;
+            gap: 10px 20px;
+            margin-top: 26px;
+            color: rgba(255, 255, 255, 0.38);
+            font-size: 12px;
+            letter-spacing: 0.04em;
+            font-variant-numeric: tabular-nums;
         }
 
-        .hero-facts li { display: flex; align-items: center; gap: 7px; }
-        .hero-facts .i { width: 14px; height: 14px; color: rgba(79, 227, 240, 0.7); }
+        .hero-meta span { display: inline-flex; align-items: center; gap: 7px; }
+        .hero-meta .i { width: 13px; height: 13px; color: rgba(34, 211, 224, 0.7); }
 
         .hero-visual {
             position: relative;
-            z-index: 2;
             display: flex;
             justify-content: center;
+            align-items: flex-end;
         }
 
-        .phone-wrap {
+        /* 设备 */
+        .device {
             position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            width: auto;
+            height: min(700px, 72svh);
+            max-width: 100%;
+            aspect-ratio: 400 / 820;
+            padding: 11px;
+            border-radius: 15% / 7.4%;
+            background: linear-gradient(158deg, #33383f 0%, #14171b 42%, #0a0c0f 100%);
+            box-shadow:
+                0 70px 150px -50px rgba(0, 0, 0, 0.95),
+                0 0 0 1px rgba(255, 255, 255, 0.13),
+                inset 0 1px 0 rgba(255, 255, 255, 0.32),
+                inset 0 -20px 40px rgba(0, 0, 0, 0.5);
+            transform: perspective(1600px) rotateY(-14deg) rotateX(3deg) rotateZ(-1.5deg);
+            font-size: 13px;
+            container-type: inline-size;
+            -webkit-mask-image: linear-gradient(180deg, #000 88%, transparent 100%);
+            mask-image: linear-gradient(180deg, #000 88%, transparent 100%);
         }
 
-        .phone-wrap::before {
+        .device::after {
             content: "";
             position: absolute;
-            top: 46%;
-            left: 50%;
-            width: 520px;
-            height: 520px;
-            transform: translate(-50%, -50%);
-            z-index: -1;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(79, 227, 240, 0.16), rgba(22, 93, 255, 0.08) 46%, transparent 70%);
-            filter: blur(6px);
-        }
-
-        .phone {
-            position: relative;
-            width: min(304px, 86vw);
-            aspect-ratio: 304 / 630;
-            padding: 10px;
-            border-radius: 46px;
-            background: linear-gradient(165deg, #1b2740, #080d17 58%);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow:
-                0 60px 130px -34px rgba(0, 0, 0, 0.95),
-                0 0 0 1px rgba(255, 255, 255, 0.04),
-                inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(120deg, rgba(255, 255, 255, 0.14) 0%, transparent 28%, transparent 72%, rgba(255, 255, 255, 0.05) 100%);
+            pointer-events: none;
         }
 
         .screen {
+            position: relative;
+            z-index: 1;
             display: flex;
             flex-direction: column;
             height: 100%;
-            border-radius: 37px;
             overflow: hidden;
+            border-radius: 12% / 6%;
             background: #f2f3f5;
             color: #1d2129;
-            font-size: 12px;
+            font-size: 4.4cqw;
             line-height: 1.4;
         }
 
@@ -681,43 +621,38 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 20px 6px;
-            font-size: 11px;
+            padding: 1.15em 1.5em 0.35em;
+            font-size: 0.82em;
             font-weight: 700;
         }
 
         .ph-bat {
             display: flex;
-            width: 22px;
-            height: 11px;
-            padding: 1.5px;
+            width: 1.8em;
+            height: 0.86em;
+            padding: 0.1em;
             border: 1px solid #1d2129;
-            border-radius: 3px;
+            border-radius: 0.22em;
         }
 
-        .ph-bat i {
-            width: 72%;
-            border-radius: 1px;
-            background: #1d2129;
-        }
+        .ph-bat i { width: 72%; border-radius: 0.08em; background: #1d2129; }
 
         .ph-head {
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
-            padding: 8px 18px 10px;
+            padding: 0.45em 1.4em 0.7em;
         }
 
         .ph-kicker {
-            margin: 0 0 4px;
-            font-size: 9.5px;
-            letter-spacing: 0.03em;
+            margin: 0 0 0.28em;
             color: #86909c;
+            font-size: 0.72em;
         }
 
         .ph-title {
             margin: 0;
-            font-size: 17px;
+            font-size: 1.3em;
             font-weight: 700;
             letter-spacing: -0.02em;
         }
@@ -725,22 +660,21 @@
         .ph-avatar {
             display: grid;
             place-items: center;
-            width: 27px;
-            height: 27px;
+            width: 2.1em;
+            height: 2.1em;
             border-radius: 50%;
-            background: linear-gradient(135deg, #4fe3f0, #165dff);
+            background: linear-gradient(135deg, #22d3e0, #165dff);
             color: #fff;
-            font-size: 11px;
+            font-size: 0.82em;
             font-weight: 600;
         }
 
         .ph-tabs {
-            position: relative;
             display: flex;
-            gap: 18px;
-            padding: 2px 18px 10px;
-            font-size: 11px;
+            gap: 1.4em;
+            padding: 0 1.4em 0.7em;
             color: #86909c;
+            font-size: 0.82em;
         }
 
         .ph-tabs .on {
@@ -753,66 +687,53 @@
             content: "";
             position: absolute;
             left: 50%;
-            bottom: -6px;
-            width: 14px;
-            height: 2px;
-            border-radius: 2px;
-            transform: translateX(-50%);
+            bottom: -0.45em;
+            width: 1.1em;
+            height: 0.15em;
+            border-radius: 0.1em;
             background: #165dff;
+            transform: translateX(-50%);
         }
 
         .ph-card {
-            margin: 8px 14px 0;
-            padding: 12px 13px;
-            border-radius: 14px;
+            margin: 0.6em 1.15em 0;
+            padding: 0.9em 1em;
+            border-radius: 1em;
             background: #fff;
-            box-shadow: 0 6px 18px rgba(29, 33, 41, 0.055);
+            box-shadow: 0 0.4em 1.2em rgba(29, 33, 41, 0.05);
         }
 
         .ph-card-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 7px;
+            margin-bottom: 0.55em;
         }
 
         .ph-tag {
-            padding: 2px 7px;
+            padding: 0.15em 0.55em;
             border-radius: 999px;
             background: rgba(22, 93, 255, 0.09);
             color: #165dff;
-            font-size: 9px;
+            font-size: 0.68em;
             font-weight: 600;
         }
 
-        .ph-tag.paused {
-            background: rgba(255, 125, 0, 0.1);
-            color: #ff7d00;
-        }
+        .ph-tag.paused { background: rgba(255, 125, 0, 0.1); color: #ff7d00; }
 
-        .ph-more {
-            display: flex;
-            gap: 2px;
-            color: #c9cdd4;
-        }
-
-        .ph-more i {
-            width: 2.5px;
-            height: 2.5px;
-            border-radius: 50%;
-            background: currentColor;
-        }
+        .ph-more { display: flex; gap: 0.16em; color: #c9cdd4; }
+        .ph-more i { width: 0.18em; height: 0.18em; border-radius: 50%; background: currentColor; }
 
         .ph-name {
-            margin: 0 0 9px;
-            font-size: 12.5px;
+            margin: 0 0 0.7em;
+            font-size: 0.94em;
             font-weight: 600;
             letter-spacing: -0.01em;
         }
 
         .ph-bar {
-            height: 5px;
-            border-radius: 3px;
+            height: 0.34em;
+            border-radius: 0.2em;
             background: #f2f3f5;
             overflow: hidden;
         }
@@ -820,244 +741,245 @@
         .ph-bar i {
             display: block;
             height: 100%;
-            border-radius: 3px;
-            background: linear-gradient(90deg, #4fe3f0, #165dff);
+            border-radius: 0.2em;
+            background: linear-gradient(90deg, #22d3e0, #165dff);
         }
 
         .ph-meta {
             display: flex;
             justify-content: space-between;
-            margin-top: 6px;
-            font-size: 9.5px;
+            margin-top: 0.45em;
             color: #86909c;
+            font-size: 0.7em;
         }
 
-        .ph-pct {
-            color: #165dff;
-            font-weight: 600;
-            font-variant-numeric: tabular-nums;
-        }
+        .ph-pct { color: #165dff; font-weight: 600; font-variant-numeric: tabular-nums; }
 
         .ph-ai {
-            margin: 10px 14px 0;
-            padding: 11px 13px;
-            border-radius: 14px;
+            margin: 0.75em 1.15em 0;
+            padding: 0.85em 1em;
             border: 1px solid rgba(22, 93, 255, 0.1);
+            border-radius: 1em;
             background: linear-gradient(180deg, #eef4ff, #e9f8ff);
         }
 
         .ph-ai-head {
             display: flex;
             align-items: center;
-            gap: 6px;
-            margin-bottom: 5px;
+            gap: 0.45em;
+            margin-bottom: 0.35em;
             color: #165dff;
-            font-size: 9.5px;
+            font-size: 0.7em;
             font-weight: 600;
         }
 
-        .ph-ai-head .i { width: 11px; height: 11px; }
+        .ph-ai-head .i { width: 0.85em; height: 0.85em; }
+        .ph-ai-head span { margin-left: auto; color: #86909c; font-size: 0.9em; font-weight: 500; }
+        .ph-ai p { margin: 0; color: #4e5969; font-size: 0.74em; line-height: 1.55; }
 
-        .ph-ai-head span {
-            margin-left: auto;
-            color: #86909c;
-            font-size: 9px;
-            font-weight: 500;
+        .ph-log {
+            display: flex;
+            align-items: center;
+            gap: 0.7em;
+            margin: 0.75em 1.15em 0;
+            padding: 0.8em 1em;
+            border-radius: 1em;
+            background: #fff;
+            box-shadow: 0 0.4em 1.2em rgba(29, 33, 41, 0.04);
         }
 
-        .ph-ai p {
-            margin: 0;
-            color: #4e5969;
-            font-size: 10px;
-            line-height: 1.55;
+        .ph-log-ic {
+            display: grid;
+            place-items: center;
+            width: 2em;
+            height: 2em;
+            flex: none;
+            border-radius: 0.6em;
+            background: rgba(22, 93, 255, 0.08);
+            color: #165dff;
         }
+
+        .ph-log-ic .i { width: 1em; height: 1em; }
+        .ph-log-title { margin: 0; font-size: 0.78em; font-weight: 600; }
+        .ph-log-text { margin: 0.1em 0 0; color: #86909c; font-size: 0.7em; line-height: 1.45; }
 
         .ph-tabbar {
             display: flex;
             justify-content: space-around;
             margin-top: auto;
-            padding: 10px 8px 13px;
-            border-top: 1px solid #f2f3f5;
+            padding: 0.7em 0.6em 0.9em;
+            border-top: 1px solid #eef0f2;
             background: #fff;
             color: #86909c;
-            font-size: 9px;
+            font-size: 0.66em;
         }
 
-        .ph-tabbar span {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 3px;
-        }
-
-        .ph-tabbar .i { width: 15px; height: 15px; }
-
+        .ph-tabbar span { display: flex; flex-direction: column; align-items: center; gap: 0.25em; }
+        .ph-tabbar .i { width: 1.5em; height: 1.5em; }
         .ph-tabbar .on { color: #165dff; font-weight: 600; }
 
-        .chip {
-            position: absolute;
-            z-index: 3;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            padding: 9px 13px;
-            border-radius: 11px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            background: rgba(8, 14, 26, 0.78);
-            -webkit-backdrop-filter: blur(14px);
-            backdrop-filter: blur(14px);
-            box-shadow: 0 20px 44px -20px rgba(0, 0, 0, 0.95);
-            color: #cfe8f1;
-            font-size: 11.5px;
-            white-space: nowrap;
+        /* ============================================================
+           规格数据
+           ============================================================ */
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
         }
 
-        .chip .i { width: 13px; height: 13px; color: var(--cyan); }
+        .spec {
+            padding: 34px 26px 38px;
+            border-left: 1px solid var(--line);
+        }
 
-        .chip-a { top: -18px; left: -9%; }
+        .spec:first-child { border-left: 0; }
 
-        .phone-note {
-            margin: 16px 0 0;
-            font-size: 11px;
-            letter-spacing: 0.06em;
+        .spec strong {
+            display: block;
+            color: var(--text);
+            font-size: clamp(40px, 4.6vw, 64px);
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.04em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .spec--accent strong { color: var(--cyan-deep); }
+
+        .spec span {
+            display: block;
+            margin-top: 14px;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .spec small {
+            display: block;
+            margin-top: 7px;
             color: var(--muted-2);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .specs-note {
+            margin: 22px 0 0;
+            color: var(--muted-2);
+            font-size: 12px;
+            line-height: 1.7;
         }
 
         /* ============================================================
            闭环
            ============================================================ */
-        .loop-panel {
+        .flow-steps {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
-            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            border-top: 1px solid var(--line);
+            list-style: none;
         }
 
-        .loop-step {
-            position: relative;
+        .flow-step {
             padding: 30px 26px 34px;
             border-left: 1px solid var(--line);
-            transition: background 0.35s var(--ease);
+            transition: background 0.3s var(--ease);
         }
 
-        .loop-step:first-child { border-left: 0; }
-        .loop-step:hover { background: rgba(79, 227, 240, 0.045); }
+        .flow-step:first-child { border-left: 0; }
+        .flow-step:hover { background: rgba(10, 143, 153, 0.04); }
 
-        .loop-num {
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.18em;
+        .step-num {
             color: var(--muted-2);
+            font-size: 11.5px;
+            letter-spacing: 0.16em;
             font-variant-numeric: tabular-nums;
         }
 
-        .loop-icon {
-            display: grid;
-            place-items: center;
-            width: 44px;
-            height: 44px;
-            margin: 18px 0 16px;
-            border-radius: 13px;
-            border: 1px solid rgba(79, 227, 240, 0.22);
-            background: rgba(79, 227, 240, 0.07);
-            color: var(--cyan);
+        .flow-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
         }
 
-        .loop-icon .i { width: 20px; height: 20px; }
+        .flow-icon {
+            display: grid;
+            place-items: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(34, 211, 224, 0.1);
+            color: var(--cyan-deep);
+        }
 
-        .loop-step h3 {
-            margin: 0 0 8px;
-            font-size: 17px;
+        .flow-icon .i { width: 18px; height: 18px; }
+
+        .flow-step h3 {
+            margin: 26px 0 10px;
+            font-size: 18px;
             font-weight: 600;
             letter-spacing: -0.01em;
         }
 
-        .loop-step p {
+        .flow-step p {
             margin: 0;
             color: var(--muted);
             font-size: 13.5px;
-            line-height: 1.72;
+            line-height: 1.75;
         }
-
-        .loop-step::after {
-            content: "";
-            position: absolute;
-            top: 46px;
-            right: -4px;
-            width: 7px;
-            height: 7px;
-            border-top: 1px solid rgba(255, 255, 255, 0.18);
-            border-right: 1px solid rgba(255, 255, 255, 0.18);
-            transform: rotate(45deg);
-        }
-
-        .loop-step:last-child::after { display: none; }
 
         /* ============================================================
-           能力卡片
+           能力
            ============================================================ */
-        .cards {
+        .cap-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
+            gap: 16px;
         }
 
-        .card {
+        .cap {
             position: relative;
-            overflow: hidden;
-            padding: 26px 24px 26px;
-            border-radius: 20px;
-            border: 1px solid var(--line);
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.042), rgba(255, 255, 255, 0.012));
-            transition: transform 0.35s var(--ease), border-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
+            padding: 28px 26px;
+            border: 1px solid var(--line-soft);
+            border-radius: var(--radius);
+            background: var(--card);
+            transition: transform 0.3s var(--ease), border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
         }
 
-        .card::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            opacity: 0;
-            background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 0%), rgba(79, 227, 240, 0.11), transparent 66%);
-            transition: opacity 0.35s;
-        }
-
-        .card:hover {
+        .cap:hover {
             transform: translateY(-4px);
-            border-color: rgba(79, 227, 240, 0.28);
-            box-shadow: 0 28px 64px -32px rgba(0, 0, 0, 0.9);
+            border-color: rgba(10, 143, 153, 0.32);
+            box-shadow: 0 24px 54px -34px rgba(19, 20, 22, 0.32);
         }
 
-        .card:hover::before { opacity: 1; }
-
-        .card-icon {
+        .cap-icon {
             display: grid;
             place-items: center;
-            width: 42px;
-            height: 42px;
-            margin-bottom: 18px;
+            width: 44px;
+            height: 44px;
+            margin-bottom: 20px;
             border-radius: 12px;
-            border: 1px solid rgba(79, 227, 240, 0.2);
-            background: linear-gradient(160deg, rgba(79, 227, 240, 0.14), rgba(22, 93, 255, 0.08));
-            color: var(--cyan);
+            background: rgba(34, 211, 224, 0.1);
+            color: var(--cyan-deep);
         }
 
-        .card-icon .i { width: 19px; height: 19px; }
+        .cap-icon .i { width: 20px; height: 20px; }
 
-        .card h3 {
-            margin: 0 0 9px;
+        .cap h3 {
+            margin: 0 0 8px;
             font-size: 16.5px;
             font-weight: 600;
             letter-spacing: -0.01em;
         }
 
-        .card p {
+        .cap p {
             margin: 0;
             color: var(--muted);
             font-size: 13.5px;
-            line-height: 1.72;
+            line-height: 1.75;
         }
 
         .tags {
@@ -1071,59 +993,111 @@
 
         .tags li {
             padding: 4px 9px;
+            border: 1px solid var(--line-soft);
             border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            background: rgba(255, 255, 255, 0.025);
             color: var(--muted-2);
             font-size: 10.5px;
             letter-spacing: 0.02em;
         }
 
         /* ============================================================
-           隐私 / 数据
+           内置模板
            ============================================================ */
-        .privacy {
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .template {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 24px;
+            border: 1px solid var(--line-soft);
+            border-radius: var(--radius);
+            background: var(--card);
+            transition: transform 0.3s var(--ease), border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+        }
+
+        .template:hover {
+            transform: translateY(-3px);
+            border-color: rgba(19, 20, 22, 0.18);
+            box-shadow: 0 22px 48px -34px rgba(19, 20, 22, 0.3);
+        }
+
+        .template .cat {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            color: var(--muted-2);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        .template .cat i {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--cat-color, var(--blue));
+        }
+
+        .template h3 {
+            margin: 0;
+            font-size: 15.5px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .template p {
+            display: -webkit-box;
+            margin: 0;
+            overflow: hidden;
+            color: var(--muted);
+            font-size: 12.5px;
+            line-height: 1.7;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+
+        /* ============================================================
+           隐私
+           ============================================================ */
+        .privacy-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             align-items: center;
-            gap: clamp(32px, 5vw, 72px);
+            gap: clamp(32px, 5vw, 80px);
         }
 
-        .privacy-copy h2 { font-size: clamp(30px, 3.8vw, 44px); }
+        .privacy-copy h2 { font-size: clamp(32px, 4.2vw, 54px); }
 
         .privacy-points {
+            display: grid;
+            gap: 15px;
             margin: 30px 0 0;
             padding: 0;
             list-style: none;
-            display: grid;
-            gap: 16px;
         }
 
         .privacy-points li {
             display: flex;
-            gap: 12px;
             align-items: flex-start;
-            color: var(--muted);
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.6);
             font-size: 13.5px;
-            line-height: 1.72;
+            line-height: 1.75;
         }
 
-        .privacy-points .i {
-            width: 15px;
-            height: 15px;
-            margin-top: 4px;
-            color: var(--cyan);
-        }
-
-        .privacy-points b { color: var(--text); font-weight: 600; }
+        .privacy-points .i { width: 15px; height: 15px; margin-top: 4px; color: var(--cyan); }
+        .privacy-points b { color: #fff; font-weight: 600; }
 
         .data-card {
-            position: relative;
             padding: 12px;
+            border: 1px solid var(--line-inverse);
             border-radius: 24px;
-            border: 1px solid var(--line);
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
-            box-shadow: 0 40px 90px -46px rgba(0, 0, 0, 0.9);
+            background: var(--ink-card);
         }
 
         .data-head {
@@ -1131,17 +1105,17 @@
             align-items: center;
             justify-content: space-between;
             padding: 10px 14px 14px;
+            color: rgba(255, 255, 255, 0.42);
             font-size: 11px;
             letter-spacing: 0.14em;
             text-transform: uppercase;
-            color: var(--muted-2);
         }
 
         .data-head span:last-child {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 5px;
-            color: rgba(79, 227, 240, 0.8);
+            color: rgba(34, 211, 224, 0.8);
             letter-spacing: 0.04em;
         }
 
@@ -1153,9 +1127,9 @@
             gap: 13px;
             margin-bottom: 8px;
             padding: 15px 14px;
+            border: 1px solid var(--line-inverse-soft);
             border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.055);
-            background: rgba(4, 8, 16, 0.5);
+            background: rgba(8, 10, 13, 0.6);
         }
 
         .data-ic {
@@ -1164,59 +1138,46 @@
             width: 36px;
             height: 36px;
             flex: none;
+            border: 1px solid rgba(34, 211, 224, 0.18);
             border-radius: 10px;
-            border: 1px solid rgba(79, 227, 240, 0.18);
-            background: rgba(79, 227, 240, 0.07);
+            background: rgba(34, 211, 224, 0.07);
             color: var(--cyan);
         }
 
         .data-ic .i { width: 16px; height: 16px; }
 
-        .data-row b {
-            display: block;
-            font-size: 13.5px;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-        }
-
-        .data-row small {
-            display: block;
-            margin-top: 2px;
-            color: var(--muted-2);
-            font-size: 11.5px;
-            line-height: 1.5;
-        }
+        .data-row b { display: block; color: #fff; font-size: 13.5px; font-weight: 600; }
+        .data-row small { display: block; margin-top: 2px; color: rgba(255, 255, 255, 0.42); font-size: 11.5px; line-height: 1.5; }
 
         .data-foot {
             display: flex;
             align-items: center;
             gap: 8px;
             padding: 14px 15px 8px;
-            color: var(--muted-2);
+            color: rgba(255, 255, 255, 0.4);
             font-size: 11px;
             letter-spacing: 0.03em;
         }
 
-        .data-foot .i { width: 13px; height: 13px; color: rgba(79, 227, 240, 0.7); }
+        .data-foot .i { width: 13px; height: 13px; color: rgba(34, 211, 224, 0.7); }
 
         /* ============================================================
-           更新日志
+           更新记录
            ============================================================ */
         .log-layout {
             display: grid;
             grid-template-columns: 0.86fr 1.14fr;
             align-items: start;
-            gap: clamp(34px, 5vw, 72px);
+            gap: clamp(34px, 5vw, 76px);
         }
 
-        .log-intro { position: sticky; top: 108px; }
-
-        .log-intro .text-link { margin-top: 24px; }
+        .log-intro { position: sticky; top: 110px; }
+        .log-intro h2 { font-size: clamp(32px, 4.2vw, 54px); }
 
         .timeline {
             position: relative;
-            padding-left: 26px;
             min-height: 120px;
+            padding-left: 26px;
         }
 
         .timeline::before {
@@ -1226,7 +1187,7 @@
             bottom: 8px;
             left: 5px;
             width: 1px;
-            background: linear-gradient(180deg, rgba(79, 227, 240, 0.5), rgba(255, 255, 255, 0.06));
+            background: var(--line);
         }
 
         .timeline-status {
@@ -1236,11 +1197,7 @@
             font-size: 13px;
         }
 
-        .log-item {
-            position: relative;
-            padding: 0 0 26px;
-        }
-
+        .log-item { position: relative; padding: 0 0 28px; }
         .log-item:last-child { padding-bottom: 4px; }
 
         .log-item::before {
@@ -1250,15 +1207,15 @@
             left: -25px;
             width: 9px;
             height: 9px;
+            border: 1px solid var(--muted-2);
             border-radius: 50%;
-            border: 1px solid rgba(79, 227, 240, 0.55);
-            background: #0a1120;
+            background: var(--paper);
         }
 
         .log-item.latest::before {
             border-color: transparent;
-            background: var(--cyan);
-            box-shadow: 0 0 0 4px rgba(79, 227, 240, 0.14);
+            background: var(--cyan-deep);
+            box-shadow: 0 0 0 4px rgba(10, 143, 153, 0.12);
         }
 
         .log-head {
@@ -1269,9 +1226,9 @@
         }
 
         .log-ver {
-            color: #fff;
-            font-size: 14.5px;
-            font-weight: 600;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 700;
             letter-spacing: 0.01em;
             font-variant-numeric: tabular-nums;
         }
@@ -1283,13 +1240,13 @@
         }
 
         .badge-new {
-            padding: 2px 8px;
+            padding: 2px 9px;
             border-radius: 999px;
-            background: linear-gradient(100deg, #9ff6ff, #4fe3f0);
-            color: #04121a;
+            background: #111214;
+            color: #fff;
             font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
+            font-weight: 600;
+            letter-spacing: 0.06em;
         }
 
         .log-comment {
@@ -1301,11 +1258,7 @@
             line-height: 1.7;
         }
 
-        .log-comment li {
-            position: relative;
-            padding-left: 14px;
-            margin-top: 3px;
-        }
+        .log-comment li { position: relative; margin-top: 3px; padding-left: 14px; }
 
         .log-comment li::before {
             content: "";
@@ -1315,23 +1268,22 @@
             width: 4px;
             height: 4px;
             border-radius: 50%;
-            background: rgba(79, 227, 240, 0.55);
+            background: rgba(10, 143, 153, 0.55);
         }
 
         .log-dl {
             display: inline-block;
             margin-top: 9px;
             padding: 4px 10px;
+            border: 1px solid var(--line);
             border-radius: 7px;
-            border: 1px solid rgba(79, 227, 240, 0.25);
-            background: rgba(79, 227, 240, 0.06);
-            color: #bff3f9;
+            color: var(--text);
             font-size: 11px;
             text-decoration: none;
-            transition: background 0.2s, border-color 0.2s;
+            transition: border-color 0.2s, background 0.2s;
         }
 
-        .log-dl:hover { background: rgba(79, 227, 240, 0.14); border-color: rgba(79, 227, 240, 0.5); }
+        .log-dl:hover { border-color: var(--cyan-deep); background: rgba(10, 143, 153, 0.06); }
 
         /* ============================================================
            下载
@@ -1341,42 +1293,42 @@
             display: grid;
             grid-template-columns: 1.25fr 0.75fr;
             align-items: center;
-            gap: clamp(28px, 4vw, 56px);
+            gap: clamp(30px, 4vw, 60px);
             overflow: hidden;
-            padding: clamp(32px, 5vw, 62px);
+            padding: clamp(34px, 5vw, 64px);
+            border: 1px solid var(--line-inverse);
             border-radius: 30px;
-            border: 1px solid rgba(79, 227, 240, 0.22);
             background:
-                radial-gradient(620px 320px at 8% -10%, rgba(79, 227, 240, 0.16), transparent 66%),
-                radial-gradient(560px 360px at 96% 110%, rgba(22, 93, 255, 0.2), transparent 68%),
-                linear-gradient(160deg, #0a1322, #060b14);
-            box-shadow: 0 50px 120px -60px rgba(22, 93, 255, 0.6);
+                radial-gradient(620px 340px at 6% -10%, rgba(34, 211, 224, 0.14), transparent 66%),
+                radial-gradient(560px 360px at 96% 110%, rgba(22, 93, 255, 0.18), transparent 68%),
+                linear-gradient(160deg, #0d1116, #08090b);
         }
 
-        .download-panel::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background-image:
-                linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-            background-size: 56px 56px;
-            -webkit-mask-image: radial-gradient(ellipse 70% 90% at 70% 50%, #000, transparent 75%);
-            mask-image: radial-gradient(ellipse 70% 90% at 70% 50%, #000, transparent 75%);
+        .download-panel .eyebrow { color: rgba(255, 255, 255, 0.45); }
+
+        .dl-copy h2 {
+            margin: 0;
+            font-size: clamp(32px, 4vw, 50px);
+            line-height: 1.08;
+            letter-spacing: -0.035em;
+            font-weight: 700;
+            color: #fff;
         }
 
-        .dl-copy { position: relative; z-index: 1; }
-
-        .dl-copy .eyebrow { color: rgba(79, 227, 240, 0.75); }
-        .dl-copy h2 { font-size: clamp(30px, 3.8vw, 46px); }
+        .dl-copy > p {
+            margin: 18px 0 0;
+            max-width: 520px;
+            color: var(--muted-inverse);
+            font-size: 15px;
+            line-height: 1.8;
+        }
 
         .dl-meta {
             display: flex;
             align-items: center;
             flex-wrap: wrap;
             gap: 10px;
-            margin-top: 22px;
+            margin-top: 24px;
         }
 
         .dl-version {
@@ -1384,26 +1336,20 @@
             align-items: center;
             gap: 8px;
             padding: 7px 13px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
             border-radius: 999px;
-            border: 1px solid rgba(79, 227, 240, 0.24);
-            background: rgba(79, 227, 240, 0.06);
-            color: #d8f7fb;
+            color: rgba(255, 255, 255, 0.82);
             font-size: 12px;
             font-variant-numeric: tabular-nums;
         }
 
-        .dl-version .dot {
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background: var(--cyan);
-        }
+        .dl-version .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
 
         .dl-platform {
             padding: 7px 13px;
+            border: 1px solid var(--line-inverse);
             border-radius: 999px;
-            border: 1px solid var(--line);
-            color: var(--muted);
+            color: var(--muted-inverse);
             font-size: 12px;
         }
 
@@ -1414,16 +1360,14 @@
             margin: 24px 0 0;
             padding: 0;
             list-style: none;
-            color: var(--muted-2);
+            color: rgba(255, 255, 255, 0.4);
             font-size: 11.5px;
         }
 
-        .dl-notes li { display: flex; align-items: center; gap: 6px; }
-        .dl-notes .i { width: 12px; height: 12px; color: rgba(79, 227, 240, 0.65); }
+        .dl-notes li { display: inline-flex; align-items: center; gap: 6px; }
+        .dl-notes .i { width: 12px; height: 12px; color: rgba(34, 211, 224, 0.65); }
 
         .dl-visual {
-            position: relative;
-            z-index: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1433,64 +1377,52 @@
         .app-tile {
             display: grid;
             place-items: center;
-            width: 154px;
-            height: 154px;
-            border-radius: 38px;
+            width: 152px;
+            height: 152px;
+            border-radius: 36px;
             background: #fff;
             transform: rotate(-4deg);
             box-shadow:
-                0 40px 80px -30px rgba(79, 227, 240, 0.55),
-                0 0 0 1px rgba(255, 255, 255, 0.18),
-                inset 0 -10px 30px rgba(22, 93, 255, 0.12);
+                0 40px 90px -34px rgba(34, 211, 224, 0.55),
+                0 0 0 1px rgba(255, 255, 255, 0.18);
             transition: transform 0.5s var(--ease);
         }
 
-        .app-tile:hover { transform: rotate(0deg) scale(1.03); }
-
-        .app-tile img {
-            width: 112px;
-            height: 112px;
-            border-radius: 26px;
-        }
+        .app-tile:hover { transform: rotate(0) scale(1.03); }
+        .app-tile img { width: 110px; height: 110px; border-radius: 26px; }
 
         .dl-version-badge {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 9px;
             padding: 8px 14px;
+            border: 1px solid var(--line-inverse);
             border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            background: rgba(255, 255, 255, 0.05);
-            -webkit-backdrop-filter: blur(10px);
-            backdrop-filter: blur(10px);
-            color: var(--muted);
+            color: rgba(255, 255, 255, 0.5);
             font-size: 11px;
         }
 
-        .dl-version-badge strong {
-            color: #fff;
-            font-size: 12px;
-            font-variant-numeric: tabular-nums;
-        }
+        .dl-version-badge strong { color: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
 
         /* ============================================================
            上手
            ============================================================ */
         .qa-list {
-            max-width: 840px;
             display: grid;
             gap: 12px;
+            max-width: 860px;
+            margin: 0 auto;
         }
 
         .qa {
-            border: 1px solid var(--line);
+            border: 1px solid var(--line-soft);
             border-radius: 16px;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
-            transition: border-color 0.25s var(--ease), background 0.25s var(--ease);
+            background: var(--card);
+            transition: border-color 0.25s var(--ease);
         }
 
         .qa[open],
-        .qa:hover { border-color: rgba(255, 255, 255, 0.17); }
+        .qa:hover { border-color: rgba(19, 20, 22, 0.16); }
 
         .qa summary {
             display: flex;
@@ -1503,7 +1435,6 @@
             color: var(--text);
             font-size: 14.5px;
             font-weight: 500;
-            letter-spacing: -0.005em;
         }
 
         .qa summary::-webkit-details-marker { display: none; }
@@ -1517,7 +1448,7 @@
             transition: transform 0.3s var(--ease), color 0.3s;
         }
 
-        .qa[open] summary .i { transform: rotate(0deg); color: var(--cyan); }
+        .qa[open] summary .i { color: var(--cyan-deep); transform: rotate(0deg); }
 
         .qa-body {
             padding: 0 22px 22px;
@@ -1541,10 +1472,10 @@
 
         .provider-chips li {
             padding: 5px 10px;
+            border: 1px solid rgba(10, 143, 153, 0.18);
             border-radius: 7px;
-            border: 1px solid rgba(79, 227, 240, 0.16);
-            background: rgba(79, 227, 240, 0.05);
-            color: #b9ecf4;
+            background: rgba(34, 211, 224, 0.07);
+            color: var(--cyan-deep);
             font-size: 11.5px;
         }
 
@@ -1553,8 +1484,9 @@
            ============================================================ */
         .footer {
             padding: 58px 0 32px;
-            border-top: 1px solid var(--line);
-            background: linear-gradient(180deg, transparent, rgba(79, 227, 240, 0.025));
+            background: var(--ink);
+            color: var(--text-inverse);
+            border-top: 1px solid var(--line-inverse-soft);
         }
 
         .footer-grid {
@@ -1566,32 +1498,28 @@
         .footer-brand p {
             max-width: 300px;
             margin: 18px 0 0;
-            color: var(--muted);
+            color: rgba(255, 255, 255, 0.5);
             font-size: 13px;
             line-height: 1.75;
         }
+
+        .footer .brand-text span { color: rgba(255, 255, 255, 0.42); }
 
         .footer-slogan {
             display: inline-flex;
             align-items: center;
             gap: 10px;
             margin-top: 20px;
-            color: rgba(79, 227, 240, 0.75);
+            color: rgba(34, 211, 224, 0.75);
             font-size: 11px;
             letter-spacing: 0.3em;
         }
 
-        .footer-slogan::before {
-            content: "";
-            width: 18px;
-            height: 1px;
-            background: currentColor;
-            opacity: 0.7;
-        }
+        .footer-slogan::before { content: ""; width: 18px; height: 1px; background: currentColor; opacity: 0.7; }
 
         .footer-col h4 {
             margin: 4px 0 16px;
-            color: var(--muted-2);
+            color: rgba(255, 255, 255, 0.38);
             font-size: 10.5px;
             font-weight: 600;
             letter-spacing: 0.18em;
@@ -1604,11 +1532,11 @@
             align-items: center;
             gap: 8px;
             width: fit-content;
-            padding: 0;
             margin-bottom: 12px;
+            padding: 0;
             border: 0;
             background: none;
-            color: var(--muted);
+            color: rgba(255, 255, 255, 0.58);
             font-size: 13px;
             text-align: left;
             text-decoration: none;
@@ -1617,91 +1545,67 @@
         }
 
         .footer-col a:hover,
-        .link-btn:hover { color: var(--text); }
+        .link-btn:hover { color: #fff; }
 
-        .footer-col .i { width: 14px; height: 14px; color: var(--muted-2); }
+        .footer-col .i { width: 14px; height: 14px; color: rgba(255, 255, 255, 0.38); }
 
         .copy-hint {
             margin-left: 4px;
             padding: 1px 6px;
+            border: 1px solid var(--line-inverse);
             border-radius: 5px;
-            border: 1px solid var(--line);
-            color: var(--muted-2);
+            color: rgba(255, 255, 255, 0.4);
             font-size: 10px;
             transition: color 0.2s, border-color 0.2s;
         }
 
-        .link-btn.copied .copy-hint {
-            color: var(--cyan);
-            border-color: rgba(79, 227, 240, 0.4);
-        }
+        .link-btn.copied .copy-hint { color: var(--cyan); border-color: rgba(34, 211, 224, 0.4); }
 
         .footer-bottom {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 14px;
             flex-wrap: wrap;
+            gap: 14px;
             margin-top: 46px;
             padding-top: 24px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            color: var(--muted-2);
+            border-top: 1px solid var(--line-inverse-soft);
+            color: rgba(255, 255, 255, 0.38);
             font-size: 11.5px;
             letter-spacing: 0.02em;
         }
 
-        .footer-bottom a {
-            color: var(--muted);
-            text-decoration: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-        }
-
-        .footer-bottom a:hover { color: var(--text); }
+        .footer-bottom a { color: rgba(255, 255, 255, 0.6); text-decoration: none; border-bottom: 1px solid var(--line-inverse); }
+        .footer-bottom a:hover { color: #fff; }
 
         /* ============================================================
-           微信二维码弹层
+           微信弹层
            ============================================================ */
         .qr-dialog {
             width: min(320px, calc(100% - 40px));
             padding: 26px 24px 24px;
-            border: 1px solid rgba(255, 255, 255, 0.14);
+            border: 1px solid var(--line-inverse);
             border-radius: 22px;
-            background: #0a1220;
-            color: var(--text);
+            background: #0d1014;
+            color: #fff;
             box-shadow: 0 40px 120px -30px rgba(0, 0, 0, 0.9);
         }
 
         .qr-dialog::backdrop {
-            background: rgba(2, 4, 9, 0.72);
+            background: rgba(2, 3, 5, 0.72);
             -webkit-backdrop-filter: blur(6px);
             backdrop-filter: blur(6px);
         }
 
-        .qr-dialog h3 {
-            margin: 0;
-            font-size: 17px;
-            letter-spacing: -0.01em;
-        }
-
-        .qr-dialog p {
-            margin: 8px 0 18px;
-            color: var(--muted);
-            font-size: 12.5px;
-        }
-
-        .qr-dialog img {
-            width: 100%;
-            max-width: 240px;
-            margin: 0 auto;
-            border-radius: 12px;
-            background: #fff;
-        }
+        .qr-dialog h3 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }
+        .qr-dialog p { margin: 8px 0 18px; color: var(--muted-inverse); font-size: 12.5px; }
+        .qr-dialog img { width: 100%; max-width: 240px; margin: 0 auto; border-radius: 12px; background: #fff; }
 
         .qr-name {
             margin: 16px 0 0 !important;
-            text-align: center;
-            color: var(--text) !important;
+            color: #fff !important;
             font-size: 12px;
+            text-align: center;
         }
 
         .dialog-close {
@@ -1713,17 +1617,15 @@
             width: 30px;
             height: 30px;
             padding: 0;
+            border: 1px solid var(--line-inverse);
             border-radius: 9px;
-            border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.03);
-            color: var(--muted);
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.6);
             cursor: pointer;
         }
 
-        .dialog-close:hover { color: var(--text); }
+        .dialog-close:hover { color: #fff; }
         .dialog-close .i { width: 14px; height: 14px; }
-
-        body.modal-open { overflow: hidden; }
 
         /* ============================================================
            入场动画
@@ -1731,93 +1633,81 @@
         .js [data-reveal] {
             opacity: 0;
             transform: translateY(18px);
-            transition:
-                opacity 0.75s var(--ease),
-                transform 0.75s var(--ease);
+            transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
             transition-delay: var(--d, 0ms);
         }
 
-        .js [data-reveal].in {
-            opacity: 1;
-            transform: none;
-        }
-
-        @keyframes floaty {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-9px); }
-        }
-
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 0 4px rgba(79, 227, 240, 0.14); }
-            50% { box-shadow: 0 0 0 7px rgba(79, 227, 240, 0.05); }
-        }
-
-        @media (prefers-reduced-motion: no-preference) {
-            .phone { animation: floaty 9s ease-in-out infinite; }
-            .badge .pulse { animation: pulse 2.8s ease-in-out infinite; }
-        }
+        .js [data-reveal].in { opacity: 1; transform: none; }
 
         @media (prefers-reduced-motion: reduce) {
             html { scroll-behavior: auto; }
             .js [data-reveal] { opacity: 1; transform: none; transition: none; }
-            .phone, .badge .pulse, .app-tile { animation: none; transition: none; }
         }
 
         /* ============================================================
            响应式
            ============================================================ */
-        @media (max-width: 1080px) {
-            .hero-inner { grid-template-columns: 1fr; }
-            .hero-copy { max-width: 640px; }
-            .hero-visual { margin-top: 18px; }
-            .loop-panel { grid-template-columns: repeat(2, 1fr); }
-            .loop-step:nth-child(3) { border-left: 0; }
-            .loop-step:nth-child(3),
-            .loop-step:nth-child(4) { border-top: 1px solid var(--line); }
-            .loop-step::after { display: none; }
-            .cards { grid-template-columns: repeat(2, 1fr); }
+        @media (max-width: 1120px) {
+            .hero { min-height: auto; padding-top: calc(72px + 64px); }
+            .hero-inner { grid-template-columns: 1fr; align-items: start; gap: 48px; }
+            .hero-copy { max-width: 640px; padding-bottom: 0; }
+            .hero-visual { justify-content: center; margin-top: 8px; }
+            .device { height: min(560px, 62svh); }
+            .specs-grid { grid-template-columns: repeat(2, 1fr); }
+            .spec:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
+            .spec:nth-child(4) { border-top: 1px solid var(--line); }
+            .cap-grid { grid-template-columns: repeat(2, 1fr); }
+            .template-grid { grid-template-columns: repeat(2, 1fr); }
+            .privacy-grid { grid-template-columns: 1fr; }
             .log-layout { grid-template-columns: 1fr; }
             .log-intro { position: static; }
-            .privacy { grid-template-columns: 1fr; }
             .footer-grid { grid-template-columns: 1.4fr 1fr 1fr; }
             .footer-brand { grid-column: 1 / -1; }
         }
 
-        @media (max-width: 860px) {
+        @media (max-width: 900px) {
             .nav { display: none; }
+            .header-download { display: none; }
             .menu-btn { display: inline-flex; }
-            .header-actions .btn { display: none; }
-            .mobile-menu .btn { display: inline-flex; }
-            .download-panel { grid-template-columns: 1fr; text-align: left; }
-            .dl-visual { flex-direction: row; justify-content: flex-start; gap: 22px; }
-            .app-tile { width: 104px; height: 104px; border-radius: 26px; }
-            .app-tile img { width: 76px; height: 76px; border-radius: 18px; }
         }
 
-        @media (max-width: 720px) {
+        @media (max-width: 760px) {
             .wrap { width: calc(100% - 40px); }
-            .chip { display: none; }
-            .phone { width: min(288px, 84vw); }
-            .loop-panel { grid-template-columns: 1fr; }
-            .loop-step { border-left: 0; border-top: 1px solid var(--line); }
-            .loop-step:first-child { border-top: 0; }
-            .cards { grid-template-columns: 1fr; gap: 14px; }
-            .section-head h2, .log-intro h2, .privacy-copy h2, .dl-copy h2 { font-size: clamp(28px, 7vw, 36px); }
+            .sec { padding: clamp(60px, 10vw, 92px) 0; }
+            .hero { padding-bottom: 44px; }
+            .hero h1 { font-size: clamp(38px, 10.4vw, 56px); }
+            .hero-sub { font-size: 15px; }
+            .device { height: auto; width: min(330px, 78vw); transform: perspective(1400px) rotateY(-8deg) rotateX(2deg); }
+            .hero-cta .btn { flex: 1 1 auto; padding-inline: 20px; }
+            .specs-grid { grid-template-columns: 1fr 1fr; }
+            .spec { padding: 26px 18px 30px; }
+            .spec small { font-size: 11.5px; }
+            .flow-steps { grid-template-columns: 1fr; }
+            .flow-step { border-left: 0; border-top: 1px solid var(--line); }
+            .flow-step:first-child { border-top: 0; }
+            .flow-step h3 { margin-top: 18px; }
+            .cap-grid { grid-template-columns: 1fr; gap: 12px; }
+            .template-grid { grid-template-columns: 1fr; gap: 12px; }
+            .log-layout { gap: 26px; }
+            .download-panel { grid-template-columns: 1fr; text-align: left; }
+            .dl-visual { flex-direction: row; justify-content: flex-start; gap: 22px; }
+            .app-tile { width: 100px; height: 100px; border-radius: 24px; }
+            .app-tile img { width: 74px; height: 74px; border-radius: 18px; }
             .footer-grid { grid-template-columns: 1fr 1fr; gap: 30px; }
             .footer-brand { grid-column: 1 / -1; }
             .footer-bottom { margin-top: 34px; }
-            .phone-wrap::before { width: 380px; height: 380px; }
         }
 
         @media (max-width: 460px) {
             .wrap { width: calc(100% - 32px); }
-            .header-inner { height: 62px; }
-            .mobile-menu { top: 62px; }
-            .hero { padding-top: calc(62px + 44px); }
+            .header-inner { height: 64px; }
+            .mobile-menu { top: 64px; }
+            .hero { padding-top: calc(64px + 48px); }
             .brand-text span { display: none; }
-            .badge { font-size: 11px; }
-            .hero-facts { font-size: 11.5px; gap: 8px 16px; }
-            .cta-row .btn { flex: 1 1 auto; padding-inline: 18px; }
+            .hero-cta .btn { width: 100%; }
+            .hero-meta { font-size: 11.5px; }
+            #hero-version { display: none; }
+            .spec strong { font-size: 38px; }
             .footer-grid { grid-template-columns: 1fr; }
         }
     </style>
@@ -1866,12 +1756,12 @@
             <nav class="nav" aria-label="主导航">
                 <a href="#loop" data-nav>闭环</a>
                 <a href="#features" data-nav>能力</a>
+                <a href="#templates" data-nav>模板</a>
                 <a href="#privacy" data-nav>隐私</a>
                 <a href="#changelog" data-nav>更新</a>
-                <a href="#help" data-nav>上手</a>
             </nav>
             <div class="header-actions">
-                <a class="btn btn-primary btn-sm" href="#download">下载 APK<svg class="i" aria-hidden="true"><use href="#i-download"/></svg></a>
+                <a class="header-download" href="#download">下载 APK<svg class="i" aria-hidden="true"><use href="#i-download"/></svg></a>
                 <button class="menu-btn" id="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="打开菜单">
                     <svg class="i icon-menu" aria-hidden="true"><use href="#i-menu"/></svg>
                     <svg class="i icon-close" aria-hidden="true"><use href="#i-close"/></svg>
@@ -1883,179 +1773,224 @@
     <div class="mobile-menu" id="mobile-menu" hidden>
         <a href="#loop">闭环</a>
         <a href="#features">能力</a>
+        <a href="#templates">模板</a>
         <a href="#privacy">隐私</a>
         <a href="#changelog">更新</a>
         <a href="#help">上手</a>
         <p class="menu-note">本地优先 · 无需账号 · 项目数据不上传</p>
-        <a class="btn btn-primary" href="#download">下载 APK</a>
+        <a class="btn btn-light" href="#download">下载 APK</a>
     </div>
 
     <main id="main">
-        <!-- 英雄区 -->
-        <section class="hero" id="top">
-            <div class="hero-grid-lines" aria-hidden="true"></div>
+        <!-- 首屏 -->
+        <section class="hero" id="top" data-theme="dark">
+            <div class="hero-bg" aria-hidden="true"></div>
             <div class="wrap hero-inner">
                 <div class="hero-copy">
-                    <span class="badge" data-reveal>
-                        <span class="pulse" aria-hidden="true"></span>
-                        Android <b id="hero-version">v1.0.6</b> 已发布
-                    </span>
-                    <h1 data-reveal style="--d:60ms">让每一个目标<br><span class="grad">指日可待</span>。</h1>
-                    <p class="hero-lead" data-reveal style="--d:120ms">
+                    <p class="hero-kicker">AI Project Management · Local-first</p>
+                    <h1>让每一个目标<br><span>指日可待</span>。</h1>
+                    <p class="hero-sub">
                         点点把<b>「设定目标 → 记录执行 → AI 分析 → 沉淀知识」</b>收进一个 App。计划自动拆好，进度自动算好，复盘自动写好——你只需要开始。
                     </p>
-                    <div class="cta-row" data-reveal style="--d:180ms">
-                        <a class="btn btn-primary" href="#download">下载 Android 版<svg class="i" aria-hidden="true"><use href="#i-download"/></svg></a>
-                        <a class="btn btn-ghost" href="#loop">它怎么工作<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+                    <div class="hero-cta">
+                        <a class="btn btn-light" href="#download">下载 Android 版<svg class="i" aria-hidden="true"><use href="#i-download"/></svg></a>
+                        <a class="btn btn-outline-light" href="#loop">了解产品<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
                     </div>
-                    <ul class="hero-facts" data-reveal style="--d:240ms">
-                        <li><svg class="i" aria-hidden="true"><use href="#i-database"/></svg>本地 SQLite</li>
-                        <li><svg class="i" aria-hidden="true"><use href="#i-user"/></svg>无需账号</li>
-                        <li><svg class="i" aria-hidden="true"><use href="#i-key"/></svg>Key 存在本机</li>
-                    </ul>
+                    <div class="hero-meta">
+                        <span><svg class="i" aria-hidden="true"><use href="#i-database"/></svg>本地 SQLite</span>
+                        <span><svg class="i" aria-hidden="true"><use href="#i-user"/></svg>无需账号</span>
+                        <span><svg class="i" aria-hidden="true"><use href="#i-key"/></svg>Key 存在本机</span>
+                        <span id="hero-version">v1.0.6</span>
+                    </div>
                 </div>
 
-                <div class="hero-visual" data-reveal style="--d:150ms">
-                    <div class="phone-wrap">
-                        <div class="chip chip-a"><svg class="i" aria-hidden="true"><use href="#i-database"/></svg>本地优先 · 离线可记</div>
-                        <div class="phone" role="img" aria-label="点点 App 项目列表界面示意">
-                            <div class="screen">
-                                <div class="ph-status"><span>9:41</span><span class="ph-bat"><i></i></span></div>
-                                <div class="ph-head">
-                                    <div>
-                                        <p class="ph-kicker">10 月 25 日 · 周六</p>
-                                        <p class="ph-title">我的项目</p>
-                                    </div>
-                                    <span class="ph-avatar">点</span>
+                <div class="hero-visual">
+                    <div class="device" role="img" aria-label="点点 App 项目列表界面示意">
+                        <div class="screen">
+                            <div class="ph-status"><span>9:41</span><span class="ph-bat"><i></i></span></div>
+                            <div class="ph-head">
+                                <div>
+                                    <p class="ph-kicker">10 月 25 日 · 周六</p>
+                                    <p class="ph-title">我的项目</p>
                                 </div>
-                                <div class="ph-tabs"><span class="on">进行中 3</span><span>已完成 2</span></div>
+                                <span class="ph-avatar">点</span>
+                            </div>
+                            <div class="ph-tabs"><span class="on">进行中 3</span><span>已完成 2</span></div>
 
-                                <div class="ph-card">
-                                    <div class="ph-card-top">
-                                        <span class="ph-tag">进行中</span>
-                                        <span class="ph-more"><i></i><i></i><i></i></span>
-                                    </div>
-                                    <p class="ph-name">AI 小程序上线</p>
-                                    <div class="ph-bar"><i style="width:68%"></i></div>
-                                    <div class="ph-meta"><span>里程碑 3 / 5</span><span class="ph-pct">68%</span></div>
+                            <div class="ph-card">
+                                <div class="ph-card-top">
+                                    <span class="ph-tag">进行中</span>
+                                    <span class="ph-more"><i></i><i></i><i></i></span>
                                 </div>
+                                <p class="ph-name">AI 小程序上线</p>
+                                <div class="ph-bar"><i style="width:68%"></i></div>
+                                <div class="ph-meta"><span>里程碑 3 / 5</span><span class="ph-pct">68%</span></div>
+                            </div>
 
-                                <div class="ph-card">
-                                    <div class="ph-card-top">
-                                        <span class="ph-tag">进行中</span>
-                                        <span class="ph-more"><i></i><i></i><i></i></span>
-                                    </div>
-                                    <p class="ph-name">英语口语 6 周计划</p>
-                                    <div class="ph-bar"><i style="width:45%"></i></div>
-                                    <div class="ph-meta"><span>里程碑 2 / 4</span><span class="ph-pct">45%</span></div>
+                            <div class="ph-card">
+                                <div class="ph-card-top">
+                                    <span class="ph-tag">进行中</span>
+                                    <span class="ph-more"><i></i><i></i><i></i></span>
                                 </div>
+                                <p class="ph-name">英语口语 6 周计划</p>
+                                <div class="ph-bar"><i style="width:45%"></i></div>
+                                <div class="ph-meta"><span>里程碑 2 / 4</span><span class="ph-pct">45%</span></div>
+                            </div>
 
-                                <div class="ph-card">
-                                    <div class="ph-card-top">
-                                        <span class="ph-tag paused">已暂停</span>
-                                        <span class="ph-more"><i></i><i></i><i></i></span>
-                                    </div>
-                                    <p class="ph-name">作品集改版</p>
-                                    <div class="ph-bar"><i style="width:20%"></i></div>
-                                    <div class="ph-meta"><span>里程碑 1 / 5</span><span class="ph-pct">20%</span></div>
+                            <div class="ph-card">
+                                <div class="ph-card-top">
+                                    <span class="ph-tag paused">已暂停</span>
+                                    <span class="ph-more"><i></i><i></i><i></i></span>
                                 </div>
+                                <p class="ph-name">作品集改版</p>
+                                <div class="ph-bar"><i style="width:20%"></i></div>
+                                <div class="ph-meta"><span>里程碑 1 / 5</span><span class="ph-pct">20%</span></div>
+                            </div>
 
-                                <div class="ph-ai">
-                                    <div class="ph-ai-head"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>本周 AI 分析<span>刚刚</span></div>
-                                    <p>2 个里程碑已完成，进度符合预期。建议本周优先推进联调，并为上线预留缓冲。</p>
-                                </div>
+                            <div class="ph-ai">
+                                <div class="ph-ai-head"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>本周 AI 分析<span>刚刚</span></div>
+                                <p>2 个里程碑已完成，进度符合预期。建议本周优先推进联调，并为上线预留缓冲。</p>
+                            </div>
 
-                                <div class="ph-tabbar">
-                                    <span class="on"><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg>项目</span>
-                                    <span><svg class="i" aria-hidden="true"><use href="#i-book"/></svg>知识库</span>
-                                    <span><svg class="i" aria-hidden="true"><use href="#i-user"/></svg>我的</span>
+                            <div class="ph-log">
+                                <span class="ph-log-ic"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></span>
+                                <div>
+                                    <p class="ph-log-title">今日记录</p>
+                                    <p class="ph-log-text">完成首页视觉稿，等待开发联调</p>
                                 </div>
                             </div>
+
+                            <div class="ph-tabbar">
+                                <span class="on"><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg>项目</span>
+                                <span><svg class="i" aria-hidden="true"><use href="#i-book"/></svg>知识库</span>
+                                <span><svg class="i" aria-hidden="true"><use href="#i-user"/></svg>我的</span>
+                            </div>
                         </div>
-                        <p class="phone-note">界面示意 · 以实际 App 为准</p>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- 规格数据 -->
+        <section class="sec sec--paper" id="specs" data-theme="light">
+            <div class="wrap">
+                <div class="sec-head" data-reveal>
+                    <p class="eyebrow">产品规格</p>
+                    <h2>轻，但完整。</h2>
+                    <p class="lead">一个 App 覆盖完整的项目管理闭环。下面这些数字都能在源码与站点数据里核实。</p>
+                </div>
+                <div class="specs-grid" data-reveal>
+                    <div class="spec spec--accent">
+                        <strong>0</strong>
+                        <span>个业务后端</span>
+                        <small>没有账号系统，项目数据不经过我们的服务器</small>
+                    </div>
+                    <div class="spec">
+                        <strong>15</strong>
+                        <span>张本地数据表</span>
+                        <small>项目、日志、知识、AI 配置都在手机 SQLite</small>
+                    </div>
+                    <div class="spec">
+                        <strong>6</strong>
+                        <span>家 AI 供应商</span>
+                        <small>DeepSeek / 硅基流动 / OpenAI / Kimi / 通义千问 / 自定义</small>
+                    </div>
+                    <div class="spec">
+                        <strong id="spec-versions">7</strong>
+                        <span>次版本迭代</span>
+                        <small>版本记录由站点 version.json 实时读取</small>
+                    </div>
+                </div>
+                <p class="specs-note" data-reveal>页面只展示可核验的产品数据，不包含任何用户数据或虚构案例。</p>
             </div>
         </section>
 
         <!-- 闭环 -->
-        <section class="section" id="loop">
+        <section class="sec sec--paper" id="loop" data-theme="light">
             <div class="wrap">
-                <div class="section-head" data-reveal>
-                    <span class="eyebrow">01 — The Loop</span>
-                    <h2>一条闭环，从想法到经验。</h2>
-                    <p>不是又一个待办清单。点点围绕真实的项目推进方式设计：每一步都有 AI 参与，但每一步都由你确认。</p>
+                <div class="sec-head" data-reveal>
+                    <p class="eyebrow">产品闭环</p>
+                    <h2>从目标到经验，<span class="hl">一条闭环</span>。</h2>
+                    <p class="lead">不是又一个待办清单。点点围绕真实的项目推进方式设计：每一步都有 AI 参与，但每一步都由你确认。</p>
                 </div>
-                <div class="loop-panel" data-reveal style="--d:80ms">
-                    <article class="loop-step">
-                        <span class="loop-num">01</span>
-                        <span class="loop-icon"><svg class="i" aria-hidden="true"><use href="#i-target"/></svg></span>
+                <ol class="flow-steps" data-reveal>
+                    <li class="flow-step">
+                        <div class="flow-top">
+                            <span class="step-num">01</span>
+                            <span class="flow-icon"><svg class="i" aria-hidden="true"><use href="#i-target"/></svg></span>
+                        </div>
                         <h3>目标</h3>
                         <p>说出想做的事，AI 把它改写成 SMART 目标，再拆成一条条可勾选的里程碑。</p>
-                    </article>
-                    <article class="loop-step">
-                        <span class="loop-num">02</span>
-                        <span class="loop-icon"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></span>
+                    </li>
+                    <li class="flow-step">
+                        <div class="flow-top">
+                            <span class="step-num">02</span>
+                            <span class="flow-icon"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></span>
+                        </div>
                         <h3>执行</h3>
                         <p>一条日志记下进展、卡点和下一步；进度由里程碑完成度自动推导。</p>
-                    </article>
-                    <article class="loop-step">
-                        <span class="loop-num">03</span>
-                        <span class="loop-icon"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg></span>
+                    </li>
+                    <li class="flow-step">
+                        <div class="flow-top">
+                            <span class="step-num">03</span>
+                            <span class="flow-icon"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg></span>
+                        </div>
                         <h3>分析</h3>
                         <p>AI 读取项目上下文，指出风险、给出建议、生成周报；不满意就继续追问。</p>
-                    </article>
-                    <article class="loop-step">
-                        <span class="loop-num">04</span>
-                        <span class="loop-icon"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span>
+                    </li>
+                    <li class="flow-step">
+                        <div class="flow-top">
+                            <span class="step-num">04</span>
+                            <span class="flow-icon"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span>
+                        </div>
                         <h3>沉淀</h3>
                         <p>项目结束，经验进知识库：打标签、关联项目、收藏，下次立项直接复用。</p>
-                    </article>
-                </div>
+                    </li>
+                </ol>
             </div>
         </section>
 
-        <!-- 能力 -->
-        <section class="section section--glow" id="features">
+        <!-- 核心能力 -->
+        <section class="sec sec--paper" id="features" data-theme="light">
             <div class="wrap">
-                <div class="section-head" data-reveal>
-                    <span class="eyebrow">02 — Capabilities</span>
+                <div class="sec-head" data-reveal>
+                    <p class="eyebrow">核心能力</p>
                     <h2>把项目管理，收进日常。</h2>
-                    <p>六个模块互相咬合。AI 只在需要时出现，不打扰你的节奏。</p>
+                    <p class="lead">六个模块互相咬合。AI 只在需要时出现，不打扰你的节奏。</p>
                 </div>
-                <div class="cards">
-                    <article class="card" data-reveal>
-                        <span class="card-icon"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg></span>
+                <div class="cap-grid">
+                    <article class="cap" data-reveal>
+                        <span class="cap-icon"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg></span>
                         <h3>AI 立项</h3>
                         <p>输入名称与目标，AI 生成 SMART 目标、里程碑与时间安排，省掉从零规划。</p>
                         <ul class="tags"><li>SMART 目标</li><li>里程碑拆分</li></ul>
                     </article>
-                    <article class="card" data-reveal style="--d:60ms">
-                        <span class="card-icon"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg></span>
+                    <article class="cap" data-reveal style="--d:60ms">
+                        <span class="cap-icon"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg></span>
                         <h3>进度自动推导</h3>
                         <p>进度等于已完成里程碑占比，到 100% 自动完成；不用再手工维护百分比。</p>
                         <ul class="tags"><li>自动计算</li><li>状态同步</li></ul>
                     </article>
-                    <article class="card" data-reveal style="--d:120ms">
-                        <span class="card-icon"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></span>
+                    <article class="cap" data-reveal style="--d:120ms">
+                        <span class="cap-icon"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></span>
                         <h3>结构化日志</h3>
                         <p>按「进展 / 问题 / 计划」记录，AI 提炼要点并归档到项目时间线。</p>
                         <ul class="tags"><li>三段式</li><li>AI 提炼</li></ul>
                     </article>
-                    <article class="card" data-reveal style="--d:60ms">
-                        <span class="card-icon"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
+                    <article class="cap" data-reveal style="--d:60ms">
+                        <span class="cap-icon"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span>
                         <h3>项目内对话</h3>
                         <p>在项目里直接开聊，AI 带着项目资料与历史记录回答，流式输出。</p>
                         <ul class="tags"><li>流式响应</li><li>上下文</li></ul>
                     </article>
-                    <article class="card" data-reveal style="--d:120ms">
-                        <span class="card-icon"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span>
+                    <article class="cap" data-reveal style="--d:120ms">
+                        <span class="cap-icon"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span>
                         <h3>知识沉淀</h3>
                         <p>知识库支持标签归类、关联项目与收藏，把一次性经验变成可复用资产。</p>
                         <ul class="tags"><li>标签</li><li>收藏</li></ul>
                     </article>
-                    <article class="card" data-reveal style="--d:180ms">
-                        <span class="card-icon"><svg class="i" aria-hidden="true"><use href="#i-share"/></svg></span>
+                    <article class="cap" data-reveal style="--d:180ms">
+                        <span class="cap-icon"><svg class="i" aria-hidden="true"><use href="#i-share"/></svg></span>
                         <h3>分享与备份</h3>
                         <p>生成多主题项目分享卡；数据库可备份到你自己的 GitCode 仓库。</p>
                         <ul class="tags"><li>分享卡</li><li>GitCode</li></ul>
@@ -2064,13 +1999,57 @@
             </div>
         </section>
 
+        <!-- 内置模板 -->
+        <section class="sec sec--paper" id="templates" data-theme="light">
+            <div class="wrap">
+                <div class="sec-head" data-reveal>
+                    <p class="eyebrow">内置模板</p>
+                    <h2>不知道从哪开始？<br><span class="hl">先套一个模板</span>。</h2>
+                    <p class="lead">App 内置 16 个跨领域项目模板，创建项目时可直接选用。下面展示其中 6 个——它们是产品自带的起点，不是用户案例。</p>
+                </div>
+                <div class="template-grid">
+                    <article class="template" data-reveal style="--cat-color:#165DFF">
+                        <span class="cat"><i aria-hidden="true"></i>技术开发</span>
+                        <h3>AI 小程序开发</h3>
+                        <p>30 天内开发一款 AI 聊天小程序，实现智能对话功能，用户留存率达到 60%。</p>
+                    </article>
+                    <article class="template" data-reveal style="--cat-color:#165DFF; --d:60ms">
+                        <span class="cat"><i aria-hidden="true"></i>技术开发</span>
+                        <h3>任务管理 APP</h3>
+                        <p>45 天内开发一个个人任务管理 APP，支持 GTD 方法论，日活用户达到 100 人。</p>
+                    </article>
+                    <article class="template" data-reveal style="--cat-color:#FF6B35; --d:120ms">
+                        <span class="cat"><i aria-hidden="true"></i>学习成长</span>
+                        <h3>前端技能提升</h3>
+                        <p>3 个月内掌握 Vue3 + TypeScript 技术栈，完成 3 个实战项目并获得高级前端 offer。</p>
+                    </article>
+                    <article class="template" data-reveal style="--cat-color:#FF6B35">
+                        <span class="cat"><i aria-hidden="true"></i>学习成长</span>
+                        <h3>英语口语突破</h3>
+                        <p>6 个月内英语口语达到流利水平，能够进行 30 分钟英文技术分享。</p>
+                    </article>
+                    <article class="template" data-reveal style="--cat-color:#00D68F; --d:60ms">
+                        <span class="cat"><i aria-hidden="true"></i>创业项目</span>
+                        <h3>SaaS 工具开发</h3>
+                        <p>4 个月内开发一款企业级 SaaS 工具，获得 50 家企业用户，ARR 达到 100 万。</p>
+                    </article>
+                    <article class="template" data-reveal style="--cat-color:#FF4757; --d:120ms">
+                        <span class="cat"><i aria-hidden="true"></i>生活健康</span>
+                        <h3>健身计划挑战</h3>
+                        <p>3 个月内减重 10 公斤，体脂率降到 15%，完成首次马拉松比赛。</p>
+                    </article>
+                </div>
+                <p class="specs-note" data-reveal>模板来自 App 内置的 utils/projectCases.js，共 4 类 16 个；页面只展示模板名称与目标，不含用户数据。</p>
+            </div>
+        </section>
+
         <!-- 隐私 -->
-        <section class="section" id="privacy">
-            <div class="wrap privacy">
+        <section class="sec sec--dark" id="privacy" data-theme="dark">
+            <div class="wrap privacy-grid">
                 <div class="privacy-copy" data-reveal>
-                    <span class="eyebrow">03 — Privacy</span>
-                    <h2>项目是你的，<br>数据也是。</h2>
-                    <p>点点的默认存储是手机里的 SQLite。没有账号体系，也没有中间服务器；备份到哪、AI 用哪家，都由你决定。</p>
+                    <p class="eyebrow">隐私与数据</p>
+                    <h2>项目是你的，<br><span class="hl">数据也是</span>。</h2>
+                    <p class="lead">点点的默认存储是手机里的 SQLite。没有账号体系，也没有业务后端；备份到哪、AI 用哪家，都由你决定。</p>
                     <ul class="privacy-points">
                         <li><svg class="i" aria-hidden="true"><use href="#i-database"/></svg><span><b>本地优先</b> — 项目、日志、知识默认写入本机数据库，不经过第三方。</span></li>
                         <li><svg class="i" aria-hidden="true"><use href="#i-cloud"/></svg><span><b>备份自主</b> — 需要灾备时，导出到你自己的 GitCode 仓库，随时可以恢复。</span></li>
@@ -2091,18 +2070,18 @@
                         <span class="data-ic"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg></span>
                         <div><b>你选择的 AI 供应商</b><small>使用你自己的 Key 直连</small></div>
                     </div>
-                    <div class="data-foot"><svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>没有账号 · 没有中间服务器 · 项目数据不上传</div>
+                    <div class="data-foot"><svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>没有账号 · 没有业务后端 · 项目数据不上传</div>
                 </div>
             </div>
         </section>
 
-        <!-- 更新日志 -->
-        <section class="section section--glow" id="changelog">
+        <!-- 更新记录 -->
+        <section class="sec sec--paper" id="changelog" data-theme="light">
             <div class="wrap log-layout">
                 <div class="log-intro" data-reveal>
-                    <span class="eyebrow">04 — Changelog</span>
+                    <p class="eyebrow">更新记录</p>
                     <h2>每一次迭代，<br>都记在案。</h2>
-                    <p>版本记录直接读取站点上的 version.json，共 <span id="log-count">—</span> 个版本；最新版可直接下载。</p>
+                    <p class="lead">版本记录直接读取站点上的 version.json，共 <span id="log-count">—</span> 个版本；最新版可直接下载。</p>
                     <a class="text-link" href="./version.json">查看原始数据<svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
                 </div>
                 <div class="timeline" id="timeline" data-reveal style="--d:100ms">
@@ -2113,20 +2092,20 @@
         </section>
 
         <!-- 下载 -->
-        <section class="section" id="download">
+        <section class="sec sec--dark" id="download" data-theme="dark">
             <div class="wrap">
                 <div class="download-panel" data-reveal>
                     <div class="dl-copy">
-                        <span class="eyebrow">05 — Download</span>
+                        <p class="eyebrow">下载</p>
                         <h2>装上，今天就开始。</h2>
                         <p>Android 安装包直接下载。没有账号、没有订阅，装完就能建第一个项目。</p>
                         <div class="dl-meta">
                             <span class="dl-version"><span class="dot" aria-hidden="true"></span><span data-latest-version>v1.0.6</span> · <span data-latest-date>2025.08.23</span></span>
                             <span class="dl-platform">Android</span>
                         </div>
-                        <div class="cta-row">
-                            <a class="btn btn-primary btn-lg" href="./project.apk" download data-apk-link>下载 APK<svg class="i" aria-hidden="true"><use href="#i-download"/></svg></a>
-                            <a class="btn btn-ghost" href="#changelog">查看更新记录</a>
+                        <div class="hero-cta">
+                            <a class="btn btn-light" href="./project.apk" download data-apk-link>下载 APK<svg class="i" aria-hidden="true"><use href="#i-download"/></svg></a>
+                            <a class="btn btn-outline-light" href="#changelog">查看更新记录</a>
                         </div>
                         <ul class="dl-notes">
                             <li><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>APK 直装，无需应用商店</li>
@@ -2135,7 +2114,7 @@
                         </ul>
                     </div>
                     <div class="dl-visual">
-                        <div class="app-tile"><img src="./img/logo.png" alt="点点 App 图标" width="112" height="112" loading="lazy"></div>
+                        <div class="app-tile"><img src="./img/logo.png" alt="点点 App 图标" width="110" height="110" loading="lazy"></div>
                         <span class="dl-version-badge"><span>最新版</span><strong data-latest-version>v1.0.6</strong></span>
                     </div>
                 </div>
@@ -2143,18 +2122,18 @@
         </section>
 
         <!-- 上手 -->
-        <section class="section" id="help">
+        <section class="sec sec--paper" id="help" data-theme="light">
             <div class="wrap">
-                <div class="section-head" data-reveal>
-                    <span class="eyebrow">06 — Getting Started</span>
+                <div class="sec-head" data-reveal>
+                    <p class="eyebrow">上手</p>
                     <h2>三分钟上手。</h2>
-                    <p>第一次打开点点，按这几步走就够了。</p>
+                    <p class="lead">第一次打开点点，按这几步走就够了。</p>
                 </div>
-                <div class="qa-list" data-reveal style="--d:80ms">
+                <div class="qa-list" data-reveal>
                     <details class="qa" open>
                         <summary>第一次打开，先做什么？<svg class="i" aria-hidden="true"><use href="#i-close"/></svg></summary>
                         <div class="qa-body">
-                            <p>点「新建项目」，填项目名称和一句目标描述。AI 会生成 <b>SMART 目标、关键里程碑与计划</b>；确认后即可开始记录。</p>
+                            <p>点「新建项目」，填项目名称和一句目标描述；也可以直接从内置模板里选一个。AI 会生成 <b>SMART 目标、关键里程碑与计划</b>，确认后即可开始记录。</p>
                             <p>之后每完成一个里程碑，进度会自动更新，不用手工改百分比。</p>
                         </div>
                     </details>
@@ -2198,7 +2177,7 @@
     </main>
 
     <!-- 页脚 -->
-    <footer class="footer">
+    <footer class="footer" data-theme="dark">
         <div class="wrap footer-grid">
             <div class="footer-brand">
                 <a class="brand" href="#top" aria-label="点点 · 回到顶部">
@@ -2215,6 +2194,7 @@
                 <h4>产品</h4>
                 <a href="#loop">闭环</a>
                 <a href="#features">能力</a>
+                <a href="#templates">模板</a>
                 <a href="#changelog">更新记录</a>
                 <a href="#download">下载</a>
             </nav>
@@ -2255,17 +2235,30 @@
             var $ = function (selector, root) { return (root || document).querySelector(selector); };
             var $$ = function (selector, root) { return Array.prototype.slice.call((root || document).querySelectorAll(selector)); };
 
-            /* ---------- 年份 ---------- */
             var yearEl = $('#year');
             if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-            /* ---------- 滚动进度 & 导航毛玻璃 ---------- */
             var header = $('#site-header');
             var progress = $('#scroll-progress');
+            var themedSections = $$('[data-theme]');
+            var navLinks = $$('[data-nav]');
+            var sections = navLinks
+                .map(function (link) { return document.getElementById(link.getAttribute('href').slice(1)); })
+                .filter(Boolean);
+
+            function sectionThemeAt(probeY) {
+                var theme = 'dark';
+                themedSections.forEach(function (section) {
+                    var top = section.getBoundingClientRect().top + window.pageYOffset;
+                    if (probeY >= top) theme = section.getAttribute('data-theme') || 'dark';
+                });
+                return theme;
+            }
 
             function onScroll() {
                 var y = window.pageYOffset || document.documentElement.scrollTop || 0;
                 if (header) header.classList.toggle('scrolled', y > 8);
+                if (header) header.classList.toggle('header-light', sectionThemeAt(y + (header.offsetHeight || 72)) === 'light');
                 if (progress) {
                     var max = document.documentElement.scrollHeight - window.innerHeight;
                     var ratio = max > 0 ? Math.min(y / max, 1) : 0;
@@ -2274,9 +2267,10 @@
             }
 
             window.addEventListener('scroll', onScroll, { passive: true });
+            window.addEventListener('resize', onScroll);
             onScroll();
 
-            /* ---------- 入场动画 ---------- */
+            /* 入场动画 */
             var revealEls = $$('[data-reveal]');
 
             if (reduceMotion || !('IntersectionObserver' in window)) {
@@ -2294,12 +2288,7 @@
                 revealEls.forEach(function (el) { revealObserver.observe(el); });
             }
 
-            /* ---------- 导航高亮 ---------- */
-            var navLinks = $$('[data-nav]');
-            var sections = navLinks
-                .map(function (link) { return document.getElementById(link.getAttribute('href').slice(1)); })
-                .filter(Boolean);
-
+            /* 导航高亮 */
             if ('IntersectionObserver' in window && sections.length) {
                 var spyObserver = new IntersectionObserver(function (entries) {
                     entries.forEach(function (entry) {
@@ -2316,7 +2305,7 @@
                 sections.forEach(function (section) { spyObserver.observe(section); });
             }
 
-            /* ---------- 移动端菜单 ---------- */
+            /* 移动端菜单 */
             var menuToggle = $('#menu-toggle');
             var mobileMenu = $('#mobile-menu');
 
@@ -2327,6 +2316,7 @@
                 menuToggle.setAttribute('aria-label', open ? '关闭菜单' : '打开菜单');
                 mobileMenu.hidden = !open;
                 document.body.classList.toggle('modal-open', open);
+                if (header) header.classList.toggle('menu-open', open);
 
                 if (open) {
                     var firstLink = mobileMenu.querySelector('a');
@@ -2350,23 +2340,11 @@
                 });
 
                 window.addEventListener('resize', function () {
-                    if (window.innerWidth > 860) setMenu(false);
+                    if (window.innerWidth > 900) setMenu(false);
                 });
             }
 
-            /* ---------- 卡片聚光 ---------- */
-            var canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-            if (!reduceMotion && canHover) {
-                $$('.card').forEach(function (card) {
-                    card.addEventListener('pointermove', function (event) {
-                        var rect = card.getBoundingClientRect();
-                        card.style.setProperty('--mx', (event.clientX - rect.left) + 'px');
-                        card.style.setProperty('--my', (event.clientY - rect.top) + 'px');
-                    });
-                });
-            }
-
-            /* ---------- 复制邮箱 ---------- */
+            /* 复制邮箱 */
             var copyBtn = $('#copy-email');
             if (copyBtn) {
                 var copyHint = $('.copy-hint', copyBtn);
@@ -2402,11 +2380,11 @@
                 area.style.top = '-200px';
                 document.body.appendChild(area);
                 area.select();
-                try { document.execCommand('copy'); done(); } catch (e) { /* 忽略：手动选择文本即可 */ }
+                try { document.execCommand('copy'); done(); } catch (e) { /* ignore */ }
                 document.body.removeChild(area);
             }
 
-            /* ---------- 微信二维码 ---------- */
+            /* 微信二维码 */
             var wechatBtn = $('#wechat-btn');
             var wechatDialog = $('#wechat-dialog');
             var wechatClose = $('#wechat-close');
@@ -2430,7 +2408,7 @@
                 });
             }
 
-            /* ---------- 版本数据（只读同源 version.json） ---------- */
+            /* 版本数据（只读同源 version.json） */
             var FALLBACK_VERSION = '1.0.6';
             var FALLBACK_DATE = '20250823';
 
@@ -2459,8 +2437,10 @@
                 if (!latest) return;
                 $$('[data-latest-version]').forEach(function (el) { el.textContent = 'v' + latest.version; });
                 $$('[data-latest-date]').forEach(function (el) { el.textContent = formatDate(latest.date); });
-                var heroVersion = $('#hero-version');
-                if (heroVersion) heroVersion.textContent = 'v' + latest.version;
+                ['#hero-version', '#badge-version'].forEach(function (selector) {
+                    var el = $(selector);
+                    if (el) el.textContent = 'v' + latest.version;
+                });
                 $$('[data-apk-link]').forEach(function (link) {
                     link.setAttribute('href', latest.downloadUrl || './project.apk');
                 });
@@ -2523,6 +2503,9 @@
 
                 var countEl = $('#log-count');
                 if (countEl) countEl.textContent = String(list.length);
+
+                var specVersions = $('#spec-versions');
+                if (specVersions) specVersions.textContent = String(list.length);
             }
 
             function renderTimelineError() {
