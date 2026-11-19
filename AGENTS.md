@@ -118,7 +118,7 @@ Drift schema v1，14 张表：
 - 本地备份：`BackupService.exportJson()` / `importJson()`，14 表、格式 `diandian-backup`、版本 1、**不导出 API Key**；导入在事务内清空并恢复，失败回滚。
 - WebDAV：`WebDavService`，`settings` 键 `webdav_url/webdav_username`，密码在 `SecretStore` 的 `webdav_password`，固定文件名 `diandian-backup.json`。
 - GitCode：`GitCodeService`，OpenAPI v5 `https://gitcode.com/api/v5`，`settings` 键 `gitcode_repo/gitcode_branch/gitcode_path`，token 在 `SecretStore` 的 `gitcode_token`；上传先查 sha，再 POST/PUT contents。
-- 更新：`UpdateService` 默认读 `https://api.github.com/repos/r0ad/project-z/releases/latest`，也兼容旧 `version.json`（对象或数组）；`settings.update_manifest_url` 可覆盖。下载按平台选 Windows 安装包/便携 zip、Android APK、iOS 页面。
+- 更新：`UpdateService` 默认读 Release 静态清单 `https://github.com/r0ad/project-z/releases/latest/download/version.json`（避免 GitHub API 匿名限流），也兼容 GitHub API 与旧 `version.json`（对象或数组）；`settings.update_manifest_url` 可覆盖。下载按平台选 Windows 安装包/便携 zip、Android APK、iOS 页面。
 - 以上服务都不在页面里直接拼 HTTP；UI 在 `features/backup/` 与 `features/settings/`。
 
 ## 7. 测试与命令
