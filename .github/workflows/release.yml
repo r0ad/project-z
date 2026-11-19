@@ -130,6 +130,22 @@ jobs:
           else
             echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           fi
+      - name: Write version manifest
+        run: |
+          TAG="${{ steps.tag.outputs.name }}"
+          VERSION="${TAG#v}"
+          BASE="https://github.com/r0ad/project-z/releases/download/${TAG}"
+          jq -n \
+            --arg version "$VERSION" \
+            --arg tag "$TAG" \
+            --arg page "https://github.com/r0ad/project-z/releases/tag/${TAG}" \
+            --arg android "${BASE}/diandian-android.apk" \
+            --arg setup "${BASE}/diandian-windows-setup.exe" \
+            --arg portable "${BASE}/diandian-windows-x64.zip" \
+            --arg ios "${BASE}/diandian-ios-unsigned.zip" \
+            '{version:$version, notes:("点点 "+$version+" 已发布，详见 Release 页面。"), pageUrl:$page, downloads:{android:$android, windowsSetup:$setup, windowsPortable:$portable, ios:$ios}}' \
+            > release/version.json
+          cat release/version.json
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
@@ -153,4 +169,5 @@ jobs:
             release/diandian-windows-setup.exe
             release/diandian-windows-x64.zip
             release/diandian-ios-unsigned.zip
+            release/version.json
           fail_on_unmatched_files: true

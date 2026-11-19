@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 // 私有字段 + 可注入 Dio，无法直接使用 initializing formal。
@@ -50,8 +52,9 @@ class UpdateService {
   final Dio _dio;
 
   static const manifestKey = 'update_manifest_url';
+  // 使用 Release 里的静态清单，避免 GitHub API 匿名限流。
   static const defaultManifest =
-      'https://api.github.com/repos/r0ad/project-z/releases/latest';
+      'https://github.com/r0ad/project-z/releases/latest/download/version.json';
 
   Future<String> manifestUrl() async {
     final saved = (await _settings.get(manifestKey))?.trim();
@@ -70,7 +73,10 @@ class UpdateService {
           },
         ),
       );
-      final data = response.data;
+      if (response.statusCode == 403) {
+        throw const UpdateException('GitHub 暂时限流，请稍后重试');
+      }
+      final data = _decode(response.data);
       if (data == null) throw const UpdateException('更新清单为空');
       final info = _parse(data);
       if (info == null) throw const UpdateException('更新清单格式不正确');
@@ -79,12 +85,26 @@ class UpdateService {
       if (e.response?.statusCode == 404) {
         throw const UpdateException('更新地址不存在');
       }
+      if (e.response?.statusCode == 403) {
+        throw const UpdateException('GitHub 暂时限流，请稍后重试');
+      }
       throw UpdateException(
         e.type == DioExceptionType.connectionTimeout
             ? '检查更新超时，请稍后重试'
             : '检查更新失败：${e.message ?? '网络错误'}',
       );
+    } on FormatException {
+      throw const UpdateException('更新清单不是合法 JSON');
     }
+  }
+
+  dynamic _decode(dynamic data) {
+    if (data is String) {
+      final text = data.trim();
+      if (text.isEmpty) return null;
+      return jsonDecode(text);
+    }
+    return data;
   }
 
   UpdateInfo? _parse(dynamic data) {

@@ -49,6 +49,25 @@ void main() {
             ],
           }),
         );
+      } else if (request.uri.path == '/static') {
+        request.response.write(
+          jsonEncode({
+            'version': '2.1.1',
+            'notes': '静态清单',
+            'pageUrl': 'https://example.com/tag',
+            'downloads': {
+              'android': 'https://example.com/a.apk',
+              'windowsSetup': 'https://example.com/setup.exe',
+              'windowsPortable': 'https://example.com/zip',
+              'ios': 'https://example.com/ios.zip',
+            },
+          }),
+        );
+      } else if (request.uri.path == '/limited') {
+        request.response.statusCode = 403;
+        request.response.write(
+          jsonEncode({'message': 'API rate limit exceeded'}),
+        );
       } else if (request.uri.path == '/legacy') {
         request.response.write(
           jsonEncode([
@@ -90,6 +109,36 @@ void main() {
   test('returns null when current version is newer', () async {
     expect(await updates.check(currentVersion: '2.1.0'), isNull);
     expect(await updates.check(currentVersion: '2.2.0'), isNull);
+  });
+
+  test('parses the static version.json manifest', () async {
+    await settings.set(
+      UpdateService.manifestKey,
+      'http://127.0.0.1:${server.port}/static',
+    );
+    final info = await updates.check(currentVersion: '2.1.0');
+    expect(info!.version, '2.1.1');
+    expect(info.notes, '静态清单');
+    expect(info.androidUrl, 'https://example.com/a.apk');
+    expect(info.windowsSetupUrl, 'https://example.com/setup.exe');
+    expect(info.pageUrl, 'https://example.com/tag');
+  });
+
+  test('reports GitHub rate limiting clearly', () async {
+    await settings.set(
+      UpdateService.manifestKey,
+      'http://127.0.0.1:${server.port}/limited',
+    );
+    expect(
+      () => updates.check(currentVersion: '2.1.0'),
+      throwsA(
+        isA<UpdateException>().having(
+          (e) => e.message,
+          'message',
+          contains('限流'),
+        ),
+      ),
+    );
   });
 
   test('supports the legacy version.json manifest', () async {
