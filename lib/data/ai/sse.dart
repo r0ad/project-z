@@ -80,11 +80,13 @@ ParsedChunk parseOpenAiChunk(String data) {
   if (choices.isNotEmpty) {
     final choice = choices.first as Map<String, dynamic>;
     finish = choice['finish_reason'] as String?;
-    final delta = (choice['delta'] as Map?)?.cast<String, dynamic>() ??
+    final delta =
+        (choice['delta'] as Map?)?.cast<String, dynamic>() ??
         (choice['message'] as Map?)?.cast<String, dynamic>() ??
         const {};
     text = (delta['content'] as String?) ?? '';
-    reasoning = (delta['reasoning_content'] as String?) ??
+    reasoning =
+        (delta['reasoning_content'] as String?) ??
         (delta['reasoning'] as String?) ??
         '';
     final calls = (delta['tool_calls'] as List?) ?? const [];

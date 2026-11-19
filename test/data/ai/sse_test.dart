@@ -4,10 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('SSE decoder handles split packets and multi-line data', () {
     final decoder = SseDecoder();
-    expect(
-      decoder.add('data: {"choices":[{"delta":{"content":"你'),
-      isEmpty,
-    );
+    expect(decoder.add('data: {"choices":[{"delta":{"content":"你'), isEmpty);
     final frames = decoder.add('好"}}]}\n\ndata: [DONE]\n\n');
     expect(frames, hasLength(2));
     expect(frames.first.data, contains('你好'));

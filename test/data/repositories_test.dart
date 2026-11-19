@@ -3,7 +3,6 @@ import 'package:diandian/data/mappers.dart';
 import 'package:diandian/data/repositories/content_repositories.dart';
 import 'package:diandian/data/repositories/project_repositories.dart';
 import 'package:diandian/domain/models.dart';
-import 'package:diandian/domain/repositories.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,8 +26,12 @@ void main() {
   tearDown(() async => db.close());
 
   test('milestone progress drives project status', () async {
-    final project = await projects.create(const ProjectDraft(title: '重写点点', goal: '三端可用'));
-    final a = await milestones.create(MilestoneDraft(projectId: project.id, title: '数据层'));
+    final project = await projects.create(
+      const ProjectDraft(title: '重写点点', goal: '三端可用'),
+    );
+    final a = await milestones.create(
+      MilestoneDraft(projectId: project.id, title: '数据层'),
+    );
     await milestones.create(MilestoneDraft(projectId: project.id, title: 'UI'));
 
     var current = await projects.getById(project.id);

@@ -23,8 +23,10 @@ enum InsightKind {
   final String dbValue;
   final String label;
 
-  static InsightKind fromDb(String value) =>
-      values.firstWhere((e) => e.dbValue == value, orElse: () => projectAnalysis);
+  static InsightKind fromDb(String value) => values.firstWhere(
+    (e) => e.dbValue == value,
+    orElse: () => projectAnalysis,
+  );
 }
 
 enum KnowledgeSource {
@@ -109,20 +111,20 @@ class Project extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        description,
-        goal,
-        status,
-        progress,
-        color,
-        startDate,
-        dueDate,
-        completedAt,
-        sortOrder,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    title,
+    description,
+    goal,
+    status,
+    progress,
+    color,
+    startDate,
+    dueDate,
+    completedAt,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  ];
 }
 
 class ProjectDraft {
@@ -170,17 +172,17 @@ class Milestone extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        projectId,
-        title,
-        description,
-        dueDate,
-        isCompleted,
-        completedAt,
-        sortOrder,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    projectId,
+    title,
+    description,
+    dueDate,
+    isCompleted,
+    completedAt,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  ];
 }
 
 class MilestoneDraft {
@@ -229,17 +231,17 @@ class ProjectLog extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        projectId,
-        logDate,
-        progressText,
-        problemText,
-        planText,
-        rawInput,
-        milestoneId,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    projectId,
+    logDate,
+    progressText,
+    problemText,
+    planText,
+    rawInput,
+    milestoneId,
+    createdAt,
+    updatedAt,
+  ];
 }
 
 class LogDraft {
@@ -299,23 +301,28 @@ class AiInsight extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        kind,
-        title,
-        content,
-        projectId,
-        model,
-        promptVersion,
-        periodStart,
-        periodEnd,
-        sourceRefs,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    kind,
+    title,
+    content,
+    projectId,
+    model,
+    promptVersion,
+    periodStart,
+    periodEnd,
+    sourceRefs,
+    createdAt,
+    updatedAt,
+  ];
 }
 
 class Tag extends Equatable {
-  const Tag({required this.id, required this.name, this.color, required this.createdAt});
+  const Tag({
+    required this.id,
+    required this.name,
+    this.color,
+    required this.createdAt,
+  });
   final String id;
   final String name;
   final String? color;
@@ -358,19 +365,19 @@ class KnowledgeEntry extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        content,
-        sourceType,
-        sourceId,
-        viewCount,
-        lastViewedAt,
-        createdAt,
-        updatedAt,
-        tags,
-        projectIds,
-        isFavorite,
-      ];
+    id,
+    title,
+    content,
+    sourceType,
+    sourceId,
+    viewCount,
+    lastViewedAt,
+    createdAt,
+    updatedAt,
+    tags,
+    projectIds,
+    isFavorite,
+  ];
 }
 
 class KnowledgeDraft {
@@ -411,8 +418,15 @@ class ChatConversation extends Equatable {
   final int? archivedAt;
 
   @override
-  List<Object?> get props =>
-      [id, title, scopeType, scopeId, createdAt, updatedAt, archivedAt];
+  List<Object?> get props => [
+    id,
+    title,
+    scopeType,
+    scopeId,
+    createdAt,
+    updatedAt,
+    archivedAt,
+  ];
 }
 
 class ChatMessage extends Equatable {
@@ -440,16 +454,16 @@ class ChatMessage extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        conversationId,
-        role,
-        content,
-        reasoningContent,
-        toolCallsJson,
-        toolCallId,
-        tokenUsageJson,
-        createdAt,
-      ];
+    id,
+    conversationId,
+    role,
+    content,
+    reasoningContent,
+    toolCallsJson,
+    toolCallId,
+    tokenUsageJson,
+    createdAt,
+  ];
 }
 
 class AiConfig extends Equatable {
@@ -516,20 +530,20 @@ class AiConfig extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        providerKey,
-        baseUrl,
-        model,
-        temperature,
-        maxTokens,
-        timeoutSeconds,
-        isActive,
-        supportsTools,
-        supportsStream,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    name,
+    providerKey,
+    baseUrl,
+    model,
+    temperature,
+    maxTokens,
+    timeoutSeconds,
+    isActive,
+    supportsTools,
+    supportsStream,
+    createdAt,
+    updatedAt,
+  ];
 }
 
 class AiToolCall extends Equatable {
@@ -561,18 +575,18 @@ class AiToolCall extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        toolName,
-        argumentsJson,
-        conversationId,
-        messageId,
-        resultSummary,
-        status,
-        error,
-        durationMs,
-        createdAt,
-        confirmedAt,
-      ];
+    id,
+    toolName,
+    argumentsJson,
+    conversationId,
+    messageId,
+    resultSummary,
+    status,
+    error,
+    durationMs,
+    createdAt,
+    confirmedAt,
+  ];
 }
 
 class ProjectDetail {

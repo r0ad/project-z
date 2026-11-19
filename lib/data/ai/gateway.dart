@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 
 import '../../domain/models.dart' hide AiToolCall;
 import 'sse.dart';
@@ -23,13 +25,52 @@ abstract interface class AiGateway {
     List<AiToolDefinition>? tools,
   });
 
-  Future<void> testConnection({required AiConfig config, required String apiKey});
+  Future<void> testConnection({
+    required AiConfig config,
+    required String apiKey,
+  });
 }
 
 class OpenAiCompatibleGateway implements AiGateway {
-  OpenAiCompatibleGateway({Dio? dio}) : _dio = dio ?? Dio();
+  OpenAiCompatibleGateway({Dio? dio, String? proxy})
+    : _customDio = dio != null,
+      _proxy = _normalizeProxy(proxy),
+      _dio = dio ?? _buildDio(_normalizeProxy(proxy));
 
-  final Dio _dio;
+  final bool _customDio;
+  String? _proxy;
+  Dio _dio;
+
+  /// 支持 `host:port` 或 `http://host:port`，空字符串表示直连。
+  /// 进入设置页修改后由 [AiService] 在每次请求前刷新；地址未变时复用连接池。
+  void setProxy(String? proxy) {
+    if (_customDio) return;
+    final next = _normalizeProxy(proxy);
+    if (next == _proxy) return;
+    _proxy = next;
+    _dio = _buildDio(next);
+  }
+
+  static Dio _buildDio(String? proxy) {
+    final address = _normalizeProxy(proxy);
+    if (address == null) return Dio();
+    return Dio()
+      ..httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
+          client.findProxy = (_) => 'PROXY $address';
+          return client;
+        },
+      );
+  }
+
+  static String? _normalizeProxy(String? raw) {
+    var value = raw?.trim() ?? '';
+    if (value.isEmpty) return null;
+    value = value.replaceFirst(RegExp(r'^[a-zA-Z]+://'), '');
+    value = value.replaceAll(RegExp(r'/+$'), '');
+    return value.isEmpty ? null : value;
+  }
 
   Uri _endpoint(AiConfig config) {
     var base = config.baseUrl.trim();
@@ -60,7 +101,8 @@ class OpenAiCompatibleGateway implements AiGateway {
     };
   }
 
-  Options _options(AiConfig config, String apiKey, {bool stream = false}) => Options(
+  Options _options(AiConfig config, String apiKey, {bool stream = false}) =>
+      Options(
         responseType: stream ? ResponseType.stream : ResponseType.json,
         validateStatus: (_) => true,
         headers: {
@@ -95,21 +137,22 @@ class OpenAiCompatibleGateway implements AiGateway {
       final data = response.data is String
           ? jsonDecode(response.data as String) as Map<String, dynamic>
           : (response.data as Map).cast<String, dynamic>();
-      final choice = ((data['choices'] as List?)?.firstOrNull as Map?)
+      final choice =
+          ((data['choices'] as List?)?.firstOrNull as Map?)
               ?.cast<String, dynamic>() ??
           const {};
-      final message = (choice['message'] as Map?)?.cast<String, dynamic>() ?? const {};
-      final calls = ((message['tool_calls'] as List?) ?? const [])
-          .map((raw) {
-            final call = (raw as Map).cast<String, dynamic>();
-            final fn = (call['function'] as Map?)?.cast<String, dynamic>() ?? const {};
-            return AiToolCall(
-              id: (call['id'] as String?) ?? '',
-              name: (fn['name'] as String?) ?? '',
-              arguments: (fn['arguments'] as String?) ?? '{}',
-            );
-          })
-          .toList();
+      final message =
+          (choice['message'] as Map?)?.cast<String, dynamic>() ?? const {};
+      final calls = ((message['tool_calls'] as List?) ?? const []).map((raw) {
+        final call = (raw as Map).cast<String, dynamic>();
+        final fn =
+            (call['function'] as Map?)?.cast<String, dynamic>() ?? const {};
+        return AiToolCall(
+          id: (call['id'] as String?) ?? '',
+          name: (fn['name'] as String?) ?? '',
+          arguments: (fn['arguments'] as String?) ?? '{}',
+        );
+      }).toList();
       final rawUsage = data['usage'];
       return AiCompletion(
         content: (message['content'] as String?) ?? '',
@@ -119,7 +162,8 @@ class OpenAiCompatibleGateway implements AiGateway {
         usage: rawUsage is Map
             ? AiUsage(
                 promptTokens: (rawUsage['prompt_tokens'] as num?)?.toInt() ?? 0,
-                completionTokens: (rawUsage['completion_tokens'] as num?)?.toInt() ?? 0,
+                completionTokens:
+                    (rawUsage['completion_tokens'] as num?)?.toInt() ?? 0,
                 totalTokens: (rawUsage['total_tokens'] as num?)?.toInt() ?? 0,
               )
             : null,
@@ -157,8 +201,9 @@ class OpenAiCompatibleGateway implements AiGateway {
         throw _mapError(response.statusCode, text);
       }
       final decoder = SseDecoder();
-      await for (final text
-          in body.stream.cast<List<int>>().transform(utf8.decoder)) {
+      await for (final text in body.stream.cast<List<int>>().transform(
+        utf8.decoder,
+      )) {
         for (final frame in decoder.add(text)) {
           if (frame.data.trim() == '[DONE]') {
             finished = true;
@@ -167,7 +212,9 @@ class OpenAiCompatibleGateway implements AiGateway {
           }
           try {
             final parsed = parseOpenAiChunk(frame.data);
-            if (parsed.reasoning.isNotEmpty) yield AiReasoningDelta(parsed.reasoning);
+            if (parsed.reasoning.isNotEmpty) {
+              yield AiReasoningDelta(parsed.reasoning);
+            }
             if (parsed.text.isNotEmpty) yield AiTextDelta(parsed.text);
             for (final tool in parsed.toolDeltas) {
               yield AiToolDelta(
@@ -209,7 +256,10 @@ class OpenAiCompatibleGateway implements AiGateway {
   }
 
   @override
-  Future<void> testConnection({required AiConfig config, required String apiKey}) async {
+  Future<void> testConnection({
+    required AiConfig config,
+    required String apiKey,
+  }) async {
     await complete(
       config: config,
       apiKey: apiKey,
@@ -247,16 +297,18 @@ class OpenAiCompatibleGateway implements AiGateway {
       }
     } catch (_) {}
     if (message.length > 400) message = message.substring(0, 400);
-    return AiException(message.isEmpty ? 'HTTP $status' : message,
-        statusCode: status, kind: kind);
+    return AiException(
+      message.isEmpty ? 'HTTP $status' : message,
+      statusCode: status,
+      kind: kind,
+    );
   }
 
   AiException _fromDio(DioException e) {
     final kind = switch (e.type) {
       DioExceptionType.connectionTimeout ||
       DioExceptionType.receiveTimeout ||
-      DioExceptionType.sendTimeout =>
-        AiErrorKind.timeout,
+      DioExceptionType.sendTimeout => AiErrorKind.timeout,
       DioExceptionType.connectionError => AiErrorKind.network,
       DioExceptionType.badResponse => AiErrorKind.server,
       DioExceptionType.cancel => AiErrorKind.cancelled,

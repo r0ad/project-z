@@ -13,7 +13,9 @@ class DriftProjectRepository implements ProjectRepository {
   final AppDatabase _db;
 
   @override
-  Future<List<Project>> list({ProjectFilter filter = const ProjectFilter()}) async {
+  Future<List<Project>> list({
+    ProjectFilter filter = const ProjectFilter(),
+  }) async {
     final q = _db.select(_db.projects);
     if (filter.status != null) {
       q.where((t) => t.status.equals(filter.status!.dbValue));
@@ -21,7 +23,10 @@ class DriftProjectRepository implements ProjectRepository {
     final keyword = filter.query.trim();
     if (keyword.isNotEmpty) {
       final like = '%$keyword%';
-      q.where((t) => t.title.like(like) | t.description.like(like) | t.goal.like(like));
+      q.where(
+        (t) =>
+            t.title.like(like) | t.description.like(like) | t.goal.like(like),
+      );
     }
     q.orderBy([
       (t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc),
@@ -31,8 +36,9 @@ class DriftProjectRepository implements ProjectRepository {
 
   @override
   Future<Project?> getById(String id) async {
-    final row =
-        await (_db.select(_db.projects)..where((t) => t.id.equals(id))).getSingleOrNull();
+    final row = await (_db.select(
+      _db.projects,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     return row == null ? null : projectFromRow(row);
   }
 
@@ -40,20 +46,33 @@ class DriftProjectRepository implements ProjectRepository {
   Future<ProjectDetail?> detail(String id) async {
     final project = await getById(id);
     if (project == null) return null;
-    final milestones = await (_db.select(_db.milestones)
-          ..where((t) => t.projectId.equals(id))
-          ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
-        .get();
-    final logs = await (_db.select(_db.projectLogs)
-          ..where((t) => t.projectId.equals(id))
-          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)])
-          ..limit(20))
-        .get();
-    final insights = await (_db.select(_db.aiInsights)
-          ..where((t) => t.projectId.equals(id))
-          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)])
-          ..limit(10))
-        .get();
+    final milestones =
+        await (_db.select(_db.milestones)
+              ..where((t) => t.projectId.equals(id))
+              ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
+            .get();
+    final logs =
+        await (_db.select(_db.projectLogs)
+              ..where((t) => t.projectId.equals(id))
+              ..orderBy([
+                (t) => OrderingTerm(
+                  expression: t.createdAt,
+                  mode: OrderingMode.desc,
+                ),
+              ])
+              ..limit(20))
+            .get();
+    final insights =
+        await (_db.select(_db.aiInsights)
+              ..where((t) => t.projectId.equals(id))
+              ..orderBy([
+                (t) => OrderingTerm(
+                  expression: t.createdAt,
+                  mode: OrderingMode.desc,
+                ),
+              ])
+              ..limit(10))
+            .get();
     return ProjectDetail(
       project: project,
       milestones: milestones.map(milestoneFromRow).toList(),
@@ -83,9 +102,8 @@ class DriftProjectRepository implements ProjectRepository {
 
   @override
   Future<void> updateProject(Project project) async {
-    await (_db.update(_db.projects)..where((t) => t.id.equals(project.id))).write(
-      projectToCompanion(project.copyWithUpdated(nowMillis())),
-    );
+    await (_db.update(_db.projects)..where((t) => t.id.equals(project.id)))
+        .write(projectToCompanion(project.copyWithUpdated(nowMillis())));
   }
 
   @override
@@ -103,11 +121,13 @@ class DriftProjectRepository implements ProjectRepository {
   @override
   Future<void> delete(String id) async {
     await _db.transaction(() async {
-      await (_db.delete(_db.favorites)
-            ..where((t) => t.targetType.equals('project') & t.targetId.equals(id)))
+      await (_db.delete(_db.favorites)..where(
+            (t) => t.targetType.equals('project') & t.targetId.equals(id),
+          ))
           .go();
-      await (_db.delete(_db.chatConversations)
-            ..where((t) => t.scopeType.equals('project') & t.scopeId.equals(id)))
+      await (_db.delete(
+            _db.chatConversations,
+          )..where((t) => t.scopeType.equals('project') & t.scopeId.equals(id)))
           .go();
       await (_db.delete(_db.projects)..where((t) => t.id.equals(id))).go();
     });
@@ -116,20 +136,20 @@ class DriftProjectRepository implements ProjectRepository {
 
 extension on Project {
   Project copyWithUpdated(int updatedAt) => Project(
-        id: id,
-        title: title,
-        description: description,
-        goal: goal,
-        status: status,
-        progress: progress,
-        color: color,
-        startDate: startDate,
-        dueDate: dueDate,
-        completedAt: completedAt,
-        sortOrder: sortOrder,
-        createdAt: createdAt,
-        updatedAt: updatedAt,
-      );
+    id: id,
+    title: title,
+    description: description,
+    goal: goal,
+    status: status,
+    progress: progress,
+    color: color,
+    startDate: startDate,
+    dueDate: dueDate,
+    completedAt: completedAt,
+    sortOrder: sortOrder,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+  );
 }
 
 class DriftMilestoneRepository implements MilestoneRepository {
@@ -138,10 +158,11 @@ class DriftMilestoneRepository implements MilestoneRepository {
 
   @override
   Future<List<Milestone>> listByProject(String projectId) async {
-    final rows = await (_db.select(_db.milestones)
-          ..where((t) => t.projectId.equals(projectId))
-          ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
-        .get();
+    final rows =
+        await (_db.select(_db.milestones)
+              ..where((t) => t.projectId.equals(projectId))
+              ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
+            .get();
     return rows.map(milestoneFromRow).toList();
   }
 
@@ -160,7 +181,9 @@ class DriftMilestoneRepository implements MilestoneRepository {
       updatedAt: now,
     );
     await _db.transaction(() async {
-      await _db.into(_db.milestones).insert(
+      await _db
+          .into(_db.milestones)
+          .insert(
             MilestonesCompanion.insert(
               id: milestone.id,
               projectId: milestone.projectId,
@@ -189,7 +212,9 @@ class DriftMilestoneRepository implements MilestoneRepository {
   @override
   Future<void> updateMilestone(Milestone milestone) async {
     await _db.transaction(() async {
-      await (_db.update(_db.milestones)..where((t) => t.id.equals(milestone.id))).write(
+      await (_db.update(
+        _db.milestones,
+      )..where((t) => t.id.equals(milestone.id))).write(
         MilestonesCompanion(
           title: Value(milestone.title),
           description: Value(milestone.description),
@@ -207,8 +232,9 @@ class DriftMilestoneRepository implements MilestoneRepository {
   @override
   Future<void> toggle(String id, bool completed) async {
     await _db.transaction(() async {
-      final row =
-          await (_db.select(_db.milestones)..where((t) => t.id.equals(id))).getSingleOrNull();
+      final row = await (_db.select(
+        _db.milestones,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
       if (row == null) return;
       final now = nowMillis();
       await (_db.update(_db.milestones)..where((t) => t.id.equals(id))).write(
@@ -225,8 +251,9 @@ class DriftMilestoneRepository implements MilestoneRepository {
   @override
   Future<void> delete(String id) async {
     await _db.transaction(() async {
-      final row =
-          await (_db.select(_db.milestones)..where((t) => t.id.equals(id))).getSingleOrNull();
+      final row = await (_db.select(
+        _db.milestones,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
       if (row == null) return;
       await (_db.delete(_db.milestones)..where((t) => t.id.equals(id))).go();
       await _recompute(row.projectId);
@@ -237,40 +264,51 @@ class DriftMilestoneRepository implements MilestoneRepository {
   Future<void> reorder(String projectId, List<String> orderedIds) async {
     await _db.transaction(() async {
       for (var i = 0; i < orderedIds.length; i++) {
-        await (_db.update(_db.milestones)
-              ..where((t) => t.id.equals(orderedIds[i]) & t.projectId.equals(projectId)))
-            .write(MilestonesCompanion(sortOrder: Value(i), updatedAt: Value(nowMillis())));
+        await (_db.update(_db.milestones)..where(
+              (t) => t.id.equals(orderedIds[i]) & t.projectId.equals(projectId),
+            ))
+            .write(
+              MilestonesCompanion(
+                sortOrder: Value(i),
+                updatedAt: Value(nowMillis()),
+              ),
+            );
       }
     });
   }
 
   Future<void> _recompute(String projectId) async {
-    final rows =
-        await (_db.select(_db.milestones)..where((t) => t.projectId.equals(projectId))).get();
+    final rows = await (_db.select(
+      _db.milestones,
+    )..where((t) => t.projectId.equals(projectId))).get();
     final total = rows.length;
     final done = rows.where((r) => r.isCompleted).length;
     final progress = total == 0 ? 0 : ((done / total) * 100).round();
     final allDone = total > 0 && done == total;
-    final project = await (_db.select(_db.projects)..where((t) => t.id.equals(projectId)))
-        .getSingleOrNull();
+    final project = await (_db.select(
+      _db.projects,
+    )..where((t) => t.id.equals(projectId))).getSingleOrNull();
     if (project == null) return;
     final now = nowMillis();
-    final shouldComplete = allDone && project.status != ProjectStatus.completed.dbValue;
+    final shouldComplete =
+        allDone && project.status != ProjectStatus.completed.dbValue;
     final shouldReactivate =
         !allDone && project.status == ProjectStatus.completed.dbValue;
-    await (_db.update(_db.projects)..where((t) => t.id.equals(projectId))).write(
+    await (_db.update(
+      _db.projects,
+    )..where((t) => t.id.equals(projectId))).write(
       ProjectsCompanion(
         progress: Value(progress),
         status: shouldComplete
             ? const Value('completed')
             : shouldReactivate
-                ? const Value('active')
-                : const Value.absent(),
+            ? const Value('active')
+            : const Value.absent(),
         completedAt: shouldComplete
             ? Value(now)
             : shouldReactivate
-                ? const Value(null)
-                : const Value.absent(),
+            ? const Value(null)
+            : const Value.absent(),
         updatedAt: Value(now),
       ),
     );
@@ -282,15 +320,25 @@ class DriftLogRepository implements LogRepository {
   final AppDatabase _db;
 
   @override
-  Future<List<ProjectLog>> listByProject(String projectId, {int limit = 100}) async {
-    final rows = await (_db.select(_db.projectLogs)
-          ..where((t) => t.projectId.equals(projectId))
-          ..orderBy([
-            (t) => OrderingTerm(expression: t.logDate, mode: OrderingMode.desc),
-            (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
-          ])
-          ..limit(limit))
-        .get();
+  Future<List<ProjectLog>> listByProject(
+    String projectId, {
+    int limit = 100,
+  }) async {
+    final rows =
+        await (_db.select(_db.projectLogs)
+              ..where((t) => t.projectId.equals(projectId))
+              ..orderBy([
+                (t) => OrderingTerm(
+                  expression: t.logDate,
+                  mode: OrderingMode.desc,
+                ),
+                (t) => OrderingTerm(
+                  expression: t.createdAt,
+                  mode: OrderingMode.desc,
+                ),
+              ])
+              ..limit(limit))
+            .get();
     return rows.map(logFromRow).toList();
   }
 
@@ -322,7 +370,9 @@ class DriftLogRepository implements LogRepository {
       createdAt: now,
       updatedAt: now,
     );
-    await _db.into(_db.projectLogs).insert(
+    await _db
+        .into(_db.projectLogs)
+        .insert(
           ProjectLogsCompanion.insert(
             id: log.id,
             projectId: log.projectId,
@@ -343,7 +393,9 @@ class DriftLogRepository implements LogRepository {
 
   @override
   Future<void> updateLog(ProjectLog log) async {
-    await (_db.update(_db.projectLogs)..where((t) => t.id.equals(log.id))).write(
+    await (_db.update(
+      _db.projectLogs,
+    )..where((t) => t.id.equals(log.id))).write(
       ProjectLogsCompanion(
         logDate: Value(log.logDate),
         progressText: Value(log.progressText),
@@ -366,17 +418,19 @@ class DriftLogRepository implements LogRepository {
     final match = _toMatch(query);
     if (match.isEmpty) return const [];
     final projectFilter = projectId == null ? '' : 'AND l.project_id = ?';
-    final rows = await _db.customSelect(
-      'SELECT l.*, p.title AS project_title FROM project_logs_fts f '
-      'JOIN project_logs l ON l.id = f.log_id '
-      'JOIN projects p ON p.id = l.project_id '
-      'WHERE project_logs_fts MATCH ? $projectFilter '
-      'ORDER BY rank LIMIT 50',
-      variables: [
-        Variable.withString(match),
-        if (projectId != null) Variable.withString(projectId),
-      ],
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT l.*, p.title AS project_title FROM project_logs_fts f '
+          'JOIN project_logs l ON l.id = f.log_id '
+          'JOIN projects p ON p.id = l.project_id '
+          'WHERE project_logs_fts MATCH ? $projectFilter '
+          'ORDER BY rank LIMIT 50',
+          variables: [
+            Variable.withString(match),
+            if (projectId != null) Variable.withString(projectId),
+          ],
+        )
+        .get();
     return rows.map((r) {
       final log = ProjectLog(
         id: r.read<String>('id'),
@@ -390,7 +444,10 @@ class DriftLogRepository implements LogRepository {
         createdAt: r.read<int>('created_at'),
         updatedAt: r.read<int>('updated_at'),
       );
-      return LogSearchHit(log: log, projectTitle: r.read<String>('project_title'));
+      return LogSearchHit(
+        log: log,
+        projectTitle: r.read<String>('project_title'),
+      );
     }).toList();
   }
 
@@ -412,25 +469,39 @@ class DriftInsightRepository implements InsightRepository {
 
   @override
   Future<List<AiInsight>> listByProject(String projectId) async {
-    final rows = await (_db.select(_db.aiInsights)
-          ..where((t) => t.projectId.equals(projectId))
-          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)]))
-        .get();
+    final rows =
+        await (_db.select(_db.aiInsights)
+              ..where((t) => t.projectId.equals(projectId))
+              ..orderBy([
+                (t) => OrderingTerm(
+                  expression: t.createdAt,
+                  mode: OrderingMode.desc,
+                ),
+              ]))
+            .get();
     return rows.map(insightFromRow).toList();
   }
 
   @override
   Future<List<AiInsight>> listWeekly() async {
-    final rows = await (_db.select(_db.aiInsights)
-          ..where((t) => t.kind.equals(InsightKind.weeklyReview.dbValue))
-          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)]))
-        .get();
+    final rows =
+        await (_db.select(_db.aiInsights)
+              ..where((t) => t.kind.equals(InsightKind.weeklyReview.dbValue))
+              ..orderBy([
+                (t) => OrderingTerm(
+                  expression: t.createdAt,
+                  mode: OrderingMode.desc,
+                ),
+              ]))
+            .get();
     return rows.map(insightFromRow).toList();
   }
 
   @override
   Future<AiInsight> save(AiInsight insight) async {
-    await _db.into(_db.aiInsights).insertOnConflictUpdate(
+    await _db
+        .into(_db.aiInsights)
+        .insertOnConflictUpdate(
           AiInsightsCompanion.insert(
             id: insight.id,
             projectId: Value(insight.projectId),
@@ -462,9 +533,15 @@ class DriftStatsRepository implements StatsRepository {
   @override
   Future<WeeklyStats> weekly({DateTime? now}) async {
     final current = now ?? DateTime.now();
-    final monday = DateTime(current.year, current.month, current.day)
-        .subtract(Duration(days: current.weekday - 1));
-    final days = List.generate(7, (i) => dateKey(monday.add(Duration(days: i))));
+    final monday = DateTime(
+      current.year,
+      current.month,
+      current.day,
+    ).subtract(Duration(days: current.weekday - 1));
+    final days = List.generate(
+      7,
+      (i) => dateKey(monday.add(Duration(days: i))),
+    );
     final counts = <int>[];
     for (final day in days) {
       final count = _db.projectLogs.id.count();
@@ -480,7 +557,8 @@ class DriftStatsRepository implements StatsRepository {
     final total = _db.projects.id.count();
     final totalQuery = _db.selectOnly(_db.projects)..addColumns([total]);
     final knowledge = _db.knowledgeEntries.id.count();
-    final knowledgeQuery = _db.selectOnly(_db.knowledgeEntries)..addColumns([knowledge]);
+    final knowledgeQuery = _db.selectOnly(_db.knowledgeEntries)
+      ..addColumns([knowledge]);
     final milestones = _db.milestones.id.count();
     final milestoneQuery = _db.selectOnly(_db.milestones)
       ..addColumns([milestones])
@@ -489,7 +567,8 @@ class DriftStatsRepository implements StatsRepository {
       weekStart: days.first,
       logCounts: counts,
       activeProjects: (await activeQuery.getSingle()).read(active) ?? 0,
-      completedMilestones: (await milestoneQuery.getSingle()).read(milestones) ?? 0,
+      completedMilestones:
+          (await milestoneQuery.getSingle()).read(milestones) ?? 0,
       totalProjects: (await totalQuery.getSingle()).read(total) ?? 0,
       totalKnowledge: (await knowledgeQuery.getSingle()).read(knowledge) ?? 0,
     );

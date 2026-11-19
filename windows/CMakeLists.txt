@@ -45,6 +45,39 @@ function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
 endfunction()
 
+# flutter_secure_storage_windows 需要 ATL（atlstr.h）。Visual Studio 的 ATL
+# 默认不在 Flutter 生成的 CMake include 路径里，这里按 MSVC 工具链位置推导。
+if(MSVC)
+  set(_atl_include "")
+  find_program(VSWHERE_EXECUTABLE vswhere
+    HINTS "C:/Program Files (x86)/Microsoft Visual Studio/Installer"
+          "$ENV{ProgramW6432}/Microsoft Visual Studio/Installer")
+  if(VSWHERE_EXECUTABLE)
+    execute_process(
+      COMMAND "${VSWHERE_EXECUTABLE}" -latest -products * -property installationPath
+      OUTPUT_VARIABLE _vs_install
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(_vs_install)
+      file(GLOB _atl_headers "${_vs_install}/VC/Tools/MSVC/*/atlmfc/include/atlstr.h")
+      if(_atl_headers)
+        list(GET _atl_headers 0 _atl_header)
+        get_filename_component(_atl_include "${_atl_header}" DIRECTORY)
+      endif()
+    endif()
+  endif()
+  if(_atl_include)
+    message(STATUS "ATL include: ${_atl_include}")
+    include_directories(SYSTEM "${_atl_include}")
+    add_compile_options("/I\"${_atl_include}\"")
+    get_filename_component(_atl_lib "${_atl_include}/../lib/x64" ABSOLUTE)
+    if(EXISTS "${_atl_lib}/atls.lib")
+      link_directories("${_atl_lib}")
+    endif()
+  else()
+    message(WARNING "ATL headers not found; flutter_secure_storage_windows may fail to build")
+  endif()
+endif()
+
 # Flutter library and tool build rules.
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
@@ -65,8 +98,8 @@ include(flutter/generated_plugins.cmake)
 set(BUILD_BUNDLE_DIR "$<TARGET_FILE_DIR:${BINARY_NAME}>")
 # Make the "install" step default, as it's required to run.
 set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD 1)
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
+if(TRUE)
+  set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/runner/\${BUILD_TYPE}" CACHE PATH "..." FORCE)
 endif()
 
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")

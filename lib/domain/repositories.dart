@@ -44,8 +44,11 @@ abstract interface class KnowledgeRepository {
   });
   Future<KnowledgeEntry?> getById(String id);
   Future<KnowledgeEntry> create(KnowledgeDraft draft);
-  Future<KnowledgeEntry> updateEntry(KnowledgeEntry entry,
-      {List<String>? tagNames, List<String>? projectIds});
+  Future<KnowledgeEntry> updateEntry(
+    KnowledgeEntry entry, {
+    List<String>? tagNames,
+    List<String>? projectIds,
+  });
   Future<void> delete(String id);
   Future<List<Tag>> allTags();
   Future<void> toggleFavorite(String knowledgeId);
@@ -54,7 +57,10 @@ abstract interface class KnowledgeRepository {
 }
 
 abstract interface class ChatRepository {
-  Future<List<ChatConversation>> conversations({String? scopeType, String? scopeId});
+  Future<List<ChatConversation>> conversations({
+    String? scopeType,
+    String? scopeId,
+  });
   Future<ChatConversation> createConversation({
     String title = '新对话',
     String scopeType = 'global',

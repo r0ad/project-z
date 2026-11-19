@@ -30,7 +30,8 @@ class Projects extends Table {
 @DataClassName('MilestoneRow')
 class Milestones extends Table {
   TextColumn get id => text()();
-  TextColumn get projectId => text().references(Projects, #id, onDelete: KeyAction.cascade)();
+  TextColumn get projectId =>
+      text().references(Projects, #id, onDelete: KeyAction.cascade)();
   TextColumn get title => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
   TextColumn get dueDate => text().nullable()();
@@ -47,14 +48,18 @@ class Milestones extends Table {
 @DataClassName('ProjectLogRow')
 class ProjectLogs extends Table {
   TextColumn get id => text()();
-  TextColumn get projectId => text().references(Projects, #id, onDelete: KeyAction.cascade)();
+  TextColumn get projectId =>
+      text().references(Projects, #id, onDelete: KeyAction.cascade)();
   TextColumn get logDate => text()();
   TextColumn get progressText => text().withDefault(const Constant(''))();
   TextColumn get problemText => text().withDefault(const Constant(''))();
   TextColumn get planText => text().withDefault(const Constant(''))();
   TextColumn get rawInput => text().nullable()();
-  TextColumn get milestoneId =>
-      text().nullable().references(Milestones, #id, onDelete: KeyAction.setNull)();
+  TextColumn get milestoneId => text().nullable().references(
+    Milestones,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 
@@ -65,9 +70,13 @@ class ProjectLogs extends Table {
 @DataClassName('AiInsightRow')
 class AiInsights extends Table {
   TextColumn get id => text()();
-  TextColumn get projectId =>
-      text().nullable().references(Projects, #id, onDelete: KeyAction.cascade)();
-  TextColumn get kind => text().withDefault(const Constant('project_analysis'))();
+  TextColumn get projectId => text().nullable().references(
+    Projects,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  TextColumn get kind =>
+      text().withDefault(const Constant('project_analysis'))();
   TextColumn get title => text()();
   TextColumn get content => text()();
   TextColumn get model => text().nullable()();
@@ -113,7 +122,8 @@ class Tags extends Table {
 class KnowledgeTagLinks extends Table {
   TextColumn get knowledgeId =>
       text().references(KnowledgeEntries, #id, onDelete: KeyAction.cascade)();
-  TextColumn get tagId => text().references(Tags, #id, onDelete: KeyAction.cascade)();
+  TextColumn get tagId =>
+      text().references(Tags, #id, onDelete: KeyAction.cascade)();
 
   @override
   Set<Column> get primaryKey => {knowledgeId, tagId};
@@ -185,7 +195,8 @@ class AiConfigs extends Table {
   IntColumn get timeoutSeconds => integer().withDefault(const Constant(60))();
   BoolColumn get isActive => boolean().withDefault(const Constant(false))();
   BoolColumn get supportsTools => boolean().withDefault(const Constant(true))();
-  BoolColumn get supportsStream => boolean().withDefault(const Constant(true))();
+  BoolColumn get supportsStream =>
+      boolean().withDefault(const Constant(true))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 
@@ -247,15 +258,15 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await _createSearchIndex();
-        },
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON');
-          await customStatement('PRAGMA journal_mode = WAL');
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+      await _createSearchIndex();
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+      await customStatement('PRAGMA journal_mode = WAL');
+    },
+  );
 
   Future<void> _createSearchIndex() async {
     await customStatement(
@@ -334,7 +345,13 @@ class AppDatabase extends _$AppDatabase {
 
 LazyDatabase openAppDatabase() {
   return LazyDatabase(() async {
-    final dir = await getApplicationSupportDirectory();
+    final override = Platform.environment['DIANDIAN_DATA_DIR'];
+    final Directory dir;
+    if (override != null && override.isNotEmpty) {
+      dir = Directory(override)..createSync(recursive: true);
+    } else {
+      dir = await getApplicationSupportDirectory();
+    }
     final file = File(p.join(dir.path, 'diandian.sqlite'));
     return NativeDatabase.createInBackground(file);
   });

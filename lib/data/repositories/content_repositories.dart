@@ -37,7 +37,9 @@ class DriftKnowledgeRepository implements KnowledgeRepository {
       if (ids.isEmpty) return const [];
       q.where((t) => t.id.isIn(ids));
     }
-    q.orderBy([(t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc)]);
+    q.orderBy([
+      (t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc),
+    ]);
     q.limit(limit);
     final rows = await q.get();
     final result = <KnowledgeEntry>[];
@@ -72,39 +74,46 @@ class DriftKnowledgeRepository implements KnowledgeRepository {
   }
 
   Future<List<String>> _taggedIds(String tagId) async {
-    final rows = await (_db.select(_db.knowledgeTagLinks)
-          ..where((t) => t.tagId.equals(tagId)))
-        .get();
+    final rows = await (_db.select(
+      _db.knowledgeTagLinks,
+    )..where((t) => t.tagId.equals(tagId))).get();
     return rows.map((r) => r.knowledgeId).toList();
   }
 
   Future<List<String>> _favoriteIds() async {
-    final rows = await (_db.select(_db.favorites)
-          ..where((t) => t.targetType.equals('knowledge')))
-        .get();
+    final rows = await (_db.select(
+      _db.favorites,
+    )..where((t) => t.targetType.equals('knowledge'))).get();
     return rows.map((r) => r.targetId).toList();
   }
 
   Future<KnowledgeEntry> _withMeta(KnowledgeRow row) async {
-    final tagRows = await _db.customSelect(
-      'SELECT t.* FROM tags t JOIN knowledge_tag_links l ON l.tag_id = t.id '
-      'WHERE l.knowledge_id = ? ORDER BY t.name',
-      variables: [Variable.withString(row.id)],
-    ).get();
-    final projectRows = await (_db.select(_db.projectKnowledgeLinks)
-          ..where((t) => t.knowledgeId.equals(row.id)))
+    final tagRows = await _db
+        .customSelect(
+          'SELECT t.* FROM tags t JOIN knowledge_tag_links l ON l.tag_id = t.id '
+          'WHERE l.knowledge_id = ? ORDER BY t.name',
+          variables: [Variable.withString(row.id)],
+        )
         .get();
-    final favorite = await (_db.select(_db.favorites)
-          ..where((t) => t.targetType.equals('knowledge') & t.targetId.equals(row.id)))
-        .getSingleOrNull();
+    final projectRows = await (_db.select(
+      _db.projectKnowledgeLinks,
+    )..where((t) => t.knowledgeId.equals(row.id))).get();
+    final favorite =
+        await (_db.select(_db.favorites)..where(
+              (t) =>
+                  t.targetType.equals('knowledge') & t.targetId.equals(row.id),
+            ))
+            .getSingleOrNull();
     return knowledgeFromRow(row).copyWithMeta(
       tags: tagRows
-          .map((r) => Tag(
-                id: r.read<String>('id'),
-                name: r.read<String>('name'),
-                color: r.readNullable<String>('color'),
-                createdAt: r.read<int>('created_at'),
-              ))
+          .map(
+            (r) => Tag(
+              id: r.read<String>('id'),
+              name: r.read<String>('name'),
+              color: r.readNullable<String>('color'),
+              createdAt: r.read<int>('created_at'),
+            ),
+          )
           .toList(),
       projectIds: projectRows.map((r) => r.projectId).toList(),
       isFavorite: favorite != null,
@@ -113,8 +122,9 @@ class DriftKnowledgeRepository implements KnowledgeRepository {
 
   @override
   Future<KnowledgeEntry?> getById(String id) async {
-    final row =
-        await (_db.select(_db.knowledgeEntries)..where((t) => t.id.equals(id))).getSingleOrNull();
+    final row = await (_db.select(
+      _db.knowledgeEntries,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     return row == null ? null : _withMeta(row);
   }
 
@@ -123,7 +133,9 @@ class DriftKnowledgeRepository implements KnowledgeRepository {
     final now = nowMillis();
     final id = _uuid.v4();
     await _db.transaction(() async {
-      await _db.into(_db.knowledgeEntries).insert(
+      await _db
+          .into(_db.knowledgeEntries)
+          .insert(
             KnowledgeEntriesCompanion.insert(
               id: id,
               title: draft.title.trim(),
@@ -148,7 +160,9 @@ class DriftKnowledgeRepository implements KnowledgeRepository {
   }) async {
     final now = nowMillis();
     await _db.transaction(() async {
-      await (_db.update(_db.knowledgeEntries)..where((t) => t.id.equals(entry.id))).write(
+      await (_db.update(
+        _db.knowledgeEntries,
+      )..where((t) => t.id.equals(entry.id))).write(
         KnowledgeEntriesCompanion(
           title: Value(entry.title),
           content: Value(entry.content),
@@ -162,34 +176,48 @@ class DriftKnowledgeRepository implements KnowledgeRepository {
   }
 
   Future<void> _replaceTags(String knowledgeId, List<String> names) async {
-    await (_db.delete(_db.knowledgeTagLinks)
-          ..where((t) => t.knowledgeId.equals(knowledgeId)))
-        .go();
-    for (final raw in names.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet()) {
+    await (_db.delete(
+      _db.knowledgeTagLinks,
+    )..where((t) => t.knowledgeId.equals(knowledgeId))).go();
+    for (final raw
+        in names.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet()) {
       final tag = await _ensureTag(raw);
-      await _db.into(_db.knowledgeTagLinks).insertOnConflictUpdate(
-            KnowledgeTagLinksCompanion.insert(knowledgeId: knowledgeId, tagId: tag),
+      await _db
+          .into(_db.knowledgeTagLinks)
+          .insertOnConflictUpdate(
+            KnowledgeTagLinksCompanion.insert(
+              knowledgeId: knowledgeId,
+              tagId: tag,
+            ),
           );
     }
   }
 
   Future<String> _ensureTag(String name) async {
-    final existing =
-        await (_db.select(_db.tags)..where((t) => t.name.equals(name))).getSingleOrNull();
+    final existing = await (_db.select(
+      _db.tags,
+    )..where((t) => t.name.equals(name))).getSingleOrNull();
     if (existing != null) return existing.id;
     final id = _uuid.v4();
-    await _db.into(_db.tags).insert(
+    await _db
+        .into(_db.tags)
+        .insert(
           TagsCompanion.insert(id: id, name: name, createdAt: nowMillis()),
         );
     return id;
   }
 
-  Future<void> _replaceProjects(String knowledgeId, List<String> projectIds) async {
-    await (_db.delete(_db.projectKnowledgeLinks)
-          ..where((t) => t.knowledgeId.equals(knowledgeId)))
-        .go();
+  Future<void> _replaceProjects(
+    String knowledgeId,
+    List<String> projectIds,
+  ) async {
+    await (_db.delete(
+      _db.projectKnowledgeLinks,
+    )..where((t) => t.knowledgeId.equals(knowledgeId))).go();
     for (final projectId in projectIds.toSet()) {
-      await _db.into(_db.projectKnowledgeLinks).insertOnConflictUpdate(
+      await _db
+          .into(_db.projectKnowledgeLinks)
+          .insertOnConflictUpdate(
             ProjectKnowledgeLinksCompanion.insert(
               projectId: projectId,
               knowledgeId: knowledgeId,
@@ -202,30 +230,41 @@ class DriftKnowledgeRepository implements KnowledgeRepository {
   @override
   Future<void> delete(String id) async {
     await _db.transaction(() async {
-      await (_db.delete(_db.favorites)
-            ..where((t) => t.targetType.equals('knowledge') & t.targetId.equals(id)))
+      await (_db.delete(_db.favorites)..where(
+            (t) => t.targetType.equals('knowledge') & t.targetId.equals(id),
+          ))
           .go();
-      await (_db.delete(_db.knowledgeEntries)..where((t) => t.id.equals(id))).go();
+      await (_db.delete(
+        _db.knowledgeEntries,
+      )..where((t) => t.id.equals(id))).go();
     });
   }
 
   @override
   Future<List<Tag>> allTags() async {
-    final rows = await (_db.select(_db.tags)..orderBy([(t) => OrderingTerm(expression: t.name)]))
-        .get();
+    final rows = await (_db.select(
+      _db.tags,
+    )..orderBy([(t) => OrderingTerm(expression: t.name)])).get();
     return rows.map(tagFromRow).toList();
   }
 
   @override
   Future<void> toggleFavorite(String knowledgeId) async {
-    final existing = await (_db.select(_db.favorites)
-          ..where((t) =>
-              t.targetType.equals('knowledge') & t.targetId.equals(knowledgeId)))
-        .getSingleOrNull();
+    final existing =
+        await (_db.select(_db.favorites)..where(
+              (t) =>
+                  t.targetType.equals('knowledge') &
+                  t.targetId.equals(knowledgeId),
+            ))
+            .getSingleOrNull();
     if (existing != null) {
-      await (_db.delete(_db.favorites)..where((t) => t.id.equals(existing.id))).go();
+      await (_db.delete(
+        _db.favorites,
+      )..where((t) => t.id.equals(existing.id))).go();
     } else {
-      await _db.into(_db.favorites).insert(
+      await _db
+          .into(_db.favorites)
+          .insert(
             FavoritesCompanion.insert(
               id: _uuid.v4(),
               targetType: 'knowledge',
@@ -237,23 +276,29 @@ class DriftKnowledgeRepository implements KnowledgeRepository {
   }
 
   @override
-  Future<List<KnowledgeEntry>> related(String knowledgeId, {int limit = 5}) async {
-    final rows = await _db.customSelect(
-      'SELECT DISTINCT l2.knowledge_id FROM knowledge_tag_links l1 '
-      'JOIN knowledge_tag_links l2 ON l2.tag_id = l1.tag_id '
-      'WHERE l1.knowledge_id = ? AND l2.knowledge_id != ? LIMIT ?',
-      variables: [
-        Variable.withString(knowledgeId),
-        Variable.withString(knowledgeId),
-        Variable.withInt(limit),
-      ],
-    ).get();
+  Future<List<KnowledgeEntry>> related(
+    String knowledgeId, {
+    int limit = 5,
+  }) async {
+    final rows = await _db
+        .customSelect(
+          'SELECT DISTINCT l2.knowledge_id FROM knowledge_tag_links l1 '
+          'JOIN knowledge_tag_links l2 ON l2.tag_id = l1.tag_id '
+          'WHERE l1.knowledge_id = ? AND l2.knowledge_id != ? LIMIT ?',
+          variables: [
+            Variable.withString(knowledgeId),
+            Variable.withString(knowledgeId),
+            Variable.withInt(limit),
+          ],
+        )
+        .get();
     final ids = rows.map((r) => r.read<String>('knowledge_id')).toList();
     if (ids.isEmpty) return const [];
-    final entries = await (_db.select(_db.knowledgeEntries)
-          ..where((t) => t.id.isIn(ids))
-          ..limit(limit))
-        .get();
+    final entries =
+        await (_db.select(_db.knowledgeEntries)
+              ..where((t) => t.id.isIn(ids))
+              ..limit(limit))
+            .get();
     return entries.map((r) => knowledgeFromRow(r)).toList();
   }
 
@@ -297,11 +342,16 @@ class DriftChatRepository implements ChatRepository {
   final AppDatabase _db;
 
   @override
-  Future<List<ChatConversation>> conversations({String? scopeType, String? scopeId}) async {
+  Future<List<ChatConversation>> conversations({
+    String? scopeType,
+    String? scopeId,
+  }) async {
     final q = _db.select(_db.chatConversations);
     if (scopeType != null) q.where((t) => t.scopeType.equals(scopeType));
     if (scopeId != null) q.where((t) => t.scopeId.equals(scopeId));
-    q.orderBy([(t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc)]);
+    q.orderBy([
+      (t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc),
+    ]);
     return (await q.get()).map(conversationFromRow).toList();
   }
 
@@ -320,7 +370,9 @@ class DriftChatRepository implements ChatRepository {
       createdAt: now,
       updatedAt: now,
     );
-    await _db.into(_db.chatConversations).insert(
+    await _db
+        .into(_db.chatConversations)
+        .insert(
           ChatConversationsCompanion.insert(
             id: conversation.id,
             title: Value(title),
@@ -335,16 +387,19 @@ class DriftChatRepository implements ChatRepository {
 
   @override
   Future<List<ChatMessage>> messages(String conversationId) async {
-    final rows = await (_db.select(_db.chatMessages)
-          ..where((t) => t.conversationId.equals(conversationId))
-          ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
-        .get();
+    final rows =
+        await (_db.select(_db.chatMessages)
+              ..where((t) => t.conversationId.equals(conversationId))
+              ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
+            .get();
     return rows.map(messageFromRow).toList();
   }
 
   @override
   Future<ChatMessage> appendMessage(ChatMessage message) async {
-    await _db.into(_db.chatMessages).insert(
+    await _db
+        .into(_db.chatMessages)
+        .insert(
           ChatMessagesCompanion.insert(
             id: message.id,
             conversationId: message.conversationId,
@@ -365,14 +420,21 @@ class DriftChatRepository implements ChatRepository {
 
   @override
   Future<void> renameConversation(String id, String title) async {
-    await (_db.update(_db.chatConversations)..where((t) => t.id.equals(id))).write(
-      ChatConversationsCompanion(title: Value(title.trim()), updatedAt: Value(nowMillis())),
+    await (_db.update(
+      _db.chatConversations,
+    )..where((t) => t.id.equals(id))).write(
+      ChatConversationsCompanion(
+        title: Value(title.trim()),
+        updatedAt: Value(nowMillis()),
+      ),
     );
   }
 
   @override
   Future<void> deleteConversation(String id) async {
-    await (_db.delete(_db.chatConversations)..where((t) => t.id.equals(id))).go();
+    await (_db.delete(
+      _db.chatConversations,
+    )..where((t) => t.id.equals(id))).go();
   }
 }
 
@@ -383,18 +445,24 @@ class DriftAiConfigRepository implements AiConfigRepository {
 
   @override
   Future<List<AiConfig>> list() async {
-    final rows = await (_db.select(_db.aiConfigs)
-          ..orderBy([(t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc)]))
-        .get();
+    final rows =
+        await (_db.select(_db.aiConfigs)..orderBy([
+              (t) => OrderingTerm(
+                expression: t.updatedAt,
+                mode: OrderingMode.desc,
+              ),
+            ]))
+            .get();
     return rows.map(configFromRow).toList();
   }
 
   @override
   Future<AiConfig?> active() async {
-    final row = await (_db.select(_db.aiConfigs)
-          ..where((t) => t.isActive.equals(true))
-          ..limit(1))
-        .getSingleOrNull();
+    final row =
+        await (_db.select(_db.aiConfigs)
+              ..where((t) => t.isActive.equals(true))
+              ..limit(1))
+            .getSingleOrNull();
     return row == null ? null : configFromRow(row);
   }
 
@@ -404,9 +472,13 @@ class DriftAiConfigRepository implements AiConfigRepository {
     final saved = config.copyWithWithTimes(now);
     await _db.transaction(() async {
       if (saved.isActive) {
-        await _db.update(_db.aiConfigs).write(const AiConfigsCompanion(isActive: Value(false)));
+        await _db
+            .update(_db.aiConfigs)
+            .write(const AiConfigsCompanion(isActive: Value(false)));
       }
-      await _db.into(_db.aiConfigs).insertOnConflictUpdate(
+      await _db
+          .into(_db.aiConfigs)
+          .insertOnConflictUpdate(
             AiConfigsCompanion.insert(
               id: saved.id,
               name: saved.name,
@@ -433,9 +505,15 @@ class DriftAiConfigRepository implements AiConfigRepository {
   @override
   Future<void> setActive(String id) async {
     await _db.transaction(() async {
-      await _db.update(_db.aiConfigs).write(const AiConfigsCompanion(isActive: Value(false)));
-      await (_db.update(_db.aiConfigs)..where((t) => t.id.equals(id)))
-          .write(AiConfigsCompanion(isActive: const Value(true), updatedAt: Value(nowMillis())));
+      await _db
+          .update(_db.aiConfigs)
+          .write(const AiConfigsCompanion(isActive: Value(false)));
+      await (_db.update(_db.aiConfigs)..where((t) => t.id.equals(id))).write(
+        AiConfigsCompanion(
+          isActive: const Value(true),
+          updatedAt: Value(nowMillis()),
+        ),
+      );
     });
   }
 
@@ -448,25 +526,26 @@ class DriftAiConfigRepository implements AiConfigRepository {
   }
 
   @override
-  Future<String?> readApiKey(String configId) => _secrets.read('ai_key_$configId');
+  Future<String?> readApiKey(String configId) =>
+      _secrets.read('ai_key_$configId');
 }
 
 extension on AiConfig {
   AiConfig copyWithWithTimes(int now) => AiConfig(
-        id: id,
-        name: name,
-        providerKey: providerKey,
-        baseUrl: baseUrl,
-        model: model,
-        temperature: temperature,
-        maxTokens: maxTokens,
-        timeoutSeconds: timeoutSeconds,
-        isActive: isActive,
-        supportsTools: supportsTools,
-        supportsStream: supportsStream,
-        createdAt: createdAt == 0 ? now : createdAt,
-        updatedAt: now,
-      );
+    id: id,
+    name: name,
+    providerKey: providerKey,
+    baseUrl: baseUrl,
+    model: model,
+    temperature: temperature,
+    maxTokens: maxTokens,
+    timeoutSeconds: timeoutSeconds,
+    isActive: isActive,
+    supportsTools: supportsTools,
+    supportsStream: supportsStream,
+    createdAt: createdAt == 0 ? now : createdAt,
+    updatedAt: now,
+  );
 }
 
 class DriftSettingsRepository implements SettingsRepository {
@@ -475,15 +554,22 @@ class DriftSettingsRepository implements SettingsRepository {
 
   @override
   Future<String?> get(String key) async {
-    final row =
-        await (_db.select(_db.settings)..where((t) => t.key.equals(key))).getSingleOrNull();
+    final row = await (_db.select(
+      _db.settings,
+    )..where((t) => t.key.equals(key))).getSingleOrNull();
     return row?.value;
   }
 
   @override
   Future<void> set(String key, String value) async {
-    await _db.into(_db.settings).insertOnConflictUpdate(
-          SettingsCompanion.insert(key: key, value: value, updatedAt: nowMillis()),
+    await _db
+        .into(_db.settings)
+        .insertOnConflictUpdate(
+          SettingsCompanion.insert(
+            key: key,
+            value: value,
+            updatedAt: nowMillis(),
+          ),
         );
   }
 
@@ -503,16 +589,24 @@ class DriftToolAuditRepository implements ToolAuditRepository {
 
   @override
   Future<List<AiToolCall>> recent({int limit = 50}) async {
-    final rows = await (_db.select(_db.aiToolCalls)
-          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)])
-          ..limit(limit))
-        .get();
+    final rows =
+        await (_db.select(_db.aiToolCalls)
+              ..orderBy([
+                (t) => OrderingTerm(
+                  expression: t.createdAt,
+                  mode: OrderingMode.desc,
+                ),
+              ])
+              ..limit(limit))
+            .get();
     return rows.map(toolCallFromRow).toList();
   }
 
   @override
   Future<void> record(AiToolCall call) async {
-    await _db.into(_db.aiToolCalls).insert(
+    await _db
+        .into(_db.aiToolCalls)
+        .insert(
           AiToolCallsCompanion.insert(
             id: call.id,
             conversationId: Value(call.conversationId),
@@ -530,7 +624,11 @@ class DriftToolAuditRepository implements ToolAuditRepository {
   }
 
   @override
-  Future<void> updateStatus(String id, ToolCallStatus status, {String? error}) async {
+  Future<void> updateStatus(
+    String id,
+    ToolCallStatus status, {
+    String? error,
+  }) async {
     await (_db.update(_db.aiToolCalls)..where((t) => t.id.equals(id))).write(
       AiToolCallsCompanion(
         status: Value(status.dbValue),

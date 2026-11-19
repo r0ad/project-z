@@ -8,6 +8,6 @@ void main() {
     db.execute("insert into t (name) values ('点点')");
     final rows = db.select('select name from t');
     expect(rows.single['name'], '点点');
-    db.dispose();
+    db.close();
   });
 }
