@@ -95,7 +95,13 @@ abstract interface class StatsRepository {
 abstract interface class ToolAuditRepository {
   Future<List<AiToolCall>> recent({int limit = 50});
   Future<void> record(AiToolCall call);
-  Future<void> updateStatus(String id, ToolCallStatus status, {String? error});
+  Future<void> updateStatus(
+    String id,
+    ToolCallStatus status, {
+    String? error,
+    String? resultSummary,
+    int? durationMs,
+  });
 }
 
 abstract interface class SecretStore {

@@ -1,12 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/app_scope.dart';
 import '../../app/theme.dart';
 import '../../core/ui.dart';
 import '../../data/ai/catalog.dart';
+import '../../data/update/update_service.dart';
 import '../../domain/models.dart';
+import '../backup/backup_page.dart';
 import 'settings_cubit.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -363,6 +367,31 @@ class _SettingsView extends StatelessWidget {
                           ),
                       const SizedBox(height: 24),
                       const SectionTitle(
+                        '数据',
+                        subtitle: '本地备份、WebDAV 与 GitCode 同步',
+                      ),
+                      SurfaceCard(
+                        child: Column(
+                          children: [
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.backup_outlined),
+                              title: const Text('备份与恢复'),
+                              subtitle: const Text('导出 JSON、WebDAV、GitCode'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const BackupPage(),
+                                ),
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            const _CheckUpdateTile(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const SectionTitle(
                         '网络',
                         subtitle: '模拟器直连失败时，可填写本机 HTTP 代理',
                       ),
@@ -407,6 +436,119 @@ class _SettingsView extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+class _CheckUpdateTile extends StatefulWidget {
+  const _CheckUpdateTile();
+
+  @override
+  State<_CheckUpdateTile> createState() => _CheckUpdateTileState();
+}
+
+class _CheckUpdateTileState extends State<_CheckUpdateTile> {
+  bool _checking = false;
+
+  Future<void> _check() async {
+    if (_checking) return;
+    setState(() => _checking = true);
+    try {
+      final deps = AppScope.of(context);
+      final package = await PackageInfo.fromPlatform();
+      final info = await deps.updates.check(currentVersion: package.version);
+      if (!mounted) return;
+      if (info == null) {
+        showSnack(context, '已经是最新版本');
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        builder: (context) => _UpdateDialog(info: info),
+      );
+    } on UpdateException catch (e) {
+      if (mounted) showSnack(context, e.message, error: true);
+    } catch (e) {
+      if (mounted) showSnack(context, '检查更新失败：$e', error: true);
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.system_update_alt),
+      title: const Text('检查更新'),
+      subtitle: const Text('从 GitHub Release 获取最新版本'),
+      trailing: _checking
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.chevron_right),
+      onTap: _checking ? null : _check,
+    );
+  }
+}
+
+class _UpdateDialog extends StatelessWidget {
+  const _UpdateDialog({required this.info});
+  final UpdateInfo info;
+
+  String? _downloadUrl() {
+    final target = switch (defaultTargetPlatform) {
+      TargetPlatform.android => info.androidUrl,
+      TargetPlatform.windows => info.windowsSetupUrl ?? info.windowsPortableUrl,
+      TargetPlatform.iOS => info.pageUrl,
+      _ => info.pageUrl,
+    };
+    final fallback = info.pageUrl.isNotEmpty
+        ? info.pageUrl
+        : 'https://github.com/r0ad/project-z/releases';
+    return target == null || target.isEmpty ? fallback : target;
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final raw = _downloadUrl();
+    if (raw == null || raw.isEmpty) {
+      showSnack(context, '这个版本没有提供下载地址', error: true);
+      return;
+    }
+    final ok = await launchUrl(
+      Uri.parse(raw),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!ok && context.mounted) {
+      showSnack(context, '无法打开下载地址', error: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('发现新版本 ${info.version}'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 360),
+        child: SingleChildScrollView(
+          child: SelectableText(
+            info.notes.trim().isEmpty ? '这个版本没有提供更新说明。' : info.notes,
+            style: const TextStyle(fontSize: 13, height: 1.6),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('稍后'),
+        ),
+        FilledButton(
+          onPressed: () => _open(context),
+          child: const Text('前往下载'),
+        ),
+      ],
     );
   }
 }

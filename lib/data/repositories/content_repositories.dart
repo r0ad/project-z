@@ -628,11 +628,15 @@ class DriftToolAuditRepository implements ToolAuditRepository {
     String id,
     ToolCallStatus status, {
     String? error,
+    String? resultSummary,
+    int? durationMs,
   }) async {
     await (_db.update(_db.aiToolCalls)..where((t) => t.id.equals(id))).write(
       AiToolCallsCompanion(
         status: Value(status.dbValue),
         error: Value(error),
+        resultSummary: Value(resultSummary),
+        durationMs: Value(durationMs),
         confirmedAt: Value(nowMillis()),
       ),
     );

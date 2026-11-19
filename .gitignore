@@ -34,6 +34,8 @@ migrate_working_dir/
 
 # 本地调试脚本（仅用于开发期自动化截图/种子数据）
 /tool/
+/diandian-backup-*.json
+/installer/vc_redist.x64.exe
 /coverage/
 
 # Symbolication related

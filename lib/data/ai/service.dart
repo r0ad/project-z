@@ -106,9 +106,17 @@ class AiService {
     );
   }
 
-  Stream<AiStreamEvent> stream(List<AiMessage> messages) async* {
+  Stream<AiStreamEvent> stream(
+    List<AiMessage> messages, {
+    List<AiToolDefinition>? tools,
+  }) async* {
     final (config, key) = await _active();
-    yield* _gateway.stream(config: config, apiKey: key, messages: messages);
+    yield* _gateway.stream(
+      config: config,
+      apiKey: key,
+      messages: messages,
+      tools: tools,
+    );
   }
 
   Future<void> testConnection(AiConfig config, String apiKey) async {

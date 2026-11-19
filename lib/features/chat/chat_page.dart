@@ -147,6 +147,13 @@ class _ChatViewState extends State<_ChatView> {
                         },
                       ),
               ),
+              if (state.pendingTools.isNotEmpty)
+                _PendingToolsCard(
+                  pending: state.pendingTools,
+                  busy: state.sending,
+                  onConfirm: () => context.read<ChatCubit>().confirmPending(),
+                  onReject: () => context.read<ChatCubit>().rejectPending(),
+                ),
               SafeArea(
                 top: false,
                 child: Padding(
@@ -168,7 +175,10 @@ class _ChatViewState extends State<_ChatView> {
                       ),
                       const SizedBox(width: 10),
                       IconButton.filled(
-                        onPressed: state.sending ? null : _send,
+                        onPressed:
+                            state.sending || state.pendingTools.isNotEmpty
+                            ? null
+                            : _send,
                         icon: state.sending
                             ? const SizedBox(
                                 width: 18,
@@ -297,6 +307,105 @@ class _Bubble extends StatelessWidget {
                   ],
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class _PendingToolsCard extends StatelessWidget {
+  const _PendingToolsCard({
+    required this.pending,
+    required this.busy,
+    required this.onConfirm,
+    required this.onReject,
+  });
+
+  final List<PendingToolCall> pending;
+  final bool busy;
+  final VoidCallback onConfirm;
+  final VoidCallback onReject;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceHigh,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.auto_awesome,
+                size: 16,
+                color: AppColors.warning,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  '点点想执行这些操作',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+              ),
+              if (busy)
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 1.6),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final item in pending)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    item.write ? Icons.edit_note : Icons.search,
+                    size: 16,
+                    color: item.write ? AppColors.warning : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item.summary,
+                      style: const TextStyle(fontSize: 13, height: 1.4),
+                    ),
+                  ),
+                  Text(
+                    item.write ? '需确认' : '只读',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: item.write
+                          ? AppColors.warning
+                          : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: busy ? null : onReject,
+                child: const Text('先不改'),
+              ),
+              const SizedBox(width: 6),
+              FilledButton(
+                onPressed: busy ? null : onConfirm,
+                child: const Text('同意并执行'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
