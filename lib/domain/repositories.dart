@@ -12,6 +12,7 @@ abstract interface class ProjectRepository {
 
 abstract interface class MilestoneRepository {
   Future<List<Milestone>> listByProject(String projectId);
+  Future<Milestone?> getById(String id);
   Future<Milestone> create(MilestoneDraft draft);
   Future<void> updateMilestone(Milestone milestone);
   Future<void> toggle(String id, bool completed);
@@ -21,6 +22,7 @@ abstract interface class MilestoneRepository {
 
 abstract interface class LogRepository {
   Future<List<ProjectLog>> listByProject(String projectId, {int limit = 100});
+  Future<ProjectLog?> getById(String id);
   Future<List<ProjectLog>> recent({int days = 7, String? projectId});
   Future<ProjectLog> create(LogDraft draft);
   Future<void> updateLog(ProjectLog log);
@@ -30,6 +32,7 @@ abstract interface class LogRepository {
 
 abstract interface class InsightRepository {
   Future<List<AiInsight>> listByProject(String projectId);
+  Future<AiInsight?> getById(String id);
   Future<List<AiInsight>> listWeekly();
   Future<AiInsight> save(AiInsight insight);
   Future<void> delete(String id);

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/app_scope.dart';
 import '../../app/theme.dart';
+import '../../core/formatters.dart';
 import '../../core/markdown.dart';
 import '../../core/ui.dart';
 import '../../domain/models.dart';
@@ -38,6 +39,7 @@ class _ChatViewState extends State<_ChatView> {
   final _scroll = ScrollController();
   bool _booted = false;
   bool _draftSent = false;
+  int _lastMessageCount = 0;
 
   @override
   void initState() {
@@ -54,15 +56,21 @@ class _ChatViewState extends State<_ChatView> {
     super.dispose();
   }
 
-  void _scrollToBottom() {
-    if (!_scroll.hasClients) return;
+  void _scrollToBottom({bool animate = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scroll.hasClients) return;
-      _scroll.animateTo(
-        _scroll.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-      );
+      if (!mounted || !_scroll.hasClients) return;
+      // 列表 reverse:true，底部就是 offset 0；只有用户本来就在底部时才跟随，
+      // 避免打断向上翻历史记录的用户。
+      if (_scroll.position.pixels > 96) return;
+      if (animate) {
+        _scroll.animateTo(
+          0,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _scroll.jumpTo(0);
+      }
     });
   }
 
@@ -71,6 +79,18 @@ class _ChatViewState extends State<_ChatView> {
     if (text.isEmpty) return;
     _input.clear();
     context.read<ChatCubit>().send(text);
+  }
+
+  Future<void> _openHistory(BuildContext context) async {
+    final cubit = context.read<ChatCubit>();
+    cubit.loadConversations();
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) =>
+          BlocProvider.value(value: cubit, child: const _ConversationSheet()),
+    );
   }
 
   @override
@@ -87,8 +107,12 @@ class _ChatViewState extends State<_ChatView> {
             _draftSent = true;
             context.read<ChatCubit>().send(widget.draft);
           }
+          _scrollToBottom(animate: false);
         }
-        _scrollToBottom();
+        if (state.messages.length != _lastMessageCount) {
+          _lastMessageCount = state.messages.length;
+          _scrollToBottom();
+        }
       },
       builder: (context, state) {
         return Scaffold(
@@ -112,6 +136,20 @@ class _ChatViewState extends State<_ChatView> {
                   ),
               ],
             ),
+            actions: [
+              IconButton(
+                tooltip: '新对话',
+                onPressed: state.sending
+                    ? null
+                    : () => context.read<ChatCubit>().newConversation(),
+                icon: const Icon(Icons.add_comment_outlined),
+              ),
+              IconButton(
+                tooltip: '历史对话',
+                onPressed: () => _openHistory(context),
+                icon: const Icon(Icons.history),
+              ),
+            ],
           ),
           body: Column(
             children: [
@@ -127,11 +165,12 @@ class _ChatViewState extends State<_ChatView> {
                       )
                     : ListView.builder(
                         controller: _scroll,
+                        reverse: true,
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                         itemCount:
                             state.messages.length + (state.sending ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (index >= state.messages.length) {
+                          if (state.sending && index == 0) {
                             return _Bubble(
                               role: ChatRole.assistant,
                               text: state.streamingText,
@@ -139,7 +178,9 @@ class _ChatViewState extends State<_ChatView> {
                               streaming: true,
                             );
                           }
-                          final message = state.messages[index];
+                          final offset = state.sending ? index - 1 : index;
+                          final message = state
+                              .messages[state.messages.length - 1 - offset];
                           return _Bubble(
                             role: message.role,
                             text: message.content,
@@ -407,6 +448,139 @@ class _PendingToolsCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ConversationSheet extends StatelessWidget {
+  const _ConversationSheet();
+
+  Future<void> _delete(BuildContext context, ChatConversation item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('删除这段对话？'),
+        content: Text('「${item.title}」和其中的消息会一并删除，无法恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      context.read<ChatCubit>().deleteConversation(item.id);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ChatCubit, ChatState>(
+      builder: (context, state) {
+        return SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.62,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 12, 8),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          '历史对话',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          context.read<ChatCubit>().newConversation();
+                          Navigator.of(context).pop();
+                        },
+                        icon: const Icon(Icons.add_comment_outlined, size: 18),
+                        label: const Text('新对话'),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: state.conversations.isEmpty
+                      ? const Center(
+                          child: Text(
+                            '还没有历史对话',
+                            style: TextStyle(color: AppColors.textMuted),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: state.conversations.length,
+                          separatorBuilder: (_, _) => const Divider(
+                            height: 1,
+                            indent: 20,
+                            endIndent: 20,
+                          ),
+                          itemBuilder: (context, index) {
+                            final item = state.conversations[index];
+                            final active = state.conversationId == item.id;
+                            return ListTile(
+                              leading: Icon(
+                                active
+                                    ? Icons.chat_bubble
+                                    : Icons.chat_bubble_outline,
+                                color: active
+                                    ? AppColors.seed
+                                    : AppColors.textMuted,
+                                size: 20,
+                              ),
+                              title: Text(
+                                item.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: active
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                              subtitle: Text(
+                                relativeTime(item.updatedAt),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              trailing: IconButton(
+                                tooltip: '删除对话',
+                                onPressed: () => _delete(context, item),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 18,
+                                ),
+                              ),
+                              onTap: () {
+                                context.read<ChatCubit>().openConversation(
+                                  item.id,
+                                );
+                                Navigator.of(context).pop();
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

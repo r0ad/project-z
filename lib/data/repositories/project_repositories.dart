@@ -167,6 +167,14 @@ class DriftMilestoneRepository implements MilestoneRepository {
   }
 
   @override
+  Future<Milestone?> getById(String id) async {
+    final row = await (_db.select(
+      _db.milestones,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    return row == null ? null : milestoneFromRow(row);
+  }
+
+  @override
   Future<Milestone> create(MilestoneDraft draft) async {
     final now = nowMillis();
     final order = await _nextOrder(draft.projectId);
@@ -356,6 +364,14 @@ class DriftLogRepository implements LogRepository {
   }
 
   @override
+  Future<ProjectLog?> getById(String id) async {
+    final row = await (_db.select(
+      _db.projectLogs,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    return row == null ? null : logFromRow(row);
+  }
+
+  @override
   Future<ProjectLog> create(LogDraft draft) async {
     final now = nowMillis();
     final log = ProjectLog(
@@ -480,6 +496,14 @@ class DriftInsightRepository implements InsightRepository {
               ]))
             .get();
     return rows.map(insightFromRow).toList();
+  }
+
+  @override
+  Future<AiInsight?> getById(String id) async {
+    final row = await (_db.select(
+      _db.aiInsights,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    return row == null ? null : insightFromRow(row);
   }
 
   @override

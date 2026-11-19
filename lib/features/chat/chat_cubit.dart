@@ -30,6 +30,7 @@ class ChatState extends Equatable {
     this.sending = false,
     this.conversationId,
     this.projectTitle,
+    this.conversations = const [],
     this.messages = const [],
     this.streamingText = '',
     this.streamingReasoning = '',
@@ -41,6 +42,7 @@ class ChatState extends Equatable {
   final bool sending;
   final String? conversationId;
   final String? projectTitle;
+  final List<ChatConversation> conversations;
   final List<ChatMessage> messages;
   final String streamingText;
   final String streamingReasoning;
@@ -51,7 +53,9 @@ class ChatState extends Equatable {
     bool? loading,
     bool? sending,
     String? conversationId,
+    bool resetConversation = false,
     String? projectTitle,
+    List<ChatConversation>? conversations,
     List<ChatMessage>? messages,
     String? streamingText,
     String? streamingReasoning,
@@ -61,8 +65,11 @@ class ChatState extends Equatable {
     return ChatState(
       loading: loading ?? this.loading,
       sending: sending ?? this.sending,
-      conversationId: conversationId ?? this.conversationId,
+      conversationId: resetConversation
+          ? null
+          : conversationId ?? this.conversationId,
       projectTitle: projectTitle ?? this.projectTitle,
+      conversations: conversations ?? this.conversations,
       messages: messages ?? this.messages,
       streamingText: streamingText ?? this.streamingText,
       streamingReasoning: streamingReasoning ?? this.streamingReasoning,
@@ -77,6 +84,7 @@ class ChatState extends Equatable {
     sending,
     conversationId,
     projectTitle,
+    conversations,
     messages,
     streamingText,
     streamingReasoning,
@@ -99,45 +107,123 @@ class ChatCubit extends Cubit<ChatState> {
   Future<void> load() async {
     emit(state.copyWith(loading: true, error: null));
     try {
-      if (projectId != null) {
-        _project = await _deps.projects.detail(projectId!);
-        if (_project != null) {
-          emit(state.copyWith(projectTitle: _project!.project.title));
-        }
-      } else {
-        final projects = await _deps.projects.list();
-        final logs = await _deps.logs.recent(days: 14);
-        final knowledge = await _deps.knowledge.list(limit: 20);
-        _workspaceContext = const ContextBuilder().workspace(
-          projects: projects,
-          logs: logs,
-          knowledge: knowledge,
-        );
-      }
-      final conversations = await _deps.chats.conversations(
-        scopeType: projectId == null ? 'global' : 'project',
-        scopeId: projectId,
-      );
-      ChatConversation? conversation;
-      for (final item in conversations) {
-        if (conversation == null || item.updatedAt > conversation.updatedAt) {
-          conversation = item;
-        }
-      }
-      if (conversation == null) {
+      await _loadContext();
+      final conversations = await _fetchConversations();
+      emit(state.copyWith(conversations: conversations));
+      if (conversations.isEmpty) {
         emit(state.copyWith(loading: false));
         return;
       }
-      final messages = await _deps.chats.messages(conversation.id);
+      await openConversation(conversations.first.id);
+    } catch (e) {
+      emit(state.copyWith(loading: false, error: e.toString()));
+    }
+  }
+
+  Future<void> _loadContext() async {
+    if (projectId != null) {
+      _project = await _deps.projects.detail(projectId!);
+      if (_project != null) {
+        emit(state.copyWith(projectTitle: _project!.project.title));
+      }
+      return;
+    }
+    final projects = await _deps.projects.list();
+    final logs = await _deps.logs.recent(days: 14);
+    final knowledge = await _deps.knowledge.list(limit: 20);
+    _workspaceContext = const ContextBuilder().workspace(
+      projects: projects,
+      logs: logs,
+      knowledge: knowledge,
+    );
+  }
+
+  Future<List<ChatConversation>> _fetchConversations() async {
+    final items = await _deps.chats.conversations(
+      scopeType: projectId == null ? 'global' : 'project',
+      scopeId: projectId,
+    );
+    return items..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  }
+
+  Future<void> loadConversations() async {
+    try {
+      final conversations = await _fetchConversations();
+      emit(state.copyWith(conversations: conversations));
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
+    }
+  }
+
+  Future<void> openConversation(String id) async {
+    if (state.sending) return;
+    if (state.conversationId == id && state.messages.isNotEmpty) return;
+    _pendingPrefix = null;
+    _lastBaseMessages = null;
+    emit(
+      state.copyWith(
+        loading: true,
+        conversationId: id,
+        messages: const [],
+        pendingTools: const [],
+        streamingText: '',
+        streamingReasoning: '',
+        error: null,
+      ),
+    );
+    try {
+      final messages = await _deps.chats.messages(id);
       emit(
-        state.copyWith(
-          loading: false,
-          conversationId: conversation.id,
-          messages: messages,
-        ),
+        state.copyWith(loading: false, conversationId: id, messages: messages),
       );
     } catch (e) {
       emit(state.copyWith(loading: false, error: e.toString()));
+    }
+  }
+
+  Future<void> newConversation() async {
+    if (state.sending) return;
+    _pendingPrefix = null;
+    _lastBaseMessages = null;
+    emit(
+      state.copyWith(
+        resetConversation: true,
+        loading: false,
+        messages: const [],
+        pendingTools: const [],
+        streamingText: '',
+        streamingReasoning: '',
+        error: null,
+      ),
+    );
+  }
+
+  Future<void> deleteConversation(String id) async {
+    if (state.sending) return;
+    try {
+      await _deps.chats.deleteConversation(id);
+      final conversations = state.conversations
+          .where((item) => item.id != id)
+          .toList();
+      if (state.conversationId == id) {
+        _pendingPrefix = null;
+        _lastBaseMessages = null;
+        emit(
+          state.copyWith(
+            resetConversation: true,
+            conversations: conversations,
+            messages: const [],
+            pendingTools: const [],
+            streamingText: '',
+            streamingReasoning: '',
+            error: null,
+          ),
+        );
+      } else {
+        emit(state.copyWith(conversations: conversations));
+      }
+    } catch (e) {
+      emit(state.copyWith(error: e.toString()));
     }
   }
 
@@ -163,6 +249,15 @@ class ChatCubit extends Cubit<ChatState> {
           scopeId: projectId,
         );
         conversationId = conversation.id;
+        emit(
+          state.copyWith(
+            conversationId: conversation.id,
+            conversations: [
+              conversation,
+              ...state.conversations.where((c) => c.id != conversation.id),
+            ],
+          ),
+        );
       }
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
       final history = state.messages;
@@ -382,7 +477,7 @@ class ChatCubit extends Cubit<ChatState> {
           toolName: call.name,
           argumentsJson: call.arguments,
           conversationId: state.conversationId,
-          resultSummary: _deps.projectTools.summarize(call),
+          resultSummary: await _deps.projectTools.summarize(call),
           status: ToolCallStatus.pending,
           createdAt: DateTime.now().toUtc().millisecondsSinceEpoch,
         ),
@@ -419,7 +514,7 @@ class ChatCubit extends Cubit<ChatState> {
     for (final call in writes) {
       final item = PendingToolCall(
         call: call,
-        summary: _deps.projectTools.summarize(call),
+        summary: await _deps.projectTools.summarize(call),
         write: true,
       );
       pending.add(item);
