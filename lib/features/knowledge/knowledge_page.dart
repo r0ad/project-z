@@ -41,7 +41,7 @@ class _KnowledgeView extends StatelessWidget {
         builder: (context, state) {
           if (state.entries.isEmpty) return const SizedBox.shrink();
           return FloatingActionButton.extended(
-            onPressed: () => context.go('/knowledge/new'),
+            onPressed: () => context.push('/knowledge/new'),
             backgroundColor: AppColors.seed,
             foregroundColor: Colors.black,
             icon: const Icon(Icons.add),
@@ -145,7 +145,7 @@ class _KnowledgeView extends StatelessWidget {
                             action: state.query.isEmpty && !state.favoritesOnly
                                 ? FilledButton.icon(
                                     onPressed: () =>
-                                        context.go('/knowledge/new'),
+                                        context.push('/knowledge/new'),
                                     icon: const Icon(Icons.add),
                                     label: const Text('写第一条'),
                                   )

@@ -71,6 +71,17 @@ class _KnowledgeEditorViewState extends State<_KnowledgeEditorView> {
       builder: (context, state) {
         return Scaffold(
           appBar: AppBar(
+            leading: IconButton(
+              tooltip: '返回',
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/knowledge');
+                }
+              },
+            ),
             title: Text(state.entry == null ? '沉淀知识' : '编辑知识'),
             actions: [
               TextButton(

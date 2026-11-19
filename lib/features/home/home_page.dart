@@ -499,7 +499,7 @@ class _QuickActions extends StatelessWidget {
     final actions = [
       (Icons.add_task, '新建项目', () => context.go('/projects/new')),
       (Icons.edit_note, '记录进展', () => context.go('/projects')),
-      (Icons.lightbulb_outline, '沉淀知识', () => context.go('/knowledge/new')),
+      (Icons.lightbulb_outline, '沉淀知识', () => context.push('/knowledge/new')),
       (Icons.chat_bubble_outline, '问问点点', () => context.go('/chat')),
     ];
     return Column(

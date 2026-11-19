@@ -81,7 +81,7 @@ class _KnowledgeDetailView extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: '编辑',
-                  onPressed: () => context.go('/knowledge/${entry.id}/edit'),
+                  onPressed: () => context.push('/knowledge/${entry.id}/edit'),
                   icon: const Icon(Icons.edit_outlined),
                 ),
                 PopupMenuButton<String>(
