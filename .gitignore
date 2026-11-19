@@ -31,6 +31,9 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+
+# 本地调试脚本（仅用于开发期自动化截图/种子数据）
+/tool/
 /coverage/
 
 # Symbolication related
