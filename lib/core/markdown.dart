@@ -5,15 +5,16 @@ import '../app/theme.dart';
 
 /// 所有 AI 输出统一用同一套 Markdown 排版，避免各页面样式漂移。
 class AiMarkdown extends StatelessWidget {
-  const AiMarkdown(this.data, {super.key});
+  const AiMarkdown(this.data, {super.key, this.isStreaming = false});
 
   final String data;
+  final bool isStreaming;
 
   @override
   Widget build(BuildContext context) {
     return GptMarkdown(
       data,
-      isStreaming: false,
+      isStreaming: isStreaming,
       style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.6),
     );
   }

@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "发布 tag，例如 v1.0.0"
+        required: true
+        default: "v1.0.0"
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: "3.50.0"
+
+jobs:
+  android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Install Android NDK
+        run: |
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "ndk;28.2.13676358" "cmake;3.22.1"
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+  windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - name: Package Windows
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* `
+            -DestinationPath diandian-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: diandian-windows-x64.zip
+          if-no-files-found: error
+
+  ios:
+    name: Build iOS (unsigned)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+      - name: Package iOS
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/iphoneos/Runner.app diandian-ios-unsigned.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-ios
+          path: diandian-ios-unsigned.zip
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: [android, windows, ios]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Prepare assets
+        run: |
+          mkdir -p release
+          cp artifacts/release-android/app-release.apk release/diandian-android.apk
+          cp artifacts/release-windows/diandian-windows-x64.zip release/
+          cp artifacts/release-ios/diandian-ios-unsigned.zip release/
+          ls -lh release
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          name: 点点 ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          body: |
+            ## 下载
+
+            - **Windows**：`diandian-windows-x64.zip`，解压后运行 `diandian.exe`，免安装。
+            - **Android**：`diandian-android.apk`，直接侧载安装。
+            - **iOS**：`diandian-ios-unsigned.zip` 仅为未签名构建产物，需自行签名后才能安装。
+
+            ## 说明
+
+            - 应用本地优先，数据保存在本机 SQLite，不上传云端。
+            - AI 需要自行在「我的 → AI 供应商」配置 API Key。
+          files: |
+            release/diandian-android.apk
+            release/diandian-windows-x64.zip
+            release/diandian-ios-unsigned.zip
+          fail_on_unmatched_files: true

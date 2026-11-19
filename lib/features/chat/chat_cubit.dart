@@ -15,6 +15,7 @@ class ChatState extends Equatable {
     this.projectTitle,
     this.messages = const [],
     this.streamingText = '',
+    this.streamingReasoning = '',
     this.error,
   });
 
@@ -24,6 +25,7 @@ class ChatState extends Equatable {
   final String? projectTitle;
   final List<ChatMessage> messages;
   final String streamingText;
+  final String streamingReasoning;
   final String? error;
 
   ChatState copyWith({
@@ -33,6 +35,7 @@ class ChatState extends Equatable {
     String? projectTitle,
     List<ChatMessage>? messages,
     String? streamingText,
+    String? streamingReasoning,
     String? error,
   }) {
     return ChatState(
@@ -42,6 +45,7 @@ class ChatState extends Equatable {
       projectTitle: projectTitle ?? this.projectTitle,
       messages: messages ?? this.messages,
       streamingText: streamingText ?? this.streamingText,
+      streamingReasoning: streamingReasoning ?? this.streamingReasoning,
       error: error,
     );
   }
@@ -54,6 +58,7 @@ class ChatState extends Equatable {
     projectTitle,
     messages,
     streamingText,
+    streamingReasoning,
     error,
   ];
 }
@@ -115,7 +120,14 @@ class ChatCubit extends Cubit<ChatState> {
   Future<void> send(String text) async {
     final content = text.trim();
     if (content.isEmpty || state.sending) return;
-    emit(state.copyWith(sending: true, error: null, streamingText: ''));
+    emit(
+      state.copyWith(
+        sending: true,
+        error: null,
+        streamingText: '',
+        streamingReasoning: '',
+      ),
+    );
     try {
       var conversationId = state.conversationId;
       if (conversationId == null) {
@@ -151,23 +163,41 @@ class ChatCubit extends Cubit<ChatState> {
         workspaceContext: _workspaceContext,
       );
       final buffer = StringBuffer();
+      final reasoning = StringBuffer();
       String? failure;
       await for (final event in _deps.ai.stream(messages)) {
         if (event is AiTextDelta) {
           buffer.write(event.text);
           emit(state.copyWith(streamingText: buffer.toString()));
+        } else if (event is AiReasoningDelta) {
+          reasoning.write(event.text);
+          emit(state.copyWith(streamingReasoning: reasoning.toString()));
         } else if (event is AiFailure) {
           failure = event.message;
           break;
         }
       }
       if (failure != null) {
-        emit(state.copyWith(sending: false, error: failure));
+        emit(
+          state.copyWith(
+            sending: false,
+            streamingText: '',
+            streamingReasoning: '',
+            error: failure,
+          ),
+        );
         return;
       }
       final answer = buffer.toString().trim();
       if (answer.isEmpty) {
-        emit(state.copyWith(sending: false, error: 'AI 没有返回内容，请重试'));
+        emit(
+          state.copyWith(
+            sending: false,
+            streamingText: '',
+            streamingReasoning: '',
+            error: 'AI 没有返回内容，请重试',
+          ),
+        );
         return;
       }
       final assistant = await _deps.chats.appendMessage(
@@ -183,6 +213,7 @@ class ChatCubit extends Cubit<ChatState> {
         state.copyWith(
           sending: false,
           streamingText: '',
+          streamingReasoning: '',
           messages: [...state.messages, assistant],
         ),
       );

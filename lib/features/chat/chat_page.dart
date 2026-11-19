@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/app_scope.dart';
 import '../../app/theme.dart';
+import '../../core/markdown.dart';
 import '../../core/ui.dart';
 import '../../domain/models.dart';
 import 'chat_cubit.dart';
@@ -133,9 +134,8 @@ class _ChatViewState extends State<_ChatView> {
                           if (index >= state.messages.length) {
                             return _Bubble(
                               role: ChatRole.assistant,
-                              text: state.streamingText.isEmpty
-                                  ? '正在思考…'
-                                  : state.streamingText,
+                              text: state.streamingText,
+                              reasoning: state.streamingReasoning,
                               streaming: true,
                             );
                           }
@@ -195,16 +195,20 @@ class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.role,
     required this.text,
+    this.reasoning = '',
     this.streaming = false,
   });
 
   final ChatRole role;
   final String text;
+  final String reasoning;
   final bool streaming;
 
   @override
   Widget build(BuildContext context) {
     final user = role == ChatRole.user;
+    final thinking = streaming && text.trim().isEmpty;
+    final hasReasoning = reasoning.trim().isNotEmpty;
     return Align(
       alignment: user ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -232,24 +236,65 @@ class _Bubble extends StatelessWidget {
                 text,
                 style: const TextStyle(fontSize: 14, height: 1.5),
               )
-            : Row(
+            : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: SelectableText(
-                      text,
-                      style: const TextStyle(fontSize: 14, height: 1.6),
+                  if (thinking) ...[
+                    Row(
+                      children: [
+                        const SizedBox(
+                          width: 10,
+                          height: 10,
+                          child: CircularProgressIndicator(strokeWidth: 1.5),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          hasReasoning ? '正在思考…' : '正在连接…',
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  if (streaming)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8, top: 2),
-                      child: SizedBox(
-                        width: 10,
-                        height: 10,
-                        child: CircularProgressIndicator(strokeWidth: 1.5),
+                    if (hasReasoning) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        reasoning,
+                        maxLines: 8,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                          height: 1.55,
+                        ),
                       ),
+                    ],
+                  ] else
+                    SelectionArea(
+                      child: AiMarkdown(text, isStreaming: streaming),
                     ),
+                  if (streaming && !thinking) ...[
+                    const SizedBox(height: 6),
+                    const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 8,
+                          height: 8,
+                          child: CircularProgressIndicator(strokeWidth: 1.4),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          '生成中…',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
       ),
