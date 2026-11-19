@@ -108,12 +108,20 @@ Drift schema v1，14 张表：
 
 ### 6.5 AI 工具调用
 
-- 工具定义与执行集中在 `lib/data/ai/project_tools.dart`：`list_projects` / `get_project`（只读），`create_project` / `update_project` / `delete_project`（写操作）。
+- 工具定义与执行集中在 `lib/data/ai/project_tools.dart`，覆盖项目、里程碑、执行日志、AI 分析、知识库（含标签、关联项目、收藏）与工作区概览，共 23 个。`list_*` / `get_*` 为只读；`create_*` / `update_*` / `set_*` / `delete_*` / `toggle_*` 为写操作。
 - 聊天链路：`ChatCubit.send` → `AiService.stream(tools: ProjectTools.definitions)` → 模型返回 tool_calls；只读工具立即执行并把结果回传模型，循环最多 4 轮；写操作先落 `ai_tool_calls`（pending）并在聊天页展示确认卡，用户点「同意并执行」后才执行。
+- 确认卡摘要由 `ProjectTools.summarize` 异步解析成名称（项目名、里程碑名、日志所属项目+日期、知识标题），**不得把内部 ID 展示给用户**；ID 只用于工具参数与执行。
+- 系统提示明确要求：用户已明确要求写操作时直接调用工具，确认由界面卡片负责，不要在正文里再用文字问一遍。
 - 审计统一走 `ToolAuditRepository`，状态 `pending / completed / failed / rejected`；不要绕过审计直接调仓储改项目。
 - 工具参数、系统提示与确认文案都在 `prompts.dart` / `project_tools.dart`；新增工具必须同时补 `test/data/project_tools_test.dart`，并保持写操作需要确认。
 
-### 6.6 备份与更新
+### 6.6 AI 副驾会话
+
+- 会话按 `scope_type`/`scope_id` 区分全局与项目，持久化在 `chat_conversations` / `chat_messages`。
+- `ChatCubit` 维护 `conversations`，提供 `loadConversations` / `openConversation` / `newConversation` / `deleteConversation`；`copyWith(resetConversation: true)` 是唯一能清空 `conversationId` 的方式。
+- 聊天页历史入口是底部弹层（切换、新建、删除），列表使用 `reverse: true`，默认贴底；只有用户接近底部时才自动跟随新消息。
+
+### 6.7 备份与更新
 
 - 本地备份：`BackupService.exportJson()` / `importJson()`，14 表、格式 `diandian-backup`、版本 1、**不导出 API Key**；导入在事务内清空并恢复，失败回滚。
 - WebDAV：`WebDavService`，`settings` 键 `webdav_url/webdav_username`，密码在 `SecretStore` 的 `webdav_password`，固定文件名 `diandian-backup.json`。
@@ -170,7 +178,7 @@ flutter build ios --no-codesign   # 只能在 macOS 上跑
 
 ## 10. 当前边界（不要假装已实现）
 
-- 已落地：首启 onboarding、本地备份/恢复、WebDAV/GitCode 远端备份、检查更新、AI 副驾项目工具（只读自动执行 + 写操作确认 + 审计）。
+- 已落地：首启 onboarding、本地备份/恢复、WebDAV/GitCode 远端备份、检查更新、AI 副驾全量数据工具（23 个，只读自动执行 + 写操作确认 + 名称摘要 + 审计）、多会话历史。
 - WebDAV/GitCode 目前有服务层单元测试（本地 HTTP 假服务），尚无真实凭据的端到端验证；Windows 安装包在本机沙箱内只能验证文件复制，注册表/开始菜单写入需在非沙箱用户态运行一次。
 - 聊天暂无「停止生成」按钮；流式失败会保留已生成的部分文本。
 - 统计页的周复盘是手动触发；没有自动定时生成。
