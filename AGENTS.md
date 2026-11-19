@@ -21,7 +21,9 @@
 | `lib/domain/` | 纯 Dart 模型与仓储接口，不依赖 Flutter/Drift |
 | `lib/data/local/` | Drift schema、FTS5、建库/打开数据库 |
 | `lib/data/repositories/` | Drift 仓储实现（项目/里程碑/日志/洞察/知识/聊天/配置/设置/统计/工具审计） |
-| `lib/data/ai/` | 自研 OpenAI 兼容网关、SSE 解析、Prompt、Context Builder、`AiService`、供应商目录 |
+| `lib/data/ai/` | 自研 OpenAI 兼容网关、SSE 解析、Prompt、Context Builder、`AiService`、供应商目录、AI 项目工具 |
+| `lib/data/backup/` | 本地 JSON 备份、WebDAV、GitCode 备份服务 |
+| `lib/data/update/` | GitHub Release / version.json 更新检查 |
 | `lib/data/security/` | `FlutterSecureSecretStore`（生产）与 `FileSecretStore`（仅自动化测试） |
 | `lib/features/<feature>/` | 页面 + Cubit，按功能分包 |
 | `lib/core/` | 通用 UI、Markdown、日期格式化 |
@@ -104,6 +106,21 @@ Drift schema v1，14 张表：
 - **Release 主清单必须保留** `android/app/src/main/AndroidManifest.xml` 里的 `<uses-permission android:name="android.permission.INTERNET"/>`。Flutter 模板只在 debug/profile 清单里加 INTERNET，release 漏掉会表现为所有 AI 请求「网络不可用」。改清单后必须重新构建 APK，热重载不会生效。
 - 模拟器遇到 DNS fake-IP / 无法直连时，可在「我的 → 网络 → HTTP 代理」填 `127.0.0.1:10808`，并先执行 `adb reverse tcp:10808 tcp:10808`。该配置存 `settings.network_proxy`，只影响 AI 请求，默认空表示直连；真实设备直连时不要填。
 
+### 6.5 AI 工具调用
+
+- 工具定义与执行集中在 `lib/data/ai/project_tools.dart`：`list_projects` / `get_project`（只读），`create_project` / `update_project` / `delete_project`（写操作）。
+- 聊天链路：`ChatCubit.send` → `AiService.stream(tools: ProjectTools.definitions)` → 模型返回 tool_calls；只读工具立即执行并把结果回传模型，循环最多 4 轮；写操作先落 `ai_tool_calls`（pending）并在聊天页展示确认卡，用户点「同意并执行」后才执行。
+- 审计统一走 `ToolAuditRepository`，状态 `pending / completed / failed / rejected`；不要绕过审计直接调仓储改项目。
+- 工具参数、系统提示与确认文案都在 `prompts.dart` / `project_tools.dart`；新增工具必须同时补 `test/data/project_tools_test.dart`，并保持写操作需要确认。
+
+### 6.6 备份与更新
+
+- 本地备份：`BackupService.exportJson()` / `importJson()`，14 表、格式 `diandian-backup`、版本 1、**不导出 API Key**；导入在事务内清空并恢复，失败回滚。
+- WebDAV：`WebDavService`，`settings` 键 `webdav_url/webdav_username`，密码在 `SecretStore` 的 `webdav_password`，固定文件名 `diandian-backup.json`。
+- GitCode：`GitCodeService`，OpenAPI v5 `https://gitcode.com/api/v5`，`settings` 键 `gitcode_repo/gitcode_branch/gitcode_path`，token 在 `SecretStore` 的 `gitcode_token`；上传先查 sha，再 POST/PUT contents。
+- 更新：`UpdateService` 默认读 `https://api.github.com/repos/r0ad/project-z/releases/latest`，也兼容旧 `version.json`（对象或数组）；`settings.update_manifest_url` 可覆盖。下载按平台选 Windows 安装包/便携 zip、Android APK、iOS 页面。
+- 以上服务都不在页面里直接拼 HTTP；UI 在 `features/backup/` 与 `features/settings/`。
+
 ## 7. 测试与命令
 
 ```bash
@@ -136,8 +153,9 @@ flutter build ios --no-codesign   # 只能在 macOS 上跑
 - CI 计划（`.github/workflows/ci.yml`）四类 job：analyze+test、Windows build、Android APK、macOS iOS build（`--no-codesign`）。
 - Android：`ANDROID_HOME=D:\Programs\Android\SDK`，platform 37.2 / build-tools 37.0.0；本机 JDK 为 Android Studio JBR 21。
 - iOS：工程已生成（`ios/`），但本机 Windows 无法构建；以 macOS CI 为准，签名走 secrets，不提交证书。
-- 发布：Windows 可直接分发构建目录 zip；Android 用 `build/app/outputs/flutter-apk/app-release.apk`；iOS 需要 macOS + 证书。
-- 不把 `build/`、`.dart_tool/`、APK、证书、`local.properties` 提交进仓库。
+- 发布：tag `v*` 触发 `.github/workflows/release.yml`，产出 Android APK、Windows 便携 zip、Windows 安装包（Inno Setup）与 iOS 未签名 zip，并发布到 GitHub Release；本地构建产物在 `build/`。
+- Windows 安装包脚本 `installer/diandian.iss`，默认按用户安装、向导可改路径；`installer/ChineseSimplified.isl` 必须随仓库提交，CI 不应依赖系统语言文件。
+- 不把 `build/`、`.dart_tool/`、APK、证书、`local.properties`、`vc_redist.x64.exe` 提交进仓库。
 
 ## 9. 提交规范
 
@@ -152,10 +170,12 @@ flutter build ios --no-codesign   # 只能在 macOS 上跑
 
 ## 10. 当前边界（不要假装已实现）
 
-- 首启 onboarding、数据备份/恢复、应用更新检查、全局 AI 工具调用（AgentRunner/工具白名单）尚未落地，属于后续任务。
+- 已落地：首启 onboarding、本地备份/恢复、WebDAV/GitCode 远端备份、检查更新、AI 副驾项目工具（只读自动执行 + 写操作确认 + 审计）。
+- WebDAV/GitCode 目前有服务层单元测试（本地 HTTP 假服务），尚无真实凭据的端到端验证；Windows 安装包在本机沙箱内只能验证文件复制，注册表/开始菜单写入需在非沙箱用户态运行一次。
 - 聊天暂无「停止生成」按钮；流式失败会保留已生成的部分文本。
 - 统计页的周复盘是手动触发；没有自动定时生成。
 - 语音输入/播报未接入（已从依赖中移除 `speech_to_text` / `flutter_tts`）。
 - 全局搜索只覆盖项目名/目标与知识库 FTS，不含日志全文的跨项目搜索 UI。
-- 旧版分享卡、推广码、GitCode 备份、APK 自动更新均已明确不做。
+- iOS 只提供未签名构建，无真机签名/商店分发。
+- 旧版分享卡、推广码、APK 自动更新均已明确不做；GitCode 备份已按新设计重做。
 - 不要为了「和旧版一样」恢复已删除的死页面、死链或双份 schema。
